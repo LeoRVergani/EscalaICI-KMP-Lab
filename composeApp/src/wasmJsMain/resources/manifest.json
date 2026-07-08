@@ -1,0 +1,18 @@
+{
+  "name": "Escala ICI KMP Lab",
+  "short_name": "KMP Lab",
+  "description": "POC Kotlin Multiplatform do Escala ICI para Android e Web/Wasm.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#101418",
+  "theme_color": "#101418",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

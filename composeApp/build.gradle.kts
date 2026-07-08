@@ -1,0 +1,51 @@
+import com.android.build.api.dsl.ApplicationExtension
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
+plugins {
+    id("org.jetbrains.kotlin.multiplatform")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.compose")
+    id("com.android.application")
+}
+
+kotlin {
+    androidTarget()
+
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        outputModuleName.set("composeApp")
+        browser {
+            commonWebpackConfig {
+                outputFileName = "composeApp.js"
+            }
+        }
+        binaries.executable()
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
+            implementation(compose.components.resources)
+        }
+
+        androidMain.dependencies {
+            implementation("androidx.activity:activity-compose:1.12.0")
+        }
+    }
+}
+
+extensions.configure<ApplicationExtension>("android") {
+    namespace = "br.com.leorvergani.escalaici.kmp.lab"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "br.com.leorvergani.escalaici.kmp.lab"
+        minSdk = 28
+        targetSdk = 36
+        versionCode = 1
+        versionName = "0.1.0-lab"
+    }
+}
