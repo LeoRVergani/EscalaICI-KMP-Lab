@@ -168,6 +168,60 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 9d — regras puras (resumo da semana e alertas) em `commonMain`
+
+Data da validacao: 2026-07-09.
+
+Objetivo desta etapa: portar as regras de "resumo da semana" e "alertas"
+descritas em `docs/spec/27-KMP-PWA-IOS-ESTRATEGIA.md` (secao 4) para funcoes
+puras em `commonMain`, operando sobre `ScheduleAssignment` (modelo puro da
+FASE 9c) em vez dos tipos ligados a UI mock (`ShiftDay`/`ScheduleSummary`).
+
+Criado em `model/ScheduleRules.kt`:
+
+- `WeekSummary` + `weekSummaryOf(assignments)`: dias trabalhados, dias de
+  folga, horas totais, proximo turno e proximo descanso;
+- `ScheduleAlert`/`ScheduleAlertSeverity` + `ScheduleAlertRules(assignments)`:
+  descanso menor que 11h, regra 6x1 excedida, inconsistencia e turno
+  indefinido.
+
+`LabDate.parseIso(String)` foi adicionado em `model/ScheduleModels.kt` para
+converter as datas `String` (`yyyy-MM-dd`) dos modelos puros de volta para
+`LabDate` ao calcular descanso entre turnos.
+
+As implementacoes existentes (`GenerateLabAlerts`, propriedades de
+`ScheduleSummary`) usadas pela UI mock/parser **nao foram alteradas** — as
+novas regras sao aditivas e independentes, reduzindo o risco de regressao
+visual.
+
+Testes unitarios criados em `composeApp/src/commonTest/.../ScheduleRulesTest.kt`
+(novo source set `commonTest`, dependencia `kotlin("test")` do proprio plugin
+Kotlin, sem biblioteca externa nova), cobrindo resumo da semana e os 3 tipos
+de alerta com casos positivos e um caso vazio.
+
+Limites assumidos:
+
+- nenhum arquivo do app Android principal foi alterado;
+- as novas regras ainda nao estao conectadas a UI do laboratorio, apenas
+  testadas isoladamente;
+- teste automatizado do alvo Web/Wasm (`wasmJsBrowserTest`) requer Chrome
+  headless local (`CHROME_BIN`), indisponivel neste ambiente — os testes
+  foram validados pelo alvo Android/JVM (`testDebugUnitTest`).
+
+Comandos executados:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados:
+
+- `testDebugUnitTest`: 6 testes, 0 falhas (`ScheduleRulesTest`).
+- `wasmJsBrowserTest` (via `allTests`) falhou apenas por falta de Chrome
+  headless no ambiente local; nao indica problema no codigo.
+- APK debug e distribuicao Web/Wasm continuaram compilando normalmente.
+
 ## Validacao da FASE 9c-1 visual
 
 Data da validacao: 2026-07-09.

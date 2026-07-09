@@ -165,6 +165,16 @@ data class LabDate(
         private fun isLeapYear(year: Int): Boolean {
             return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
         }
+
+        /** Parseia datas no formato ISO `yyyy-MM-dd` usadas pelos modelos puros da FASE 9c/9d. */
+        fun parseIso(value: String): LabDate? {
+            val parts = value.split("-")
+            if (parts.size != 3) return null
+            val year = parts[0].toIntOrNull() ?: return null
+            val month = parts[1].toIntOrNull() ?: return null
+            val day = parts[2].toIntOrNull() ?: return null
+            return LabDate(year, month, day)
+        }
     }
 }
 

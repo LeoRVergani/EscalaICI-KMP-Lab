@@ -37,6 +37,10 @@ kotlin {
             implementation("org.apache.poi:poi:5.2.5")
             implementation("org.apache.poi:poi-ooxml:5.2.5")
         }
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
     }
 }
 

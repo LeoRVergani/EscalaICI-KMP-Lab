@@ -7,6 +7,18 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 9d (spec 27) — Regras puras de resumo da semana e alertas em `commonMain`
+
+- **Status:** DONE
+- `model/ScheduleRules.kt`: `WeekSummary`/`weekSummaryOf`, `ScheduleAlert`/
+  `ScheduleAlertSeverity`/`ScheduleAlertRules`, operando sobre
+  `ScheduleAssignment` (modelo puro da FASE 9c), independentes da UI mock.
+- `LabDate.parseIso` adicionado em `model/ScheduleModels.kt`.
+- Testes unitários novos em `commonTest` (`ScheduleRulesTest.kt`), validados
+  via `testDebugUnitTest` (6 testes, 0 falhas).
+- Evidência: seção "Validação da FASE 9d — regras puras (resumo da semana e
+  alertas) em `commonMain`" no `README.md`.
+
 ## FASE 9c (spec 27) — Modelos puros reais em `commonMain`
 
 - **Status:** DONE
