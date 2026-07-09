@@ -138,9 +138,12 @@ object LabWorkbookParser {
             member = Member(
                 email = "$selected@ici.tec.br",
                 scaleName = selected,
-                displayName = selected
+                displayName = selected,
+                teamId = "soc",
+                role = MemberRole.ANALYST,
+                active = true
             ),
-            team = Team(teamId = "soc", name = "SOC"),
+            team = Team(teamId = "soc", name = "SOC", displayName = "SOC"),
             days = days,
             periodLabel = if (start != null && end != null) "${start.periodToken()} - ${end.periodToken()} ${end.year}" else "Período importado",
             pauseLabel = pause,

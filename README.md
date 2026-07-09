@@ -128,6 +128,56 @@ Resultados:
 - Webpack manteve os avisos de tamanho de bundle esperados para Compose/Skiko em Wasm.
 - Gradle manteve os avisos ja conhecidos de compatibilidade AGP 9 registrados na FASE 9b.
 
+## Validacao da FASE 9c — modelos puros reais em `commonMain`
+
+Data da validacao: 2026-07-09.
+
+Objetivo desta etapa: extrair/criar em `commonMain` os modelos puros de dominio
+descritos em `docs/spec/27-KMP-PWA-IOS-ESTRATEGIA.md` (secao 4, repositorio
+Android principal), sem Firebase, MSAL, parser XLS oficial, login real ou
+integracao real com qualquer backend.
+
+Modelos criados em `model/DomainModels.kt`:
+
+- `SchedulePeriod`, `ScheduleAssignment`, `OnCallPeriod`, `OnCallAssignment`,
+  `ShiftSwapRequest`, `ImportJob`, `SourceFileRecord`;
+- enums/value objects: `MemberRole`, `AssignmentSource`, `ImportStatus`,
+  `OnCallStatus`, `SwapStatus`, `ScheduleSourceType`.
+
+`Member` e `Team` (em `model/ScheduleModels.kt`) ganharam os campos que
+faltavam para bater com a spec (`id`, `teamId`, `role`, `active` em `Member`;
+`id`, `displayName`, `members` em `Team`), todos com valor padrao para nao
+quebrar os usos existentes na UI mock e no parser experimental.
+
+Datas e horarios permanecem como `String`, pois o laboratorio ainda nao tem
+estrategia multiplataforma definida para data/hora.
+
+Mocks atualizados em `model/MockSchedule.kt`: `mockTeamMembers()` e novas
+funcoes (`mockSchedulePeriod`, `mockScheduleAssignments`, `mockOnCallPeriod`,
+`mockOnCallAssignments`, `mockShiftSwapRequests`, `mockImportJob`,
+`mockSourceFileRecord`) que exercitam os novos modelos. Ainda nao sao
+consumidos pela UI — servem para validar que compilam e sao usaveis nas
+plataformas Android e Web/Wasm.
+
+Limites assumidos:
+
+- nenhum arquivo do app Android principal (`EscalaSOC`) foi alterado;
+- nenhuma integracao real com Firebase, MSAL, parser XLS oficial ou Dropbox
+  foi criada;
+- os novos modelos ainda nao estao conectados a UI, apenas aos mocks.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados:
+
+- APK debug do laboratorio continuou compilando.
+- Distribuicao Web/Wasm continuou compilando (mesmos avisos conhecidos de
+  tamanho de bundle Compose/Skiko em Wasm).
+
 ## Validacao da FASE 9b
 
 Data da validacao: 2026-07-07.

@@ -70,12 +70,19 @@ data class ScheduleSummary(
 data class Member(
     val email: String,
     val scaleName: String,
-    val displayName: String
+    val displayName: String,
+    val id: String = email,
+    val teamId: String = "",
+    val role: MemberRole = MemberRole.ANALYST,
+    val active: Boolean = true
 )
 
 data class Team(
     val teamId: String,
-    val name: String
+    val name: String,
+    val id: String = teamId,
+    val displayName: String = name,
+    val members: List<Member> = emptyList()
 )
 
 data class LabDate(
