@@ -27,12 +27,15 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
         }
 
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.12.0")
+            implementation("org.apache.poi:poi:5.2.5")
+            implementation("org.apache.poi:poi-ooxml:5.2.5")
         }
     }
 }
