@@ -7,6 +7,20 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 9e (spec 27) — Contratos de repository em `commonMain`
+
+- **Status:** DONE
+- `repository/Repositories.kt`: `ScheduleRepository`, `MemberRepository`,
+  `TeamRepository`, `OnCallRepository`, `ShiftSwapRepository`,
+  `AuthSessionRepository`, `LocalCacheRepository` (interfaces puras,
+  `suspend fun`, sem SDK de plataforma).
+- `repository/MockRepositories.kt`: implementações mock/em memória para
+  todos os contratos, reaproveitando os mocks da FASE 9c.
+- Testes novos em `commonTest` (`MockRepositoriesTest.kt`, 7 testes, 0
+  falhas via `testDebugUnitTest`).
+- Evidência: seção "Validação da FASE 9e — contratos de repository em
+  `commonMain`" no `README.md`.
+
 ## FASE 9d (spec 27) — Regras puras de resumo da semana e alertas em `commonMain`
 
 - **Status:** DONE

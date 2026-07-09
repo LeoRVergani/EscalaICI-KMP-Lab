@@ -168,6 +168,55 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 9e — contratos de repository em `commonMain`
+
+Data da validacao: 2026-07-09.
+
+Objetivo desta etapa: criar em `commonMain` os contratos de repository
+descritos em `docs/spec/27-KMP-PWA-IOS-ESTRATEGIA.md` (secao 4), como
+interfaces Kotlin puras (`suspend fun`), sem qualquer SDK de plataforma.
+
+Criado em `repository/Repositories.kt`:
+
+- `ScheduleRepository`, `MemberRepository`, `TeamRepository`,
+  `OnCallRepository`, `ShiftSwapRepository`, `AuthSessionRepository`,
+  `LocalCacheRepository`.
+
+Implementacoes mock/em memoria em `repository/MockRepositories.kt`
+(`MockScheduleRepository`, `MockMemberRepository`, `MockTeamRepository`,
+`MockOnCallRepository`, `MockShiftSwapRepository`, `MockAuthSessionRepository`,
+`MockLocalCacheRepository`), reaproveitando os mocks da FASE 9c
+(`mockSchedulePeriod`, `mockScheduleAssignments` etc.) — apenas para provar
+que os contratos compilam e sao usaveis, sem antecipar a implementacao real
+(Firebase, cache local oficial) nem se conectar a UI do laboratorio.
+
+`kotlinx.coroutines` (para `runBlocking` nos testes) ja estava disponivel
+transitivamente via `compose.runtime`; nenhuma dependencia nova foi
+adicionada ao projeto.
+
+Testes unitarios em `composeApp/src/commonTest/.../MockRepositoriesTest.kt`
+cobrindo os 7 repositorios mock.
+
+Limites assumidos:
+
+- nenhuma implementacao real (Firebase, MSAL, cache local oficial) foi
+  criada — fica para fase propria fora deste laboratorio;
+- os contratos ainda nao estao conectados a UI do laboratorio;
+- nenhum arquivo do app Android principal foi alterado.
+
+Comandos executados:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados:
+
+- `testDebugUnitTest`: 7 testes novos (`MockRepositoriesTest`), 0 falhas
+  (13 no total somando `ScheduleRulesTest` da FASE 9d).
+- APK debug e distribuicao Web/Wasm continuaram compilando normalmente.
+
 ## Validacao da FASE 9d — regras puras (resumo da semana e alertas) em `commonMain`
 
 Data da validacao: 2026-07-09.
