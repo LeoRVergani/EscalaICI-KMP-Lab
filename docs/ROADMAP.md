@@ -7,6 +7,21 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 9f (spec 27) — Login fake, lista de escala e calendário (Compose Multiplatform)
+
+- **Status:** DONE
+- `LoginGateScreen` em `ui/App.kt`: seleção de colaborador demo via
+  `MockMemberRepository` (FASE 9e) antes de liberar a navegação principal.
+- `InMemoryAuthSessionRepository` (novo, em `repository/MockRepositories.kt`)
+  controla a sessão fake; botão "Sair (login fake)" na aba `Perfil` encerra
+  a sessão.
+- UI 100% em `commonMain` (Compose Multiplatform) — mesmo código roda em
+  Android e Web/Wasm, já preparado para reaproveitar em iOS (FASE 9h).
+- Lista de escala e calendário já existiam desde a FASE 9c-1 (aba `Escala`);
+  esta fase supria apenas a peça que faltava (login).
+- Evidência: seção "Validação da FASE 9f — login fake, lista de escala e
+  calendário" no `README.md`.
+
 ## FASE 9e (spec 27) — Contratos de repository em `commonMain`
 
 - **Status:** DONE

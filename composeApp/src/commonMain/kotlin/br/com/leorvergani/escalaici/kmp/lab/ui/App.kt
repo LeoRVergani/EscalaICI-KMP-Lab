@@ -75,10 +75,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -99,6 +101,7 @@ import br.com.leorvergani.escalaici.kmp.lab.model.LabAlert
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
 import br.com.leorvergani.escalaici.kmp.lab.model.LabWorkbookParser
 import br.com.leorvergani.escalaici.kmp.lab.model.LabYearMonth
+import br.com.leorvergani.escalaici.kmp.lab.model.Member
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleImportPreview
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftDay
@@ -106,6 +109,9 @@ import br.com.leorvergani.escalaici.kmp.lab.model.ShiftType
 import br.com.leorvergani.escalaici.kmp.lab.model.WorkbookImportResult
 import br.com.leorvergani.escalaici.kmp.lab.model.mockScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.platform.rememberWorkbookImportLauncher
+import br.com.leorvergani.escalaici.kmp.lab.repository.InMemoryAuthSessionRepository
+import br.com.leorvergani.escalaici.kmp.lab.repository.MockMemberRepository
+import kotlinx.coroutines.launch
 
 private enum class LabTab(
     val label: String,
@@ -122,6 +128,17 @@ private enum class LabTab(
 @Composable
 fun EscalaIciLabApp() {
     MaterialTheme(colorScheme = LabColorScheme) {
+        val authRepository = remember { InMemoryAuthSessionRepository() }
+        val memberRepository = remember { MockMemberRepository() }
+        val scope = rememberCoroutineScope()
+        var sessionMemberId by remember { mutableStateOf<String?>(null) }
+        var demoMembers by remember { mutableStateOf<List<Member>>(emptyList()) }
+
+        LaunchedEffect(Unit) {
+            sessionMemberId = authRepository.currentMemberId()
+            demoMembers = memberRepository.getMembersByTeam("soc")
+        }
+
         var refreshCount by remember { mutableIntStateOf(0) }
         var activeTab by remember { mutableStateOf(LabTab.Hoje) }
         var summary by remember { mutableStateOf(mockScheduleSummary()) }
@@ -149,49 +166,122 @@ fun EscalaIciLabApp() {
             importedWorkbook = null
         }
 
-        LabPremiumBackground {
-            Scaffold(
-                containerColor = Color.Transparent,
-                bottomBar = {
-                    BottomNav(activeTab = activeTab, onSelect = { activeTab = it })
+        if (sessionMemberId == null) {
+            LoginGateScreen(
+                members = demoMembers,
+                onSelectMember = { member ->
+                    scope.launch {
+                        authRepository.signIn(member.id)
+                        sessionMemberId = member.id
+                    }
+                    summary = summary.copy(member = member)
                 }
-            ) { padding ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.TopCenter
-                ) {
+            )
+        } else {
+            LabPremiumBackground {
+                Scaffold(
+                    containerColor = Color.Transparent,
+                    bottomBar = {
+                        BottomNav(activeTab = activeTab, onSelect = { activeTab = it })
+                    }
+                ) { padding ->
                     Box(
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .widthIn(max = 760.dp)
-                            .fillMaxWidth()
+                            .fillMaxSize()
+                            .padding(padding),
+                        contentAlignment = Alignment.TopCenter
                     ) {
-                        when (activeTab) {
-                            LabTab.Hoje -> TodayTab(summary = summary, refreshCount = refreshCount)
-                            LabTab.Escala -> ScheduleTab(summary = summary)
-                            LabTab.Importar -> ImportTab(
-                                preview = importPreview,
-                                onSelectXls = { importLauncher.launch() },
-                                onUseImported = {
-                                    importPreview?.summary?.let { imported ->
-                                        summary = imported
-                                        activeTab = LabTab.Hoje
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .widthIn(max = 760.dp)
+                                .fillMaxWidth()
+                        ) {
+                            when (activeTab) {
+                                LabTab.Hoje -> TodayTab(summary = summary, refreshCount = refreshCount)
+                                LabTab.Escala -> ScheduleTab(summary = summary)
+                                LabTab.Importar -> ImportTab(
+                                    preview = importPreview,
+                                    onSelectXls = { importLauncher.launch() },
+                                    onUseImported = {
+                                        importPreview?.summary?.let { imported ->
+                                            summary = imported
+                                            activeTab = LabTab.Hoje
+                                        }
+                                    },
+                                    onSelectCollaborator = { collaborator ->
+                                        importedWorkbook?.let { workbook ->
+                                            importPreview = LabWorkbookParser.parse(workbook, collaborator)
+                                        }
+                                    },
+                                    onResetMock = ::resetMock
+                                )
+                                LabTab.Alertas -> AlertsTab(summary = summary)
+                                LabTab.Perfil -> ProfileTab(
+                                    summary = summary,
+                                    onLogout = {
+                                        scope.launch { authRepository.signOut() }
+                                        sessionMemberId = null
                                     }
-                                },
-                                onSelectCollaborator = { collaborator ->
-                                    importedWorkbook?.let { workbook ->
-                                        importPreview = LabWorkbookParser.parse(workbook, collaborator)
-                                    }
-                                },
-                                onResetMock = ::resetMock
-                            )
-                            LabTab.Alertas -> AlertsTab(summary = summary)
-                            LabTab.Perfil -> ProfileTab(summary = summary)
+                                )
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoginGateScreen(
+    members: List<Member>,
+    onSelectMember: (Member) -> Unit
+) {
+    LabPremiumBackground {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 420.dp)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(LabColors.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Security, contentDescription = null, tint = Color.White)
+                }
+                Text(
+                    "Escala ICI",
+                    color = LabColors.onSurface,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    "Login fake do laboratório KMP (FASE 9f). Sem MSAL ou Firebase reais — selecione um colaborador demonstrativo para continuar.",
+                    color = LabColors.onSurfaceMuted,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                LabCard(title = "Selecionar colaborador demo", icon = Icons.Default.Person) {
+                    members.forEach { member ->
+                        OutlinedButton(
+                            onClick = { onSelectMember(member) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Entrar como ${member.displayName}")
+                        }
+                    }
+                }
+                Text(
+                    "Esta tela representa o LoginGate do app real, sem autenticação verdadeira.",
+                    color = LabColors.onSurfaceMuted,
+                    style = MaterialTheme.typography.labelSmall
+                )
             }
         }
     }
@@ -1210,7 +1300,7 @@ private fun LabAlert.Severity.alertIcon(): ImageVector = when (this) {
 }
 
 @Composable
-private fun ProfileTab(summary: ScheduleSummary) {
+private fun ProfileTab(summary: ScheduleSummary, onLogout: () -> Unit) {
     val criticalAlerts = remember(summary) { GenerateLabAlerts(summary).count { it.severity == LabAlert.Severity.CRITICO } }
     PageList(title = "Perfil", subtitle = if (summary.isImported) "Perfil importado do XLS" else "Identidade demonstrativa") {
         item {
@@ -1232,6 +1322,9 @@ private fun ProfileTab(summary: ScheduleSummary) {
                 Text("Time ${summary.team.name} · ${summary.team.teamId}", color = LabColors.onSurfaceMuted)
                 summary.sourceFileName?.let { fileName ->
                     Text("Fonte: $fileName", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                TextButton(onClick = onLogout) {
+                    Text("Sair (login fake)")
                 }
             }
         }

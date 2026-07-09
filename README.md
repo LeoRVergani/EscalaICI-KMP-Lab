@@ -168,6 +168,66 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 9f — login fake, lista de escala e calendario
+
+Data da validacao: 2026-07-09.
+
+Objetivo desta etapa: seguir o plano da spec `27-KMP-PWA-IOS-ESTRATEGIA.md`
+(secao 9): "POC Web/Wasm com tela simples: login fake ou mock, lista de
+escala, calendario simples, sem MSAL real". A lista de escala e o calendario
+ja existiam desde a FASE 9c-1 (aba `Escala`); esta fase adiciona o login
+fake que faltava, como um `LoginGate` funcional (nao so visual) antes do
+resto do app.
+
+A UI continua 100% em `commonMain` (Compose Multiplatform), ou seja, o
+login fake funciona igual em Android e Web/Wasm — e ja fica no lugar certo
+para ser reaproveitado por um futuro app iOS (FASE 9h), sem nenhuma
+dependencia de plataforma.
+
+Adicionado em `ui/App.kt`:
+
+- `LoginGateScreen`: tela inicial que pede para selecionar um colaborador
+  demonstrativo (lido via `MockMemberRepository.getMembersByTeam("soc")`,
+  contrato da FASE 9e) antes de liberar o resto do app;
+- `EscalaIciLabApp` passou a controlar uma sessao fake via
+  `InMemoryAuthSessionRepository` (nova classe em
+  `repository/MockRepositories.kt`): sem sessao, mostra o `LoginGateScreen`;
+  com sessao, mostra a navegacao normal (`Hoje`/`Escala`/`Importar`/
+  `Alertas`/`Perfil`);
+- botao "Sair (login fake)" na aba `Perfil` encerra a sessao e volta ao
+  `LoginGateScreen`.
+
+`InMemoryAuthSessionRepository` implementa o contrato `AuthSessionRepository`
+da FASE 9e (so expõe leitura de sessao) e adiciona `signIn`/`signOut` como
+detalhe de implementacao do mock, exatamente como a spec recomenda para a
+mitigacao de risco de autenticacao variar por plataforma (secao 10): o
+contrato multiplataforma so conhece sessao/usuario, nunca MSAL/Firebase.
+
+Limites assumidos:
+
+- login continua fake: nao ha MSAL, Firebase, senha ou token real;
+- a escala/calendario mockados continuam representando sempre o mesmo
+  periodo de demonstracao, independente de qual colaborador faz login —
+  trocar de identidade no login gate atualiza nome/e-mail exibidos, mas nao
+  gera uma escala diferente por pessoa (fora do escopo desta fase);
+- os cards "Conta corporativa" e "Modo demo" na aba `Perfil` (criados na
+  FASE 9c-1) continuam desabilitados/visuais — representam MSAL/Firebase
+  reais, que seguem fora de escopo;
+- nenhum arquivo do app Android principal foi alterado.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados:
+
+- APK debug e distribuicao Web/Wasm continuaram compilando.
+- Suite de testes (`ScheduleRulesTest` + `MockRepositoriesTest`) continuou
+  passando sem alteracoes.
+
 ## Validacao da FASE 9e — contratos de repository em `commonMain`
 
 Data da validacao: 2026-07-09.

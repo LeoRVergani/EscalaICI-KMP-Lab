@@ -84,6 +84,29 @@ class MockAuthSessionRepository(
     override suspend fun currentMemberId(): String? = memberId
 }
 
+/**
+ * Variante em memoria e mutavel de [AuthSessionRepository], usada pela tela
+ * de login fake da FASE 9f. `signIn`/`signOut` nao fazem parte do contrato
+ * multiplataforma (que so expoe leitura de sessao, conforme a spec 27 secao
+ * 10) — sao apenas o jeito deste mock simular a interacao de login/logout
+ * sem MSAL/Firebase reais.
+ */
+class InMemoryAuthSessionRepository(
+    initialMemberId: String? = null
+) : AuthSessionRepository {
+    private var memberId: String? = initialMemberId
+
+    override suspend fun currentMemberId(): String? = memberId
+
+    fun signIn(memberId: String) {
+        this.memberId = memberId
+    }
+
+    fun signOut() {
+        memberId = null
+    }
+}
+
 class MockLocalCacheRepository : LocalCacheRepository {
     private val cache = mutableMapOf<String, List<ScheduleAssignment>>()
 
