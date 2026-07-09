@@ -78,11 +78,11 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
 ## FASE 9c-7 — README / checklist de apresentação
 
-- **Status:** IN_PROGRESS
-- Objetivo: consolidar no `README.md` um checklist objetivo de apresentação
-  (passo a passo de demo, critérios de aceite da spec 32 §12 marcados,
-  limites conhecidos), para que qualquer pessoa consiga rodar a demo sem
-  precisar reler todo o histórico de validações.
+- **Status:** DONE
+- Seção "Checklist de apresentação (FASE 9c-7)" no `README.md`: passo a
+  passo de demo para Android e Web/Wasm, roteiro de navegação pelas abas,
+  critérios de aceite da spec 32 §12 marcados e limites conhecidos
+  consolidados num único lugar.
 
 ## Fora do escopo deste laboratório (lembrete)
 

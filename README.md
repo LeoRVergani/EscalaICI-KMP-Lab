@@ -57,6 +57,96 @@ URL esperada do dev server:
 http://localhost:8080/
 ```
 
+## Checklist de apresentacao (FASE 9c-7)
+
+Checklist objetivo para qualquer pessoa rodar a demo sem precisar reler todo o
+historico de validacoes do README. Segue a spec
+`docs/spec/32-KMP-LAB-VISUAL-XLS-WEB-APRESENTACAO.md` (repositorio Android
+principal).
+
+### Passo a passo da demo
+
+**Android:**
+
+```bash
+cd /home/lvergani/AndroidStudioProjects/EscalaICI-KMP-Lab
+./gradlew :composeApp:assembleDebug
+~/Android/Sdk/platform-tools/adb install -r composeApp/build/outputs/apk/debug/composeApp-debug.apk
+~/Android/Sdk/platform-tools/adb shell am start -n br.com.leorvergani.escalaici.kmp.lab/.MainActivity
+```
+
+**Web/Wasm:**
+
+```bash
+cd /home/lvergani/AndroidStudioProjects/EscalaICI-KMP-Lab
+./gradlew :composeApp:wasmJsBrowserDevelopmentRun
+```
+
+Abrir `http://localhost:8080/` no navegador.
+
+**Roteiro sugerido, em qualquer uma das duas plataformas:**
+
+1. Abrir o app na aba `Hoje` — conferir cabecalho `Escala ICI`, usuario/time
+   mock, proximo turno, resumo da semana e pausa.
+2. Ir para a aba `Escala` — conferir calendario mensal, navegacao entre meses
+   e o card `Quem trabalha nesse dia`.
+3. Ir para a aba `Importar` — usar `Selecionar XLS` e escolher uma planilha
+   real (ex.: `Escala-SOC-Controle-Julho.xls`); conferir pre-visualizacao com
+   abas `Escala`/`Escalistas`, dias lidos e colaboradores encontrados.
+4. Trocar o escalista selecionado na pre-visualizacao e conferir que a leitura
+   recalcula.
+5. Tocar `Usar dados importados` e voltar para `Hoje`/`Escala` para confirmar
+   que os dados exibidos agora vem do XLS importado (nao mais do mock).
+6. Ir para a aba `Alertas` — conferir hero, contadores por severidade, filtros
+   e cards de alerta (descanso < 11h, regra 6x1, inconsistencias, dias
+   indefinidos).
+7. Ir para a aba `Perfil` — conferir os cards de identidade, resumo,
+   administracao da escala, conta corporativa, modo demo, trocas,
+   notificacoes, pausa, armazenamento local e aplicativo.
+8. Se quiser, usar `Voltar para mock` na aba `Importar` para retornar ao
+   estado inicial mockado.
+
+### Criterios de aceite da spec 32 §12
+
+- [x] Android do laboratorio compila.
+- [x] Web/Wasm do laboratorio compila.
+- [x] Web/Wasm abre no navegador local (`http://localhost:8080/`).
+- [x] UI visualmente alinhada ao app Android atual (tema `Soc`, cards,
+      navegacao inferior).
+- [x] UI nao parece apenas uma tela tecnica de teste.
+- [x] Navegacao inferior e telas principais (`Hoje`, `Escala`, `Importar`,
+      `Alertas`, `Perfil`) existem no laboratorio.
+- [x] Mock inicial funciona sem nenhum arquivo importado.
+- [x] Importacao XLS funciona em ambas as plataformas do laboratorio
+      (Android via Apache POI, Web/Wasm via SheetJS).
+- [x] Importacao XLS funciona tambem no Web/Wasm, entao o criterio de
+      fallback/limitacao documentada nao se aplica; a unica limitacao (SheetJS
+      via CDN) esta descrita na secao "Limites conhecidos" abaixo.
+- [x] Nenhum arquivo do app Android principal (`EscalaSOC`) foi alterado.
+- [x] Nenhum arquivo do dashboard React foi alterado.
+- [x] README do laboratorio explica como rodar a apresentacao (esta secao).
+
+### Limites conhecidos
+
+- Parser XLS do laboratorio e experimental: le apenas as abas `Escala` e
+  `Escalistas` com a estrutura ja mapeada; nao substitui nem reaproveita o
+  parser oficial do app Android.
+- No Web/Wasm, a biblioteca SheetJS e carregada por CDN no `index.html`
+  (nao empacotada via Gradle/NPM local).
+- PWA continua basico: `manifest.json`, service worker simples e icone
+  placeholder SVG.
+- Build usa flags temporarias de compatibilidade AGP 9 com KMP
+  (`android.builtInKotlin=false`, `android.newDsl=false`).
+- Bundle Web/Wasm gera avisos de tamanho por incluir Compose/Skiko; aceitavel
+  para demo local, a revisitar antes de qualquer PWA publico.
+- Modelos puros da FASE 9c (`SchedulePeriod`, `ScheduleAssignment`,
+  `OnCallPeriod`, `OnCallAssignment`, `ShiftSwapRequest`, `ImportJob`,
+  `SourceFileRecord`) existem em `commonMain` mas ainda nao estao conectados
+  a UI da demo — so aos mocks.
+- Fora de escopo nesta POC: login MSAL real, Firebase real, sync global,
+  cache oficial do app, update APK/Dropbox/OneDrive, publicacao em loja,
+  dashboard React, troca real de escala, notificacoes reais, iOS compilavel.
+
 ## Estrutura
 
 ```text
