@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#101418"/>
+  <g transform="translate(96 96) scale(0.625)">
+    <path d="M128 138h256a32 32 0 0 1 32 32v220a32 32 0 0 1-32 32H128a32 32 0 0 1-32-32V170a32 32 0 0 1 32-32Z" fill="#1B2329"/>
+    <path d="M144 210h224v36H144v-36Zm0 66h64v64h-64v-64Zm88 0h64v64h-64v-64Zm88 0h48v64h-48v-64Z" fill="#55D6BE"/>
+    <path d="M160 104v72m192-72v72" stroke="#F0F4F4" stroke-width="28" stroke-linecap="round"/>
+    <text x="256" y="396" fill="#F0F4F4" font-size="58" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">ICI</text>
+  </g>
+</svg>

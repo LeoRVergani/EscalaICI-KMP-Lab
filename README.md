@@ -168,6 +168,64 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 9g — PWA real (manifest, icones, service worker, cache offline)
+
+Data da validacao: 2026-07-09.
+
+Objetivo desta etapa: seguir o plano da spec `27-KMP-PWA-IOS-ESTRATEGIA.md`
+(secao 9): "PWA real: `manifest.json`, service worker, cache offline e
+build web". O PWA basico ja existia desde a FASE 9b; esta fase evolui os
+tres pontos que ainda faltavam para uma instalacao/uso offline mais real,
+sem introduzir Firebase, sync ou qualquer backend.
+
+Alterado em `composeApp/src/wasmJsMain/resources/`:
+
+- `manifest.json`: alem do icone SVG (`icons/icon.svg`), agora inclui
+  icones PNG reais gerados a partir do mesmo design — `icon-192.png` e
+  `icon-512.png` (`purpose: any`) e `icon-maskable-192.png`/
+  `icon-maskable-512.png` (`purpose: maskable`, com safe-zone de ~18% de
+  margem, gerados a partir de `icons/icon-maskable.svg`). Adicionados
+  tambem `id`, `lang` e `orientation`;
+- `service-worker.js`: `CACHE_NAME` avançou para `v2` (inclui os novos
+  icones no app shell) e o handler de `fetch` ganhou um fallback offline —
+  se a rede falhar e não houver cache para o recurso pedido, navegações
+  (`request.mode === "navigate"`) caem no `index.html` já cacheado, em vez
+  do erro genérico do navegador;
+- `index.html`: metatags `apple-mobile-web-app-*`/`mobile-web-app-capable`
+  e `<link rel="apple-touch-icon">`, para instalação também via Safari
+  (que não lê o manifest da mesma forma que Chrome/Edge).
+
+Icones PNG gerados localmente com `rsvg-convert` a partir dos SVGs
+existentes (nenhuma dependência nova no projeto Gradle).
+
+Limites assumidos:
+
+- cache offline continua "cache-first com fallback de rede" simples (sem
+  estratégias por tipo de recurso nem expiração automática de cache);
+- o fallback offline só cobre navegação (recarregar a página); um asset
+  individual não cacheado e sem rede ainda falha normalmente;
+- nenhuma integração com push notifications ou background sync;
+- nenhum arquivo do app Android principal foi alterado.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:wasmJsBrowserDistribution
+./gradlew :composeApp:assembleDebug
+./gradlew :composeApp:wasmJsBrowserDevelopmentRun
+```
+
+Resultados:
+
+- Distribuição Web/Wasm gerada com os novos ícones/manifest/service worker
+  em `composeApp/build/dist/wasmJs/productionExecutable/`.
+- No dev server (`http://localhost:8080/`), `index.html`, `manifest.json`,
+  `service-worker.js`, `icons/icon-192.png`, `icons/icon-512.png`,
+  `icons/icon-maskable-192.png` e `icons/icon-maskable-512.png`
+  responderam HTTP 200.
+- `manifest.json` validado como JSON bem formado.
+- APK debug do laboratório continuou compilando.
+
 ## Validacao da FASE 9f — login fake, lista de escala e calendario
 
 Data da validacao: 2026-07-09.

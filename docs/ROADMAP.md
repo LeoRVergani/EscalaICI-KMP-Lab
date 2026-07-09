@@ -7,6 +7,19 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
+
+- **Status:** DONE
+- `manifest.json`: ícones PNG reais (`icon-192.png`, `icon-512.png`,
+  `icon-maskable-192.png`, `icon-maskable-512.png`) além do SVG existente,
+  mais `id`/`lang`/`orientation`.
+- `service-worker.js`: `CACHE_NAME` v2, fallback offline de navegação
+  (cai no `index.html` cacheado quando rede e cache falham).
+- `index.html`: meta tags `apple-mobile-web-app-*` e `apple-touch-icon`.
+- Ícones gerados localmente via `rsvg-convert` (sem dependência nova).
+- Evidência: seção "Validação da FASE 9g — PWA real (manifest, ícones,
+  service worker, cache offline)" no `README.md`.
+
 ## FASE 9f (spec 27) — Login fake, lista de escala e calendário (Compose Multiplatform)
 
 - **Status:** DONE
