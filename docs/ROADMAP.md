@@ -219,6 +219,51 @@ Comandos executados com sucesso:
 Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
 continuam compilando.
 
+## FASE 10.6 — Polimento fino da aba Escala
+
+- **Status:** DONE
+- Comparado `ScheduleTab.kt` linha a linha com `ui/calendar/CalendarScreen.kt`
+  real.
+- `LabCard.title` virou opcional (`String? = null`, pulando a linha de
+  cabeçalho quando nulo) — o `SocCard` real é um card "nu" sem título
+  embutido; alguns cards do laboratório (o novo card de demonstração da
+  Escala) precisam desse comportamento.
+- Novo `DemoCalendarCard` ("Demonstração" + texto explicativo + badge),
+  mostrado quando `!summary.isImported`, igual ao topo do
+  `DemoCalendarContent` real (antes o laboratório não tinha esse aviso).
+- `ShiftTurnoTab`: shape corrigido de `RoundedCornerShape(14.dp)` para
+  `LabShapes.chip` (12dp) — o real usa `PremiumShapes.chip` aqui.
+- `TurnoNamesColumn`: traço "sem escalado" trocado de hífen `-` para
+  travessão `—`, igual ao real.
+- `CalendarDayDetailCard`: marcador de turno agora fica dentro de um "halo"
+  quadrado 46dp/cardSmall com fundo `color@0.16` (antes era só o círculo de
+  44dp solto); título separado em duas linhas (data completa, depois
+  tipo/horário do turno) igual ao real; alpha do divisor corrigido de 0.30
+  para 0.22.
+- `InlineLegendCard`: grade responsiva por `BoxWithConstraints` (2/3/4
+  colunas conforme a largura) igual ao real, em vez de sempre 3 colunas
+  fixas — relevante porque o app roda em telas de celular estreitas na
+  prática.
+
+Limites assumidos (documentados, não portados): botão de "Atualizar"
+(`Icons.Default.Refresh`) do cabeçalho do mês real não existe no
+laboratório (não há sincronização/backend a atualizar); o real trava o mês
+do calendário demo em julho/2026 sem navegação — o laboratório manteve a
+navegação de mês habilitada mesmo em modo demo, por ser mais útil para
+apresentação; a heurística real de rótulo "Observação do analista" vs
+"Equipe" nas notas do dia (baseada em conter o nome do colaborador) não foi
+portada — mantido o rótulo genérico "Observação".
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

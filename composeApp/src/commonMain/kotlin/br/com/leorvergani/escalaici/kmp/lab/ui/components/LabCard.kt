@@ -78,7 +78,7 @@ private fun NocHeroTexture() {
 
 @Composable
 internal fun LabCard(
-    title: String,
+    title: String? = null,
     badge: String? = null,
     icon: ImageVector? = null,
     iconTint: Color = LabColors.primary,
@@ -98,25 +98,27 @@ internal fun LabCard(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                if (icon != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(26.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(iconTint.copy(alpha = 0.16f))
-                            .border(1.dp, iconTint.copy(alpha = 0.28f), RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(15.dp))
+            if (title != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    if (icon != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(iconTint.copy(alpha = 0.16f))
+                                .border(1.dp, iconTint.copy(alpha = 0.28f), RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(15.dp))
+                        }
                     }
-                }
-                Text(title, modifier = Modifier.weight(1f), color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                if (badge != null) {
-                    Box(
-                        modifier = Modifier.clip(LabShapes.chip).background(LabColors.primary.copy(alpha = 0.16f)).border(1.dp, LabColors.primary.copy(alpha = 0.32f), LabShapes.chip).padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(badge, color = LabColors.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Text(title, modifier = Modifier.weight(1f), color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                    if (badge != null) {
+                        Box(
+                            modifier = Modifier.clip(LabShapes.chip).background(LabColors.primary.copy(alpha = 0.16f)).border(1.dp, LabColors.primary.copy(alpha = 0.32f), LabShapes.chip).padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(badge, color = LabColors.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }

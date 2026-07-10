@@ -168,6 +168,33 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.6 — polimento fino da aba Escala
+
+Data da validacao: 2026-07-09.
+
+Comparado `ScheduleTab.kt` com `ui/calendar/CalendarScreen.kt` real.
+`LabCard.title` virou opcional (card "nu" sem cabecalho, igual ao
+`SocCard` real). Adicionado `DemoCalendarCard` (aviso "Demonstracao") no
+topo quando nao importado. Corrigidos: shape do `ShiftTurnoTab` (12dp, nao
+14dp), travessao no lugar do hifen para turno vazio, halo quadrado 46dp em
+volta do marcador de turno no detalhe do dia, alpha do divisor (0.22 nao
+0.30), grade de legenda responsiva (2/3/4 colunas por largura, igual ao
+real, em vez de 3 fixas).
+
+Limites assumidos: sem botao de "Atualizar" (nao ha sync/backend); mes do
+calendario continua navegavel mesmo em modo demo (o real trava em
+julho/2026); heuristica "Observacao do analista" vs "Equipe" nao portada.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuicao Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.5 — polimento fino da aba Hoje
 
 Data da validacao: 2026-07-09.

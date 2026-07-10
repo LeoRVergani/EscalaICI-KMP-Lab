@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -55,6 +56,7 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
+import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.shiftColor
 
 @Composable
@@ -85,6 +87,11 @@ internal fun ScheduleTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
     PageList {
         item {
             LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
+        }
+        if (!summary.isImported) {
+            item {
+                DemoCalendarCard()
+            }
         }
         item {
             CalendarMonthHeader(
@@ -284,6 +291,31 @@ private fun PeriodDayCell(
 }
 
 @Composable
+private fun DemoCalendarCard() {
+    LabCard(borderColor = LabColors.primary.copy(alpha = 0.35f)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Demonstração", color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Importe e analise uma escala para preencher este calendário com dados reais. Os dias abaixo são apenas um mock visual.",
+                    color = LabColors.onSurfaceMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(LabShapes.chip)
+                    .background(LabColors.primary.copy(alpha = 0.14f))
+                    .border(1.dp, LabColors.primary.copy(alpha = 0.30f), LabShapes.chip)
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text("Demonstração", color = LabColors.primary, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+@Composable
 private fun LegendChip(expanded: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
@@ -315,12 +347,21 @@ private fun InlineLegendCard() {
             ShiftType.AFASTAMENTO,
             ShiftType.INCONSISTENCIA
         )
-        items.chunked(3).forEach { rowItems ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                rowItems.forEach { type ->
-                    ShiftLegendItem(type = type, modifier = Modifier.weight(1f))
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val columns = when {
+                maxWidth >= 420.dp -> 4
+                maxWidth >= 300.dp -> 3
+                else -> 2
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                items.chunked(columns).forEach { rowItems ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rowItems.forEach { type ->
+                            ShiftLegendItem(type = type, modifier = Modifier.weight(1f))
+                        }
+                        repeat(columns - rowItems.size) { Spacer(Modifier.weight(1f)) }
+                    }
                 }
-                repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
@@ -345,13 +386,21 @@ private fun CalendarDayDetailCard(day: ShiftDay) {
         gradient = listOf(LabColors.surface.copy(alpha = 0.96f), LabColors.surfaceElevated.copy(alpha = 0.92f))
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ShiftMarker(day.type, size = 44)
+            Box(
+                modifier = Modifier.size(46.dp).clip(LabShapes.cardSmall).background(color.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center
+            ) {
+                ShiftMarker(day.type, size = 30)
+            }
             Column(modifier = Modifier.weight(1f)) {
-                Text(day.fullDateLabel, color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${day.type.label} · ${day.type.timeRange}", color = color, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                Text(day.fullDateLabel, color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        HorizontalDivider(color = LabColors.outline.copy(alpha = 0.30f))
+        HorizontalDivider(color = LabColors.outline.copy(alpha = 0.22f))
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(day.type.label, color = color, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(day.type.timeRange, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodyMedium)
+        }
         Text(
             if (day.teamMembers.isNotEmpty()) "Com: ${day.teamMembers.joinToString(", ")}" else "Equipe não localizada na escala",
             color = LabColors.onSurfaceMuted,
@@ -425,9 +474,9 @@ private fun ShiftTurnoTab(type: ShiftType, active: Boolean, modifier: Modifier =
     val color = type.shiftColor()
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(LabShapes.chip)
             .background(color.copy(alpha = if (active) 0.24f else 0.12f))
-            .border(1.dp, color.copy(alpha = if (active) 0.65f else 0.30f), RoundedCornerShape(14.dp))
+            .border(1.dp, color.copy(alpha = if (active) 0.65f else 0.30f), LabShapes.chip)
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -443,7 +492,7 @@ private fun TurnoNamesColumn(type: ShiftType, names: List<String>, selfName: Str
         Box(Modifier.size(8.dp).clip(CircleShape).background(color))
         Spacer(Modifier.height(4.dp))
         if (names.isEmpty()) {
-            Text("-", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall)
+            Text("—", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         } else {
             names.forEach { name ->
                 Text(
