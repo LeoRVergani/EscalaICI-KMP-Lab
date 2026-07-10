@@ -98,6 +98,33 @@ Comandos executados com sucesso:
 Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
 continuam compilando; ícones novos incluídos na distribuição.
 
+## FASE 10.3 — LoginGateScreen fiel ao LoginScreen real
+
+- **Status:** DONE
+- `ui/LoginGateScreen.kt` reescrita como porte literal de `ui/auth/LoginScreen.kt`
+  (app real): mesmo layout (`Column` centralizada, `widthIn(max=400.dp)`,
+  scroll vertical), mesmos textos ("Escala ICI", botão "Login", "Será aberta
+  a autenticação Microsoft corporativa", "Modo Demo"), mesmo fluxo de dialog
+  ("Teste SOC A"/"Teste SOC B"/"Aprovador SOC"/"Cancelar").
+- Diferença inevitável (sem MSAL/Firestore no laboratório): "Login" simula
+  uma tentativa (`isLoggingIn` + `CircularProgressIndicator`, igual ao real)
+  e sempre termina em mensagem inline "Login corporativo indisponível nesta
+  POC" — em vez de silenciosamente não fazer nada, explica o motivo. "Modo
+  Demo" seleciona um dos 3 membros mock (`mockTeamMembers()`) em vez de um
+  `DemoUser` real.
+- Removido o ícone `Icons.Default.Security` genérico que a versão anterior
+  (FASE 9f) tinha — o `LoginScreen` real não usa nenhum ícone/logo, só texto.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

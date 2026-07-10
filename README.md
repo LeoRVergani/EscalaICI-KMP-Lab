@@ -168,6 +168,35 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.3 — LoginGateScreen fiel ao LoginScreen real
+
+Data da validacao: 2026-07-09.
+
+Objetivo desta etapa: reescrever a tela de login fake para ser um porte
+literal de `ui/auth/LoginScreen.kt` do app real, lido diretamente do
+repositorio `EscalaSOC` (layout, textos e fluxo do dialog "Modo Demo").
+
+- Layout, textos e cores identicos ao real: "Escala ICI", botao "Login" com
+  `CircularProgressIndicator` sobreposto durante a tentativa, texto "Sera
+  aberta a autenticacao Microsoft corporativa", dialog "Modo Demo" com
+  "Teste SOC A"/"Teste SOC B"/"Aprovador SOC"/"Cancelar".
+- Unica diferenca necessaria: sem MSAL real, o botao "Login" sempre termina
+  em mensagem inline explicando a indisponibilidade nesta POC; "Modo Demo"
+  seleciona um dos 3 membros mock do laboratorio em vez de um usuario demo
+  real do Firestore.
+- Removido o icone generico (`Icons.Default.Security`) que a tela fake
+  anterior (FASE 9f) tinha — o login real nao usa nenhum icone, so texto.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuicao Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.2 — shield logo real + icone PWA
 
 Data da validacao: 2026-07-09.
