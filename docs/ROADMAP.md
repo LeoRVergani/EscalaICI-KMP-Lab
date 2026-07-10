@@ -68,6 +68,36 @@ Comandos executados com sucesso:
 Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
 continuam compilando.
 
+## FASE 10.2 — Shield logo real + ícone PWA
+
+- **Status:** DONE
+- `ui/components/SocLogo.kt` (novo): `LabShieldLogo`/`LabAppTitle`, porte
+  literal do `Canvas`/`Path` do `SocShieldLogo`/`SocAppTitle` reais (mesmas
+  coordenadas fracionárias, gradiente azul→roxo, "S" traçado, linha
+  diagonal). Ainda não usado nos headers das abas (isso é a FASE 10.4) — só
+  criado.
+- `icons/icon.svg`/`icon-maskable.svg`: substituído o design genérico
+  ("computador" + texto "ICI") pelo shield real, usando os paths exatos de
+  `ic_launcher_foreground.xml`/`ic_launcher_background.xml` (viewBox 108,
+  mesmo grupo `scale(0.78) translate(12,12)`). A versão maskable usa a
+  mesma proporção de safe-zone do contrato de adaptive icon do Android
+  (círculo de 66dp em 108dp = 61% — `scale(0.61) translate(21,21)`).
+- 4 PNGs (`icon-192/512.png`, `icon-maskable-192/512.png`) regerados com
+  `rsvg-convert` (mesmo pipeline da FASE 9g, sem dependência nova).
+- Ícones conferidos visualmente (renderizados e inspecionados nesta sessão):
+  shield fiel ao launcher real, versão maskable com margem de segurança
+  visível em todos os lados.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando; ícones novos incluídos na distribuição.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

@@ -168,6 +168,35 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.2 — shield logo real + icone PWA
+
+Data da validacao: 2026-07-09.
+
+Objetivo desta etapa: substituir o icone generico do laboratorio (um
+"computador" com texto "ICI") pelo shield real do app Android, tanto como
+Composable in-app quanto como icone/favicon do PWA.
+
+- `ui/components/SocLogo.kt` (novo): `LabShieldLogo`/`LabAppTitle`, porte
+  literal do `Canvas` real (mesmo path fracionario, gradiente azul-roxo,
+  "S" tracado). Criado mas ainda nao usado nos headers (FASE 10.4).
+- `icons/icon.svg`/`icon-maskable.svg`: paths exatos de
+  `ic_launcher_foreground.xml`/`ic_launcher_background.xml` do app real
+  (viewBox 108). Maskable usa a proporcao de safe-zone padrao de adaptive
+  icon Android (66dp/108dp = 61%).
+- 4 PNGs regerados com `rsvg-convert` (sem dependencia nova) e conferidos
+  visualmente nesta sessao (Read do PNG): shield fiel ao launcher real,
+  maskable com margem de seguranca visivel.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuicao Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.1 — design system exato
 
 Data da validacao: 2026-07-09.

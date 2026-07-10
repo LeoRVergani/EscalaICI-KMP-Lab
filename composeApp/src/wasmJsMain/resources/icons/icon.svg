@@ -1,7 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#101418"/>
-  <path d="M128 138h256a32 32 0 0 1 32 32v220a32 32 0 0 1-32 32H128a32 32 0 0 1-32-32V170a32 32 0 0 1 32-32Z" fill="#1B2329"/>
-  <path d="M144 210h224v36H144v-36Zm0 66h64v64h-64v-64Zm88 0h64v64h-64v-64Zm88 0h48v64h-48v-64Z" fill="#55D6BE"/>
-  <path d="M160 104v72m192-72v72" stroke="#F0F4F4" stroke-width="28" stroke-linecap="round"/>
-  <text x="256" y="396" fill="#F0F4F4" font-size="58" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">ICI</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <path fill="#060B14" d="M0,0h108v108h-108z"/>
+  <path fill="#123E93" fill-opacity="0.62" d="M-6,4 Q42,-18 84,18 T116,72 L116,0 Z"/>
+  <path fill="#6D28D9" fill-opacity="0.20" d="M40,108 Q86,82 116,100 L116,108 Z"/>
+  <g transform="translate(12,12) scale(0.78)">
+    <path fill="#2563EB" d="M54,10 L88,23 L82,69 Q54,98 26,69 L20,23 Z"/>
+    <path fill="#38BDF8" fill-opacity="0.40" d="M54,10 L88,23 L82,69 Q66,86 54,98 Z"/>
+    <path fill="#0B0F19" fill-opacity="0.24" d="M29,28 L79,28 L75,66 Q54,86 33,66 Z"/>
+    <path stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M67,32 C52,29 40,33 40,43 C40,51 49,54 58,57 C67,60 70,66 64,72 C58,78 45,77 35,73"/>
+    <path stroke="#DBEAFE" stroke-opacity="0.58" stroke-width="2" stroke-linecap="round" fill="none" d="M36,84 L74,27"/>
+  </g>
 </svg>
