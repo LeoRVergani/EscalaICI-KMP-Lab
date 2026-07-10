@@ -24,6 +24,17 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   (`1`/`0.1.0-lab` → `2`/`0.1.1-lab`).
 - Build Android + Web/Wasm + `testDebugUnitTest` verificados.
 
+## FASE 11.0b — Ícone próprio do lab (calendário)
+
+- **Status:** DONE
+- Icone escudo (SOC) trocado por um mini calendario proprio (sem texto),
+  mesma paleta/gradiente do tema, no PWA (`icon.svg`/`icon-maskable.svg` +
+  PNGs regerados) e no Android (primeiro adaptive icon customizado do lab —
+  antes o app rodava com o icone padrao do AGP, sem `android:icon` no
+  manifest).
+- `versionCode`/`versionName`: `2`/`0.1.1-lab` → `3`/`0.2.0-lab`.
+- Validado visualmente no emulador (dock/launcher).
+
 ## FASE 10.0 — Split mecânico do App.kt (porte visual completo)
 
 - **Status:** DONE

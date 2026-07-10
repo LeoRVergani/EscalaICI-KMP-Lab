@@ -201,6 +201,34 @@ versao entre o Kotlin do Ktor 3.5.x e o Kotlin `2.2.10` fixado neste projeto.
 Downgrade para `ktor = "3.3.0"` (construido contra Kotlin 2.2) resolveu. Se
 uma fase futura atualizar o Kotlin do projeto, reavaliar subir o Ktor junto.
 
+## Validacao — icone proprio do lab (calendario)
+
+O lab tinha o icone-escudo do app SOC no PWA e **nenhum icone customizado**
+no Android (o `AndroidManifest.xml` nao declarava `android:icon` — o app
+rodava com o icone padrao do AGP). Como este laboratorio representa a
+"Escala Geral do ICI" (mais amplo que o time SOC), o usuario pediu um icone
+proprio: um mini calendario, sem nenhum texto, na mesma paleta/gradiente do
+tema atual.
+
+- `composeApp/src/wasmJsMain/resources/icons/icon.svg` e `icon-maskable.svg`:
+  substituidos o escudo por um calendario (corpo azul `#2563EB`, faixa de
+  cabecalho escura, grade de dias, marcador "hoje" branco, dois "anéis" de
+  espiral no topo) — mesmo fundo decorativo (`#060B14` + curvas
+  `#123E93`/`#6D28D9`) e mesma logica de safe-zone 61% no maskable.
+- PNGs `icon-192/512.png` e `icon-maskable-192/512.png` regerados com
+  `rsvg-convert` (mesmo pipeline da FASE 9g/10.2).
+- Android: **primeiro icone de launcher customizado do lab** — adaptive
+  icon (`mipmap-anydpi-v26/ic_launcher.xml` + `ic_launcher_round.xml`)
+  apontando para `drawable-xxxhdpi/ic_launcher_background.png` (fundo) e
+  `ic_launcher_foreground.png` (calendario, camada separada) + PNGs legado
+  `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher{,_round}.png` para
+  API < 26. `AndroidManifest.xml` ganhou `android:icon`/`android:roundIcon`
+  pela primeira vez.
+
+Validado: instalei o APK debug no emulador e confirmei visualmente o novo
+icone (calendario azul-marinho, mascara circular do launcher) na dock —
+antes mostrava o icone padrao do Android.
+
 ## Checklist de paridade visual completa (FASE 10)
 
 A FASE 9c-1 (2026-07-07) tinha feito uma **aproximacao** visual do app real.

@@ -54,7 +54,7 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = "br.com.leorvergani.escalaici.kmp.lab"
         minSdk = 28
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.1.1-lab"
+        versionCode = 3
+        versionName = "0.2.0-lab"
     }
 }
