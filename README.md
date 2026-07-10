@@ -168,6 +168,30 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.10 — tela Plantao nova (mock)
+
+Data da validacao: 2026-07-09.
+
+`ui/PlantaoScreen.kt` (novo): porte de `ui/plantao/PlantaoScreen.kt` real —
+hero, banner "Dados de plantao (mock)" no lugar do import real, calendario
+mensal com marcador roxo, detalhe do dia. Reaproveita 100% os modelos/mocks
+da FASE 9c (`OnCallPeriod`/`OnCallAssignment`/`OnCallStatus`), engordados de
+1 para 4 registros. Sem `kotlinx-datetime`, "agora" e decidido pelo status
+`ACTIVE` ja mockado. Botao "Plantao" do header agora abre esta tela de
+verdade (antes placeholder).
+
+Limite assumido: sem importacao de relatorio real de plantao.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuicao Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.9 — polimento fino da aba Perfil
 
 Data da validacao: 2026-07-09.

@@ -378,6 +378,40 @@ Comandos executados com sucesso:
 Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
 continuam compilando.
 
+## FASE 10.10 — Tela Plantão nova (mock)
+
+- **Status:** DONE
+- `ui/PlantaoScreen.kt` (novo): porte de `ui/plantao/PlantaoScreen.kt` real
+  — `PlantaoHeroCard`, banner informativo ("Dados de plantão (mock)" no
+  lugar do botão de importar relatório real), `PlantaoMonthHeader` +
+  `PlantaoCalendarGrid` (marcador roxo nos dias com plantão, reaproveitando
+  `LabDate`/`LabYearMonth`), `PlantaoDayDetailCard`.
+- Reaproveita 100% os modelos/mocks já existentes da FASE 9c:
+  `OnCallPeriod`, `OnCallAssignment`, `OnCallStatus`,
+  `mockOnCallAssignments()` — engordado de 1 para 4 registros (um `ACTIVE`,
+  dois `SCHEDULED`, um `COMPLETED`) para o calendário não ficar vazio.
+- **Decisão assumida** (documentada no plano): sem `kotlinx-datetime` no
+  projeto, "agora" é decidido pelo campo `status` já mockado (`ACTIVE`) em
+  vez de comparar com a data real do sistema — o registro `ACTIVE` também
+  serve de referência visual no calendário (destaque de borda, análogo ao
+  "hoje" do real).
+- Substituído no shell (`App.kt`): o placeholder "Em construção" do botão
+  "Plantão" do header agora abre esta tela de verdade.
+
+Limites assumidos: sem importação de relatório real (não existe
+`PlantaoWorkbookParser`/file picker de plantão no laboratório — só o botão
+"Plantão" no header e o calendário/detalhe do dia).
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

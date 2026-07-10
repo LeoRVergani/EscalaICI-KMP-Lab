@@ -158,13 +158,13 @@ fun EscalaIciLabApp() {
                                 .widthIn(max = 760.dp)
                                 .fillMaxWidth()
                         ) {
-                            val currentStackedScreen = stackedScreen
-                            if (currentStackedScreen != null) {
-                                StackedScreenPlaceholder(
-                                    title = currentStackedScreen.title,
+                            when (stackedScreen) {
+                                StackedScreen.PLANTAO -> PlantaoScreen(onBack = { stackedScreen = null })
+                                StackedScreen.SWAP -> StackedScreenPlaceholder(
+                                    title = StackedScreen.SWAP.title,
                                     onBack = { stackedScreen = null }
                                 )
-                            } else {
+                                null -> {
                                 when (activeTab) {
                                     LabTab.Hoje -> TodayTab(
                                         summary = summary,
@@ -200,6 +200,7 @@ fun EscalaIciLabApp() {
                                         onOpenPlantao = onOpenPlantao,
                                         onOpenSwap = { stackedScreen = StackedScreen.SWAP }
                                     )
+                                }
                                 }
                             }
                         }

@@ -137,6 +137,17 @@ fun mockOnCallPeriod(): OnCallPeriod = OnCallPeriod(
 
 fun mockOnCallAssignments(): List<OnCallAssignment> = listOf(
     OnCallAssignment(
+        id = "oncall-assign-0",
+        periodId = "oncall-2026-07",
+        teamId = "soc",
+        memberId = "lvergani@ici.tec.br",
+        memberName = "lvergani",
+        date = "2026-07-09",
+        startTime = "07:00",
+        endTime = "19:00",
+        status = OnCallStatus.ACTIVE
+    ),
+    OnCallAssignment(
         id = "oncall-assign-1",
         periodId = "oncall-2026-07",
         teamId = "soc",
@@ -146,6 +157,28 @@ fun mockOnCallAssignments(): List<OnCallAssignment> = listOf(
         startTime = "19:00",
         endTime = "07:00",
         status = OnCallStatus.SCHEDULED
+    ),
+    OnCallAssignment(
+        id = "oncall-assign-2",
+        periodId = "oncall-2026-07",
+        teamId = "soc",
+        memberId = "alamancio@ici.tec.br",
+        memberName = "alamancio",
+        date = "2026-07-16",
+        startTime = "19:00",
+        endTime = "07:00",
+        status = OnCallStatus.SCHEDULED
+    ),
+    OnCallAssignment(
+        id = "oncall-assign-3",
+        periodId = "oncall-2026-07",
+        teamId = "soc",
+        memberId = "lvergani@ici.tec.br",
+        memberName = "lvergani",
+        date = "2026-07-02",
+        startTime = "07:00",
+        endTime = "19:00",
+        status = OnCallStatus.COMPLETED
     )
 )
 
