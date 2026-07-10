@@ -201,6 +201,27 @@ versao entre o Kotlin do Ktor 3.5.x e o Kotlin `2.2.10` fixado neste projeto.
 Downgrade para `ktor = "3.3.0"` (construido contra Kotlin 2.2) resolveu. Se
 uma fase futura atualizar o Kotlin do projeto, reavaliar subir o Ktor junto.
 
+## Validacao — chave de assinatura propria + APK de release (instalar junto com o app oficial)
+
+O lab usa `applicationId = "br.com.leorvergani.escalaici.kmp.lab"`,
+diferente do app oficial `EscalaSOC` (`br.com.leorvergani.escalasoc`) — ja
+da para instalar os dois no mesmo celular. Esta fase adicionou uma chave de
+assinatura propria para que **toda build (debug e release) use sempre a
+mesma chave**, evitando o erro `INSTALL_FAILED_UPDATE_INCOMPATIBLE` ao
+reinstalar.
+
+- Keystore + `keystore.properties` na raiz do projeto (gitignored — ver
+  `EscalaSOC/docs/spec/33-KMP-LAB-INTEGRACOES-REAIS.md` §10 para o formato
+  exato e onde ficam).
+- `composeApp/build.gradle.kts`: `signingConfigs { create("lab") { ... } }`
+  lido de `keystore.properties`, aplicado em `buildTypes.debug` e
+  `buildTypes.release` — mesmo padrao do `EscalaSOC/app/build.gradle.kts`.
+- Build de release: `./gradlew :composeApp:assembleRelease` →
+  `composeApp/build/outputs/apk/release/composeApp-release.apk`, copiado
+  para `~/Downloads/EscalaICI-KMP-Lab-latest.apk` (sideload manual, **não**
+  faz parte do pipeline de update via Dropbox do app oficial).
+- `versionCode`/`versionName`: `3`/`0.2.0-lab` → `4`/`0.2.1-lab`.
+
 ## Validacao — icone proprio do lab (calendario)
 
 O lab tinha o icone-escudo do app SOC no PWA e **nenhum icone customizado**

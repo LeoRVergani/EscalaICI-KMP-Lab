@@ -24,6 +24,22 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   (`1`/`0.1.0-lab` → `2`/`0.1.1-lab`).
 - Build Android + Web/Wasm + `testDebugUnitTest` verificados.
 
+## FASE 11.0c — Chave de assinatura própria + APK de release
+
+- **Status:** DONE
+- Keystore `escalaici-kmp-lab.jks` + `keystore.properties` (raiz do
+  projeto, gitignored) — mesma chave usada em debug e release
+  (`signingConfigs`/`buildTypes` em `composeApp/build.gradle.kts`, mesmo
+  padrão do `EscalaSOC/app/build.gradle.kts`).
+- `./gradlew :composeApp:assembleRelease` gera
+  `composeApp-release.apk`, copiado para
+  `~/Downloads/EscalaICI-KMP-Lab-latest.apk` — para instalar lado a lado
+  com o app oficial no celular (`applicationId` já é diferente, não
+  conflita).
+- Detalhes completos (formato do `keystore.properties`, onde tudo fica) em
+  `EscalaSOC/docs/spec/33-KMP-LAB-INTEGRACOES-REAIS.md` §10.
+- `versionCode`/`versionName`: `3`/`0.2.0-lab` → `4`/`0.2.1-lab`.
+
 ## FASE 11.0b — Ícone próprio do lab (calendário)
 
 - **Status:** DONE

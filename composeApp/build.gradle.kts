@@ -1,5 +1,6 @@
 import com.android.build.api.dsl.ApplicationExtension
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import java.util.Properties
 
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
@@ -46,6 +47,13 @@ kotlin {
     }
 }
 
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+
 extensions.configure<ApplicationExtension>("android") {
     namespace = "br.com.leorvergani.escalaici.kmp.lab"
     compileSdk = 36
@@ -54,7 +62,31 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = "br.com.leorvergani.escalaici.kmp.lab"
         minSdk = 28
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.2.0-lab"
+        versionCode = 4
+        versionName = "0.2.1-lab"
+    }
+
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("lab") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("lab")
+            }
+        }
+        getByName("release") {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("lab")
+            }
+        }
     }
 }

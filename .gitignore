@@ -3,6 +3,9 @@ build/
 **/build/
 .idea/
 local.properties
+/keystore.properties
+*.jks
+*.keystore
 *.iml
 .DS_Store
 node_modules/
