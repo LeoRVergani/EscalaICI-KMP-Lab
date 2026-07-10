@@ -458,6 +458,30 @@ Resultados: 13 testes continuam passando (só 1 linha ajustada por causa da
 renomeação de `SwapStatus`); APK debug e distribuição Web/Wasm continuam
 compilando.
 
+## FASE 10.12 — Consolidação (checklist de paridade visual completa)
+
+- **Status:** DONE
+- Nova seção "Checklist de paridade visual completa (FASE 10)" no
+  `README.md`, resumindo o resultado das FASES 10.0–10.11: tabela de
+  design system, tabela por tela (Login/Hoje/Escala/Importar/Alertas/
+  Perfil/Plantão/Trocas de escala) e limites conhecidos aceitos de
+  propósito.
+- Verificação final de runtime: dev server Web/Wasm subido e validado via
+  `curl` (HTTP 200 em `index.html`/`manifest.json`/`composeApp.js`),
+  processo encerrado ao final. Verificação em emulador Android não foi
+  possível nesta sessão (mesma limitação de armazenamento do AVD já
+  registrada nas FASES 10.1/10.4).
+- Plano completo desta série de fases:
+  `/home/lvergani/.claude/plans/humble-spinning-yao.md`.
+- Confirmado `EscalaSOC` (app Android principal) sem nenhuma alteração em
+  toda a série 10.0–10.12 (`git status` limpo antes/depois de cada commit).
+
+Com isso, a série **FASE 10.0–10.12** (porte visual completo, corrigindo o
+escopo da aproximação da FASE 9c-1) está concluída: design system exato,
+logo/ícone reais, login/header/navegação fiéis, as 5 abas revisadas
+linha a linha contra o código real, e as 2 telas que faltavam (Plantão,
+Trocas de escala) criadas como mock.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

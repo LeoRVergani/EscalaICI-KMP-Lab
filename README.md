@@ -168,6 +168,64 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Checklist de paridade visual completa (FASE 10)
+
+A FASE 9c-1 (2026-07-07) tinha feito uma **aproximacao** visual do app real.
+A serie **FASE 10.0 a 10.11** (2026-07-09) refez esse trabalho comparando
+cada tela do laboratorio linha a linha com o codigo-fonte real do
+`EscalaSOC` (nao so a aparencia — o proprio arquivo `.kt`), corrigindo
+divergencias de cor/shape/texto e portando as duas telas que faltavam
+(Plantao, Trocas de escala). Esta secao resume o resultado; o detalhe de
+cada sub-fase esta nas secoes "Validacao da FASE 10.x" abaixo.
+
+### Design system
+
+| Item | Status |
+|---|---|
+| Paleta de cores (`LabColors`, 24 cores) | ✅ porte 1:1 de `ui/theme/Color.kt` |
+| Tipografia (`LabTypography`, 12 estilos) | ✅ porte 1:1 de `SocTypography` |
+| Shapes (`LabShapes`, 6 tokens) | ✅ porte 1:1 de `PremiumShapes` |
+| `LabColorScheme` (26 parametros) | ✅ porte 1:1 de `SocDarkColorScheme` |
+| Cores de turno com container/on-color | ✅ valores exatos (`ShiftColors.kt`) |
+| Cores de alerta com container/on-color | ⚠️ não portado (ver limites da FASE 10.8) |
+| Shield logo (Composable + ícone PWA) | ✅ porte 1:1 (paths exatos do launcher real) |
+
+### Telas
+
+| Tela | Status | Observação |
+|---|---|---|
+| Login (`LoginGateScreen`) | ✅ fiel | fluxo "Modo Demo" com 3 membros mock em vez de `DemoUser` real |
+| Hoje (`TodayTab`) | ✅ fiel | sem variação "compact" de tela estreita (`BoxWithConstraints`) |
+| Escala (`ScheduleTab`) | ✅ fiel | sem botão de atualizar (sem sync/backend) |
+| Importar (`ImportTab`) | ✅ fiel | seletor de colaborador da prévia é acréscimo do laboratório (documentado) |
+| Alertas (`AlertsTab`) | ✅ fiel + bug corrigido | mantém geração de alertas em modo demo (decisão da 9c-1) |
+| Perfil (`ProfileTab`) | ✅ fiel | fluxos ADM/MSAL/Dropbox continuam visuais estáticos (fora de escopo) |
+| Plantão (`PlantaoScreen`) | ✅ nova | mock via `OnCallAssignment`, sem importação real de relatório |
+| Trocas de escala (`ShiftSwapScreen`) | ✅ nova | mock via `ShiftSwapRequest` estendido, sem Firestore |
+| Importação Firebase (ADM) | ❌ não portada (decisão do usuário) | mantido só o botão desabilitado |
+
+### Limites conhecidos (aceitos de propósito)
+
+- Nenhuma integração real com Firebase, MSAL, parser XLS oficial, Dropbox ou
+  notificações — critério inalterado desde a FASE 9b.
+- Sem `kotlinx-datetime`: telas que dependem de "data/hora atual" (Plantão)
+  usam campos de status já mockados em vez de comparar com o relógio real.
+- Variações de layout "compact"/responsivas do app real (`BoxWithConstraints`
+  para telas muito estreitas) não foram portadas em todos os pontos — o
+  laboratório roda num container largo (`widthIn(max=760.dp)`).
+- Verificação visual em emulador Android não foi possível nesta sessão
+  (`INSTALL_FAILED_INSUFFICIENT_STORAGE` no AVD local, mesmo com espaço
+  aparentemente suficiente — provável limite de threshold do AVD, não
+  investigado a fundo). A fidelidade foi validada lendo o código-fonte real
+  arquivo por arquivo (não só a aparência) e conferindo builds/testes; o
+  ícone do shield foi conferido visualmente (renderização do PNG). O
+  Web/Wasm foi validado via dev server (HTTP 200 nos assets), mas não há
+  captura de tela automatizada disponível neste ambiente (sem Chrome/Chromium
+  headless). Recomenda-se uma checagem visual manual (emulador com espaço
+  livre ou navegador) antes de uma apresentação real.
+- `EscalaSOC` (app Android principal) não foi alterado em nenhuma das fases
+  10.x — confirmado via `git status` antes e depois de cada commit.
+
 ## Validacao da FASE 10.11 — tela Trocas de escala nova (mock)
 
 Data da validacao: 2026-07-09.
