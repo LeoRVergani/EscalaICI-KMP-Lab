@@ -125,6 +125,52 @@ Comandos executados com sucesso:
 Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
 continuam compilando.
 
+## FASE 10.4 — Navegação em pilha + PremiumHeader
+
+- **Status:** DONE
+- `ui/components/CollaboratorBadge.kt` (novo): `LabCollaboratorAvatar`/
+  `SelectedCollaboratorBadge`, porte literal de `CollaboratorComponents.kt`
+  real (avatar circular com gradiente azul→roxo).
+- `ui/components/PremiumHeader.kt` (novo): `LabPremiumHeader`, porte literal
+  de `PremiumHeader` real (logo+"Escala ICI", sino de notificações, chip
+  "Plantão", badge do colaborador selecionado). Usado agora como **primeiro
+  item nas 5 abas** (Hoje/Escala/Importar/Alertas/Perfil) — confirmado lendo
+  `TodayScreen.kt`/`CalendarScreen.kt`/`ImportScaleScreen.kt`/
+  `AlertsScreen.kt`/`SettingsScreen.kt` reais, todos chamam
+  `PremiumHeader(onOpenPlantao = onOpenPlantao)` como primeiro item.
+- **Correção de fidelidade**: `PageList` não recebe mais `title`/`subtitle`
+  — o app real não tem um título de página genérico além do
+  `PremiumHeader` (confirmado lendo os 5 arquivos de tela reais); o título
+  grande "Escala"/"Importar"/etc. que o laboratório mostrava era uma
+  invenção da FASE 9c-1, não existe no app real.
+- `App.kt`: `StackedScreen` (enum `PLANTAO`/`SWAP`) + navegação em pilha —
+  quando uma tela empilhada está aberta, o bottom nav some (igual ao app
+  real) e um placeholder "Em construção" é mostrado (será substituído pelas
+  telas reais nas FASES 10.10/10.11).
+- `ProfileTab`: "Ver minhas solicitações" deixou de ser `DisabledAction` e
+  agora abre de fato a tela (placeholder) de Trocas de escala.
+- Removido o indicador de debug "mock N" do header antigo de Hoje — não
+  existe no app real; o botão "Voltar para mock" (aba Importar) já cumpre
+  esse papel.
+
+**Verificação visual pendente**: mesma limitação da FASE 10.1 — o emulador
+local segue sem espaço (`INSTALL_FAILED_INSUFFICIENT_STORAGE` mesmo após
+liberar cache, `/data` ~92% cheio apesar do APK ter ~100MB e sobrarem
+~480MB livres — parece ser um limite de threshold do AVD, não falta real de
+espaço). Fidelidade conferida lendo os 5 arquivos de tela reais linha a
+linha; ainda falta uma checagem visual em dispositivo/emulador com mais
+espaço ou no navegador.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

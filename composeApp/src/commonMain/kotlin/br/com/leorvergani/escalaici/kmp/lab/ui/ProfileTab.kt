@@ -41,14 +41,23 @@ import br.com.leorvergani.escalaici.kmp.lab.model.GenerateLabAlerts
 import br.com.leorvergani.escalaici.kmp.lab.model.LabAlert
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
+import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.util.initials
 
 @Composable
-internal fun ProfileTab(summary: ScheduleSummary, onLogout: () -> Unit) {
+internal fun ProfileTab(
+    summary: ScheduleSummary,
+    onLogout: () -> Unit,
+    onOpenPlantao: () -> Unit,
+    onOpenSwap: () -> Unit
+) {
     val criticalAlerts = remember(summary) { GenerateLabAlerts(summary).count { it.severity == LabAlert.Severity.CRITICO } }
-    PageList(title = "Perfil", subtitle = if (summary.isImported) "Perfil importado do XLS" else "Identidade demonstrativa") {
+    PageList {
+        item {
+            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
+        }
         item {
             LabCard(title = "Perfil selecionado", icon = Icons.Default.Person) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -121,7 +130,9 @@ internal fun ProfileTab(summary: ScheduleSummary, onLogout: () -> Unit) {
         item {
             LabCard(title = "Trocas de escala", icon = Icons.Default.SwapHoriz, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
                 Text("Veja e responda pedidos de troca de turno.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                DisabledAction("Ver minhas solicitações")
+                TextButton(onClick = onOpenSwap) {
+                    Text("Ver minhas solicitações", color = LabColors.primary)
+                }
             }
         }
         item {

@@ -39,17 +39,23 @@ import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleImportPreview
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.HeroCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
+import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 
 @Composable
 internal fun ImportTab(
     preview: ScheduleImportPreview?,
+    selectedCollaborator: String,
     onSelectXls: () -> Unit,
     onUseImported: () -> Unit,
     onSelectCollaborator: (String) -> Unit,
-    onResetMock: () -> Unit
+    onResetMock: () -> Unit,
+    onOpenPlantao: () -> Unit
 ) {
-    PageList(title = "Importar", subtitle = preview?.fileName ?: "Selecione a planilha oficial .xls") {
+    PageList {
+        item {
+            LabPremiumHeader(selectedCollaborator = selectedCollaborator, onOpenPlantao = onOpenPlantao)
+        }
         item {
             HeroCard {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {

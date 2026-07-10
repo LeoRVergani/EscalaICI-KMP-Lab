@@ -2,14 +2,19 @@ package br.com.leorvergani.escalaici.kmp.lab.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Home
@@ -21,6 +26,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -31,7 +37,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.kmp.lab.model.ImportedWorkbook
 import br.com.leorvergani.escalaici.kmp.lab.model.LabWorkbookParser
@@ -51,6 +57,7 @@ import br.com.leorvergani.escalaici.kmp.lab.model.mockScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.platform.rememberWorkbookImportLauncher
 import br.com.leorvergani.escalaici.kmp.lab.repository.InMemoryAuthSessionRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.MockMemberRepository
+import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumBackground
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColorScheme
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
@@ -70,6 +77,12 @@ private enum class LabTab(
     Perfil("Perfil", Icons.Outlined.Person, Icons.Filled.Person)
 }
 
+/** Telas fora do bottom nav, empilhadas sobre a aba ativa (igual ao app real). */
+private enum class StackedScreen(val title: String) {
+    PLANTAO("Plantão"),
+    SWAP("Trocas de escala")
+}
+
 @Composable
 fun EscalaIciLabApp() {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
@@ -84,8 +97,8 @@ fun EscalaIciLabApp() {
             demoMembers = memberRepository.getMembersByTeam("soc")
         }
 
-        var refreshCount by remember { mutableIntStateOf(0) }
         var activeTab by remember { mutableStateOf(LabTab.Hoje) }
+        var stackedScreen by remember { mutableStateOf<StackedScreen?>(null) }
         var summary by remember { mutableStateOf(mockScheduleSummary()) }
         var importPreview by remember { mutableStateOf<ScheduleImportPreview?>(null) }
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
@@ -105,11 +118,12 @@ fun EscalaIciLabApp() {
         }
 
         fun resetMock() {
-            refreshCount += 1
             summary = mockScheduleSummary()
             importPreview = null
             importedWorkbook = null
         }
+
+        val onOpenPlantao: () -> Unit = { stackedScreen = StackedScreen.PLANTAO }
 
         if (sessionMemberId == null) {
             LoginGateScreen(
@@ -127,7 +141,9 @@ fun EscalaIciLabApp() {
                 Scaffold(
                     containerColor = Color.Transparent,
                     bottomBar = {
-                        BottomNav(activeTab = activeTab, onSelect = { activeTab = it })
+                        if (stackedScreen == null) {
+                            BottomNav(activeTab = activeTab, onSelect = { activeTab = it })
+                        }
                     }
                 ) { padding ->
                     Box(
@@ -142,33 +158,45 @@ fun EscalaIciLabApp() {
                                 .widthIn(max = 760.dp)
                                 .fillMaxWidth()
                         ) {
-                            when (activeTab) {
-                                LabTab.Hoje -> TodayTab(summary = summary, refreshCount = refreshCount)
-                                LabTab.Escala -> ScheduleTab(summary = summary)
-                                LabTab.Importar -> ImportTab(
-                                    preview = importPreview,
-                                    onSelectXls = { importLauncher.launch() },
-                                    onUseImported = {
-                                        importPreview?.summary?.let { imported ->
-                                            summary = imported
-                                            activeTab = LabTab.Hoje
-                                        }
-                                    },
-                                    onSelectCollaborator = { collaborator ->
-                                        importedWorkbook?.let { workbook ->
-                                            importPreview = LabWorkbookParser.parse(workbook, collaborator)
-                                        }
-                                    },
-                                    onResetMock = ::resetMock
+                            val currentStackedScreen = stackedScreen
+                            if (currentStackedScreen != null) {
+                                StackedScreenPlaceholder(
+                                    title = currentStackedScreen.title,
+                                    onBack = { stackedScreen = null }
                                 )
-                                LabTab.Alertas -> AlertsTab(summary = summary)
-                                LabTab.Perfil -> ProfileTab(
-                                    summary = summary,
-                                    onLogout = {
-                                        scope.launch { authRepository.signOut() }
-                                        sessionMemberId = null
-                                    }
-                                )
+                            } else {
+                                when (activeTab) {
+                                    LabTab.Hoje -> TodayTab(summary = summary, onOpenPlantao = onOpenPlantao)
+                                    LabTab.Escala -> ScheduleTab(summary = summary, onOpenPlantao = onOpenPlantao)
+                                    LabTab.Importar -> ImportTab(
+                                        preview = importPreview,
+                                        selectedCollaborator = summary.member.scaleName,
+                                        onSelectXls = { importLauncher.launch() },
+                                        onUseImported = {
+                                            importPreview?.summary?.let { imported ->
+                                                summary = imported
+                                                activeTab = LabTab.Hoje
+                                            }
+                                        },
+                                        onSelectCollaborator = { collaborator ->
+                                            importedWorkbook?.let { workbook ->
+                                                importPreview = LabWorkbookParser.parse(workbook, collaborator)
+                                            }
+                                        },
+                                        onResetMock = ::resetMock,
+                                        onOpenPlantao = onOpenPlantao
+                                    )
+                                    LabTab.Alertas -> AlertsTab(summary = summary, onOpenPlantao = onOpenPlantao)
+                                    LabTab.Perfil -> ProfileTab(
+                                        summary = summary,
+                                        onLogout = {
+                                            scope.launch { authRepository.signOut() }
+                                            sessionMemberId = null
+                                        },
+                                        onOpenPlantao = onOpenPlantao,
+                                        onOpenSwap = { stackedScreen = StackedScreen.SWAP }
+                                    )
+                                }
                             }
                         }
                     }
@@ -191,6 +219,37 @@ private fun WorkbookImportResult.toImportPreview(): ScheduleImportPreview {
             errors = listOf(message),
             summary = null
         )
+    }
+}
+
+/**
+ * Placeholder temporario para as telas empilhadas (Plantao/Trocas de
+ * escala) enquanto elas nao sao implementadas de fato (FASES 10.10/10.11).
+ */
+@Composable
+private fun StackedScreenPlaceholder(title: String, onBack: () -> Unit) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = LabColors.onSurface)
+                }
+                Text(title, color = LabColors.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
+        }
+        item {
+            LabCard(title = "Em construção") {
+                Text(
+                    "Esta tela ainda sera implementada no laboratorio (mock visual, sem Firebase real).",
+                    color = LabColors.onSurfaceMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
     }
 }
 

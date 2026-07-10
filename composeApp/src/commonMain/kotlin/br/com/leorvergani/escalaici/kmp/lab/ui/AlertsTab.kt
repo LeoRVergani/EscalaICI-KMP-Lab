@@ -47,16 +47,20 @@ import br.com.leorvergani.escalaici.kmp.lab.model.LabAlert
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.HeroCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
+import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 
 @Composable
-internal fun AlertsTab(summary: ScheduleSummary) {
+internal fun AlertsTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
     val alerts = remember(summary) { GenerateLabAlerts(summary) }
     var filter by remember { mutableStateOf(AlertFilter.TODOS) }
     val filteredAlerts = alerts.filter { filter.matches(it) }
 
-    PageList(title = "Alertas", subtitle = if (summary.isImported) "Alertas gerados da planilha importada" else "Validações locais da POC") {
+    PageList {
+        item {
+            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
+        }
         item {
             AlertsHero(summary = summary, alerts = alerts)
         }

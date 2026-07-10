@@ -45,12 +45,12 @@ import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftDay
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.HeroCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
+import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.shiftColor
-import br.com.leorvergani.escalaici.kmp.lab.ui.util.initials
 
 @Composable
-internal fun TodayTab(summary: ScheduleSummary, refreshCount: Int) {
+internal fun TodayTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
     val next = summary.nextShift
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -58,7 +58,7 @@ internal fun TodayTab(summary: ScheduleSummary, refreshCount: Int) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Header(summary = summary, refreshCount = refreshCount)
+            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
         }
         item {
             NextTurnHero(summary = summary)
@@ -80,37 +80,6 @@ internal fun TodayTab(summary: ScheduleSummary, refreshCount: Int) {
                 LabCard(title = "Observações da escala") {
                     Text(next?.note.orEmpty(), color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Header(summary: ScheduleSummary, refreshCount: Int) {
-    val initials = summary.member.displayName.initials()
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(15.dp))
-                .background(LabColors.primary),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(initials, color = Color.White, fontWeight = FontWeight.Black)
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text("Escala", color = LabColors.onSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-            Text("ICI", color = LabColors.primary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(summary.team.name, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-            Text(summary.member.scaleName, color = LabColors.onSurface, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            if (refreshCount > 0) {
-                Text("mock $refreshCount", color = LabColors.tertiary, style = MaterialTheme.typography.labelSmall)
             }
         }
     }

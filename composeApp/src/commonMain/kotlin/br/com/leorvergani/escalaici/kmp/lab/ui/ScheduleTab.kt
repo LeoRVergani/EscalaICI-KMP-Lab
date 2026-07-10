@@ -52,12 +52,13 @@ import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftDay
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftType
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
+import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.shiftColor
 
 @Composable
-internal fun ScheduleTab(summary: ScheduleSummary) {
+internal fun ScheduleTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
     val sortedDays = summary.days.sortedBy { it.date }
     val initialDay = remember(summary) {
         sortedDays.firstOrNull { it.type.isWorkShift } ?: sortedDays.firstOrNull()
@@ -81,7 +82,10 @@ internal fun ScheduleTab(summary: ScheduleSummary) {
             ?: target.atDay(1)
     }
 
-    PageList(title = "Escala", subtitle = "${summary.team.name} · ${summary.periodLabel}") {
+    PageList {
+        item {
+            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
+        }
         item {
             CalendarMonthHeader(
                 visibleMonth = visibleMonth,

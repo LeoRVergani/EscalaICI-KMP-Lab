@@ -168,6 +168,45 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.4 — navegacao em pilha + PremiumHeader
+
+Data da validacao: 2026-07-09.
+
+Objetivo desta etapa: portar o header comum do app real (`PremiumHeader`,
+com logo, sino de notificacoes, chip "Plantao" e badge do colaborador) para
+as 5 abas do laboratorio, e criar a navegacao em pilha necessaria para o
+botao "Plantao" e o "Ver minhas solicitacoes" (Perfil) terem um destino.
+
+- `LabCollaboratorAvatar`/`SelectedCollaboratorBadge` e `LabPremiumHeader`
+  (novos, em `ui/components/`), porte literal dos componentes reais.
+- Confirmado lendo os 5 arquivos de tela reais que `PremiumHeader` aparece
+  como primeiro item em TODAS as abas (Hoje/Escala/Importar/Alertas/Perfil)
+  — corrigido no laboratorio para bater com isso.
+- **Correcao de fidelidade**: removido o titulo generico de pagina
+  ("Escala"/"Importar"/etc.) que o `PageList` mostrava — o app real nao tem
+  esse titulo, so o `PremiumHeader`. Era uma invencao da FASE 9c-1.
+- `StackedScreen` (Plantao/Trocas) no shell: bottom nav some quando uma tela
+  empilhada esta aberta (igual ao real); placeholder "Em construcao" ate as
+  FASES 10.10/10.11 substituirem pelas telas de verdade.
+- "Ver minhas solicitacoes" (Perfil) deixou de ser botao desabilitado.
+- Removido o indicador de debug "mock N" do header antigo — nao existe no
+  app real.
+
+Limite: mesma limitacao de verificacao visual da FASE 10.1/10.2 (emulador
+sem conseguir instalar por um limite de armazenamento do AVD, aparentemente
+um threshold e nao falta real de espaco — ~480MB livres para um APK de
+~100MB). Fidelidade conferida lendo os arquivos reais linha a linha.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuicao Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.3 — LoginGateScreen fiel ao LoginScreen real
 
 Data da validacao: 2026-07-09.
