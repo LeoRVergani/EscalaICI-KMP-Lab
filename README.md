@@ -168,6 +168,52 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.1 — design system exato
+
+Data da validacao: 2026-07-09.
+
+Objetivo desta etapa: portar cores, tipografia e shapes com fidelidade total
+ao app Android real, lendo diretamente `Color.kt`, `Theme.kt` e
+`PremiumShapes.kt` (repositório `EscalaSOC`).
+
+- `LabColors` foi de 8 para 24 cores (paleta completa, incluindo os pares
+  container/on-container).
+- Novos `LabTypography` (12 estilos) e `LabShapes` (6 formas), ambos porte
+  literal do real.
+- `LabColorScheme` expandido para os 26 parâmetros de `darkColorScheme`,
+  igual a `SocDarkColorScheme`.
+- `ShiftColors.kt` ganhou `shiftContainerColor()`/`shiftOnColor()` com os
+  valores exatos do app real (alguns containers de turno usam hex próprios,
+  não `.copy(alpha=X)` da cor do turno — ex. o container do turno Manhã é
+  `#713F12`, uma cor marrom-âmbar, não uma variação de amarelo).
+- `LabShapes` aplicado a `LabCard`/`HeroCard`/badge/nav pill (mesmos valores
+  numéricos de antes, agora referenciando o token do design system).
+
+Limites assumidos: shapes bespoke de cada aba não migraram para `LabShapes`
+(só os que batem exatamente com os 6 tokens oficiais); containers/on-colors
+de alerta ficam para a FASE 10.8; nenhum arquivo do app Android principal
+foi alterado.
+
+**Verificação visual pendente**: o emulador local (`EscalaSOC_API_37`) está
+com armazenamento insuficiente para instalar o APK nesta sessão
+(`INSTALL_FAILED_INSUFFICIENT_STORAGE`, `/data` 93% cheio), e não há
+Chrome/Chromium headless disponível para capturar o Web/Wasm automaticamente.
+A fidelidade dos valores foi conferida linha a linha contra `Color.kt`,
+`Theme.kt` e `PremiumShapes.kt` do app real, e os builds/testes passam, mas
+uma checagem visual (emulador com espaço livre ou navegador manual em
+`http://localhost:8080/`) ainda não foi feita nesta fase — recomendado antes
+de considerar esta fase "aprovada visualmente".
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.0 — split mecânico do App.kt
 
 Data da validacao: 2026-07-09.

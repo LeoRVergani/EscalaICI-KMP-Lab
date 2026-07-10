@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CloudUpload
@@ -55,6 +54,8 @@ import br.com.leorvergani.escalaici.kmp.lab.repository.MockMemberRepository
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumBackground
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColorScheme
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
+import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
+import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabTypography
 import kotlinx.coroutines.launch
 
 private enum class LabTab(
@@ -71,7 +72,7 @@ private enum class LabTab(
 
 @Composable
 fun EscalaIciLabApp() {
-    MaterialTheme(colorScheme = LabColorScheme) {
+    MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
         val memberRepository = remember { MockMemberRepository() }
         val scope = rememberCoroutineScope()
@@ -218,7 +219,7 @@ private fun BottomNav(activeTab: LabTab, onSelect: (LabTab) -> Unit) {
                             Box(
                                 modifier = Modifier
                                     .size(if (active) 36.dp else 24.dp)
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .clip(LabShapes.navPill)
                                     .background(if (active) LabColors.primary.copy(alpha = 0.14f) else Color.Transparent),
                                 contentAlignment = Alignment.Center
                             ) {

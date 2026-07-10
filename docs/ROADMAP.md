@@ -25,6 +25,49 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 - Evidência: build `assembleDebug` + `wasmJsBrowserDistribution` +
   `testDebugUnitTest` (13 testes) passando sem alteração de resultado.
 
+## FASE 10.1 — Design system exato (cores, tipografia, shapes)
+
+- **Status:** DONE
+- `ui/theme/LabColors.kt`: paleta expandida de 8 para 24 cores, porte 1:1 de
+  `ui/theme/Color.kt` do app real (`primaryContainer`, `onPrimaryContainer`,
+  `secondary`, `tertiaryContainer`, `errorContainer` etc.).
+- `ui/theme/LabTypography.kt` (novo): porte literal dos 12 `TextStyle` de
+  `SocTypography`.
+- `ui/theme/LabShapes.kt` (novo): porte literal de `PremiumShapes`
+  (`cardLarge/cardMedium/cardSmall/button/chip/navPill`).
+- `ui/theme/LabTheme.kt`: `LabColorScheme` expandido para os 26 parâmetros de
+  `darkColorScheme`, mapeamento idêntico a `SocDarkColorScheme` (confirmado
+  lendo `Theme.kt` real linha a linha).
+- `ui/theme/ShiftColors.kt`: `shiftContainerColor()`/`shiftOnColor()` novos,
+  com os valores exatos de `Color.kt` (não apenas alpha da cor base — vários
+  containers de turno usam hex distintos, ex. `ShiftManhaContainer` é
+  `#713F12`, não uma variação de `#FACC15`).
+- `LabShapes` aplicado aos componentes compartilhados (`LabCard`, `HeroCard`,
+  badge, nav pill do `BottomNav`) — mesmos valores numéricos de antes, só
+  passou a referenciar o token em vez do `dp` solto.
+- `MaterialTheme` do app agora usa `typography = LabTypography` além do
+  `colorScheme`.
+
+Limites assumidos:
+
+- shapes bespoke específicas de cada aba (ex. pills com 15dp/18dp) não foram
+  migradas para `LabShapes` — só os valores que batem exatamente com os 6
+  tokens oficiais do app real;
+- containers/on-colors de alerta (`AlertInfo`/`AlertWarning`/etc.) ainda não
+  foram portados com os valores exatos do real — fica para a FASE 10.8
+  (polimento da aba Alertas), que já vai mexer nessa aba de qualquer forma;
+- nenhum arquivo do app Android principal foi alterado.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

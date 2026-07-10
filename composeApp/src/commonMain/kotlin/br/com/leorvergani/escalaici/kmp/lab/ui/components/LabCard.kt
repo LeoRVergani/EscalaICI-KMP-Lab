@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
+import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 
 @Composable
 internal fun HeroCard(
@@ -37,7 +38,7 @@ internal fun HeroCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = LabShapes.cardSmall,
         color = Color.Transparent,
         border = BorderStroke(1.dp, Color(0xFF4B6FA8).copy(alpha = 0.72f)),
         modifier = Modifier.fillMaxWidth()
@@ -87,7 +88,7 @@ internal fun LabCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = LabShapes.cardSmall,
         color = Color.Transparent,
         border = BorderStroke(1.dp, borderColor)
     ) {
@@ -113,7 +114,7 @@ internal fun LabCard(
                 Text(title, modifier = Modifier.weight(1f), color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
                 if (badge != null) {
                     Box(
-                        modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(LabColors.primary.copy(alpha = 0.16f)).border(1.dp, LabColors.primary.copy(alpha = 0.32f), RoundedCornerShape(12.dp)).padding(horizontal = 8.dp, vertical = 3.dp)
+                        modifier = Modifier.clip(LabShapes.chip).background(LabColors.primary.copy(alpha = 0.16f)).border(1.dp, LabColors.primary.copy(alpha = 0.32f), LabShapes.chip).padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(badge, color = LabColors.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
