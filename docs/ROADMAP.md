@@ -339,6 +339,45 @@ Comandos executados com sucesso:
 Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
 continuam compilando.
 
+## FASE 10.9 — Polimento fino da aba Perfil
+
+- **Status:** DONE
+- Comparado `ProfileTab.kt` com `ui/settings/SettingsScreen.kt` real.
+- Adicionado título de seção "Perfil" (titleLarge, bold) logo após o
+  `LabPremiumHeader` — porte do `SectionHeader("Perfil")` real (lido
+  diretamente `ui/components/Layout.kt`).
+- Card "Perfil selecionado": trocado o box quadrado com iniciais por
+  `LabCollaboratorAvatar` (avatar circular com gradiente azul→roxo, mesmo
+  componente usado no `PremiumHeader` desde a FASE 10.4) — o real usa
+  `CollaboratorAvatar` aqui, não um ícone genérico. Card virou "nu" (sem
+  título embutido no `LabCard`, `title = null`), igual ao `SocCard` real;
+  adicionadas as linhas "Período"/"Fonte" (que o real mostra) mantendo
+  também e-mail/time (informação própria do modelo do laboratório).
+- Shapes corrigidas para os tokens exatos: `ProfileMetric` (`cardSmall`,
+  era `RoundedCornerShape(12.dp)` solto) e `ProfileChip`/`CollaboratorChip`
+  (`chip`, 12dp, era 14dp).
+- Chips de antecedência de notificação expandidos para as 6 opções reais
+  ("No horário", "5/10/15/30 min antes", "1h antes", em 2 linhas de 3),
+  antes só 3 opções.
+
+Limites assumidos (documentados, não portados): `AdminScaleCard`/
+`UserMicrosoftAccountCard`/`DemoModeCard` reais têm fluxos condicionais
+completos de login ADM/MSAL/Dropbox — o laboratório mantém a versão visual
+estática já existente desde a FASE 9c-1 (sem login real, por definição do
+escopo do laboratório); `PauseSettingsCard` real calcula janela permitida
+dinâmica por tipo de turno — o laboratório mantém os valores já calculados
+em `summary.pauseLabel`/`pauseOffsetLabel`.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

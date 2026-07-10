@@ -41,9 +41,11 @@ import br.com.leorvergani.escalaici.kmp.lab.model.GenerateLabAlerts
 import br.com.leorvergani.escalaici.kmp.lab.model.LabAlert
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
+import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCollaboratorAvatar
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
+import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 import br.com.leorvergani.escalaici.kmp.lab.ui.util.initials
 
 @Composable
@@ -59,27 +61,27 @@ internal fun ProfileTab(
             LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
         }
         item {
-            LabCard(title = "Perfil selecionado", icon = Icons.Default.Person) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Box(
-                        modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(LabColors.primary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(summary.member.displayName.initials(), color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
+            Text("Perfil", color = LabColors.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
+        item {
+            LabCard(borderColor = LabColors.primary.copy(alpha = 0.34f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LabCollaboratorAvatar(initials = summary.member.displayName.initials(), modifier = Modifier.size(52.dp))
+                    Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
                         Text("Perfil selecionado", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelMedium)
                         Text(summary.member.displayName, color = LabColors.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(if (summary.isImported) "Escala lida do XLS" else "Demonstração local", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            if (summary.isImported) "Escala salva no dispositivo (mock do laboratório)" else "Demonstração local",
+                            color = LabColors.tertiary,
+                            style = MaterialTheme.typography.labelMedium
+                        )
                     }
                 }
-                Text(summary.member.email, color = LabColors.onSurfaceMuted)
-                Text("Time ${summary.team.name} · ${summary.team.teamId}", color = LabColors.onSurfaceMuted)
-                summary.sourceFileName?.let { fileName ->
-                    Text("Fonte: $fileName", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
+                Text("Período: ${summary.periodLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Fonte: ${summary.sourceFileName ?: "mock do laboratório"}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(summary.member.email, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = onLogout) {
-                    Text("Sair (login fake)")
+                    Text("Sair (login fake)", color = LabColors.primary)
                 }
             }
         }
@@ -147,8 +149,13 @@ internal fun ProfileTab(
                 Text("Receba um aviso antes do seu turno começar.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     ProfileChip("No horário", false, Modifier.weight(1f))
+                    ProfileChip("5 min antes", false, Modifier.weight(1f))
+                    ProfileChip("10 min antes", false, Modifier.weight(1f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     ProfileChip("15 min antes", true, Modifier.weight(1f))
                     ProfileChip("30 min antes", false, Modifier.weight(1f))
+                    ProfileChip("1h antes", false, Modifier.weight(1f))
                 }
                 Text("Analista: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 DisabledAction("Reprogramar notificações")
@@ -199,9 +206,9 @@ internal fun ProfileTab(
 private fun ProfileMetric(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(LabShapes.cardSmall)
             .background(LabColors.surfaceElevated.copy(alpha = 0.62f))
-            .border(1.dp, LabColors.primary.copy(alpha = 0.18f), RoundedCornerShape(12.dp))
+            .border(1.dp, LabColors.primary.copy(alpha = 0.18f), LabShapes.cardSmall)
             .padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -237,9 +244,9 @@ private fun VisualToggle(label: String, checked: Boolean) {
 private fun ProfileChip(text: String, selected: Boolean, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(LabShapes.chip)
             .background(if (selected) LabColors.primary.copy(alpha = 0.20f) else LabColors.surfaceElevated.copy(alpha = 0.78f))
-            .border(1.dp, if (selected) LabColors.primary.copy(alpha = 0.62f) else LabColors.outline.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
+            .border(1.dp, if (selected) LabColors.primary.copy(alpha = 0.62f) else LabColors.outline.copy(alpha = 0.55f), LabShapes.chip)
             .padding(horizontal = 8.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {

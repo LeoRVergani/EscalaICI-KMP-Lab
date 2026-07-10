@@ -168,6 +168,31 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.9 — polimento fino da aba Perfil
+
+Data da validacao: 2026-07-09.
+
+Comparado `ProfileTab.kt` com `ui/settings/SettingsScreen.kt` real.
+Adicionado titulo de secao "Perfil". Card "Perfil selecionado" trocou o box
+quadrado por `LabCollaboratorAvatar` (avatar circular, igual ao real) e
+virou card "nu"; adicionadas linhas Periodo/Fonte mantendo email/time.
+Shapes corrigidas (`ProfileMetric`/`ProfileChip` para os tokens exatos).
+Chips de antecedencia de notificacao expandidos para as 6 opcoes reais.
+
+Limites assumidos: fluxos de login ADM/MSAL/Dropbox continuam visuais
+estaticos (fora de escopo do laboratorio); janela de pausa dinamica por
+tipo de turno nao portada.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuicao Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.8 — correcao do gradiente + polimento da aba Alertas
 
 Data da validacao: 2026-07-09.
