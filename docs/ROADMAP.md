@@ -264,6 +264,40 @@ Comandos executados com sucesso:
 Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
 continuam compilando.
 
+## FASE 10.7 — Polimento fino da aba Importar
+
+- **Status:** DONE
+- `ImportTab.kt` reescrita como porte de `ui/settings/ImportScaleScreen.kt`
+  real: título/subtítulo simples "Importar escala" (sem hero/banner — o
+  real não tem hero aqui, só texto), `LocalFileCard` clicável por inteiro
+  (ícone `FolderOpen`/`Error` conforme estado, `SuccessStatusPill` "Escala
+  analisada e salva com sucesso"), `ScaleSummaryCard` com diagnóstico
+  OK/Atenção por aba (`DiagnosticLine`) e seções rotuladas
+  ("Abas encontradas", "Colaborador selecionado", "Dias processados",
+  "Status", "Colaboradores encontrados"), `IdentifiedCollaboratorCard`
+  ("Identidade da escala") e `CloudFileCard` ("Arquivo em nuvem" com
+  "Escolher arquivo"/"Procurar escalas").
+- "Procurar escalas" (Dropbox) fica desabilitado — fora de escopo do
+  laboratório.
+- **Mantido, mas documentado como acréscimo do laboratório**: o seletor de
+  colaborador da pré-visualização (`CollaboratorPreviewCard`) não existe no
+  app real (lá a identidade vem do login, não de escolha manual) — é uma
+  peça própria do laboratório para demonstrar a leitura de múltiplos
+  escalistas do XLS, mantida por valor de demonstração.
+- Limite assumido: não há estado "Loading" (a leitura do laboratório é
+  síncrona via callback da plataforma, sem uma etapa de cópia assíncrona
+  como no real).
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

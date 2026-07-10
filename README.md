@@ -168,6 +168,30 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.7 — polimento fino da aba Importar
+
+Data da validacao: 2026-07-09.
+
+`ImportTab.kt` reescrita como porte de `ui/settings/ImportScaleScreen.kt`
+real: titulo/subtitulo simples (sem hero — o real nao tem), `LocalFileCard`
+clicavel por inteiro com estados Idle/Erro/Sucesso, `ScaleSummaryCard` com
+diagnostico OK/Atencao por aba, `IdentifiedCollaboratorCard` e
+`CloudFileCard`. "Procurar escalas" (Dropbox) desabilitado.
+
+Mantido (documentado como acrescimo do laboratorio, nao existe no real): o
+seletor de colaborador da pre-visualizacao, ja que aqui a identidade nao
+vem de login real.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuicao Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.6 — polimento fino da aba Escala
 
 Data da validacao: 2026-07-09.
