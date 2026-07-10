@@ -45,11 +45,11 @@ import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.kmp.lab.model.GenerateLabAlerts
 import br.com.leorvergani.escalaici.kmp.lab.model.LabAlert
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
-import br.com.leorvergani.escalaici.kmp.lab.ui.components.HeroCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
+import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 
 @Composable
 internal fun AlertsTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
@@ -89,28 +89,51 @@ internal fun AlertsTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
     }
 }
 
+/**
+ * Porte literal de `AlertsHero` (`ui/alerts/AlertsScreen.kt` real): shape
+ * `cardLarge`, borda `primary@0.30`, gradiente `#0B274F,#111A31,#24104D` —
+ * sem a textura `NocHeroTexture` do `HeroCard` compartilhado (o real não
+ * tem textura aqui), por isso não reaproveita o `HeroCard`.
+ */
 @Composable
 private fun AlertsHero(summary: ScheduleSummary, alerts: List<LabAlert>) {
-    val critical = alerts.count { it.severity == LabAlert.Severity.CRITICO }
-    HeroCard {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("Alertas da escala", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                Text("${alerts.size} itens gerados pela escala ${if (summary.isImported) "real" else "demo"}", color = Color.White.copy(alpha = 0.72f), style = MaterialTheme.typography.bodySmall)
+    Surface(
+        shape = LabShapes.cardLarge,
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, LabColors.primary.copy(alpha = 0.30f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF0B274F), Color(0xFF111A31), Color(0xFF24104D))))
+                .padding(18.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Alertas da escala", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                        Text("${alerts.size} itens gerados pela escala ${if (summary.isImported) "real" else "demo"}", color = Color.White.copy(alpha = 0.72f), style = MaterialTheme.typography.bodySmall)
+                    }
+                    CountBadge(alerts.size)
+                }
                 Text("Analista: ${summary.member.scaleName}", color = Color.White.copy(alpha = 0.82f), style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("Período: ${summary.periodLabel}", color = Color.White.copy(alpha = 0.68f), style = MaterialTheme.typography.bodySmall)
             }
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.10f))
-                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(critical.toString(), color = if (critical > 0) Color(0xFFFCA5A5) else Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-            }
         }
+    }
+}
+
+@Composable
+private fun CountBadge(count: Int) {
+    Box(
+        modifier = Modifier
+            .size(46.dp)
+            .clip(LabShapes.cardSmall)
+            .background(Color.White.copy(alpha = 0.10f))
+            .border(1.dp, Color.White.copy(alpha = 0.18f), LabShapes.cardSmall),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("$count", color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
     }
 }
 
@@ -132,9 +155,9 @@ private fun AlertSummaryRow(alerts: List<LabAlert>) {
 private fun AlertSummaryCard(item: AlertSummarySpec, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(LabShapes.cardMedium)
             .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(item.color.copy(alpha = 0.20f), LabColors.surface.copy(alpha = 0.94f))))
-            .border(1.dp, item.color.copy(alpha = 0.46f), RoundedCornerShape(12.dp))
+            .border(1.dp, item.color.copy(alpha = 0.46f), LabShapes.cardMedium)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -153,9 +176,9 @@ private fun AlertFilterRow(selected: AlertFilter, onSelect: (AlertFilter) -> Uni
             val color = filter.color
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(LabShapes.chip)
                     .background(color.copy(alpha = if (active) 0.20f else 0.08f))
-                    .border(1.dp, color.copy(alpha = if (active) 0.48f else 0.22f), RoundedCornerShape(18.dp))
+                    .border(1.dp, color.copy(alpha = if (active) 0.48f else 0.22f), LabShapes.chip)
                     .clickable { onSelect(filter) }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -174,7 +197,7 @@ private fun AlertFilterRow(selected: AlertFilter, onSelect: (AlertFilter) -> Uni
 private fun PremiumAlertCard(alert: LabAlert, summary: ScheduleSummary) {
     val color = alert.severity.alertColor()
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = LabShapes.cardMedium,
         color = LabColors.surface.copy(alpha = 0.88f),
         border = BorderStroke(1.dp, color.copy(alpha = 0.24f)),
         modifier = Modifier.fillMaxWidth()
@@ -192,13 +215,7 @@ private fun PremiumAlertCard(alert: LabAlert, summary: ScheduleSummary) {
                         SeverityBadge(alert.severity)
                     }
                     Text(alert.message, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                    Text(
-                        "Fonte: ${summary.sourceFileName ?: "mock do laboratório"}",
-                        color = LabColors.onSurfaceMuted.copy(alpha = 0.72f),
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    AlertContextLine(alert = alert, summary = summary)
                     alert.date?.let { date ->
                         Text(date.fullDateLabel(), color = color, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     }
@@ -209,9 +226,25 @@ private fun PremiumAlertCard(alert: LabAlert, summary: ScheduleSummary) {
 }
 
 @Composable
+private fun AlertContextLine(alert: LabAlert, summary: ScheduleSummary) {
+    val text = if (alert.title.contains("Fonte", ignoreCase = true)) {
+        "${summary.periodLabel} • Analista: ${summary.member.scaleName}"
+    } else {
+        "Fonte: ${summary.sourceFileName ?: "mock do laboratório"}"
+    }
+    Text(
+        text,
+        color = LabColors.onSurfaceMuted.copy(alpha = 0.72f),
+        style = MaterialTheme.typography.labelSmall,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
 private fun SeverityBadge(severity: LabAlert.Severity) {
     val color = severity.alertColor()
-    Box(modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.15f)).border(1.dp, color.copy(alpha = 0.34f), RoundedCornerShape(14.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+    Box(modifier = Modifier.clip(LabShapes.chip).background(color.copy(alpha = 0.15f)).border(1.dp, color.copy(alpha = 0.34f), LabShapes.chip).padding(horizontal = 8.dp, vertical = 4.dp)) {
         Text(severity.label, color = color, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
     }
 }

@@ -168,6 +168,33 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.8 — correcao do gradiente + polimento da aba Alertas
+
+Data da validacao: 2026-07-09.
+
+**Bug corrigido**: `AlertsHero` reaproveitava o gradiente/textura do
+`HeroCard` compartilhado; o real usa gradiente proprio
+`#0B274F,#111A31,#24104D`, shape `cardLarge` e sem textura — virou um
+componente bespoke fiel ao real. `CountBadge` corrigido para mostrar total
+de alertas (nao so criticos). Shapes corrigidas para os tokens exatos
+(`cardMedium`/`chip`) em `AlertSummaryCard`/`AlertFilterRow`/
+`PremiumAlertCard`/`SeverityBadge`. `AlertContextLine` novo replica a
+logica real de contexto (Fonte vs periodo+analista).
+
+Limites assumidos: laboratorio mantem geracao de alertas tambem em modo
+demo (decisao da FASE 9c-1, mantida de proposito); reformato de mensagem
+por regex do real nao portado (templates proprios do `GenerateLabAlerts`).
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuicao Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.7 — polimento fino da aba Importar
 
 Data da validacao: 2026-07-09.

@@ -298,6 +298,47 @@ Comandos executados com sucesso:
 Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
 continuam compilando.
 
+## FASE 10.8 — Polimento + correção do gradiente da aba Alertas
+
+- **Status:** DONE
+- **Bug corrigido** (identificado ainda na fase de design, confirmado por
+  grep no real): `AlertsHero` usava o gradiente/textura do `HeroCard`
+  compartilhado (o mesmo de Hoje/Importar); o real usa gradiente próprio
+  `#0B274F,#111A31,#24104D`, shape `cardLarge` (20dp, não 12dp), borda
+  `primary@0.30` (não a borda azul-acinzentada fixa do hero comum) e **sem
+  nenhuma textura** — por isso `AlertsHero` deixou de reaproveitar o
+  `HeroCard` e virou um `Surface`+`Box` bespoke, fiel ao real.
+- `CountBadge`: corrigido para mostrar a contagem **total** de alertas em
+  branco (46dp, `cardSmall`) — a versão anterior mostrava só a contagem de
+  críticos com cor condicional, que não é o que o real faz.
+- Shapes corrigidas para os tokens exatos do real: `AlertSummaryCard`
+  (`cardMedium`, 16dp, era 12dp), `AlertFilterRow` (`chip`, 12dp, era
+  18dp), `PremiumAlertCard` (`cardMedium`, era 12dp), `SeverityBadge`
+  (`chip`, era 14dp).
+- `AlertContextLine` (novo): replica a lógica real — alerta com título
+  "Fonte" mostra período+analista; qualquer outro mostra "Fonte: arquivo".
+
+Limites assumidos (documentados, não portados):
+- o real mostra um estado vazio distinto (`DemoAlertsEmptyState`, zero
+  alertas) quando não há escala importada; o laboratório optou por manter
+  a geração de alertas também em modo demo (usando os dias mock), decisão
+  já tomada na FASE 9c-1 e mantida aqui de propósito — mostra a lógica de
+  alertas "funcionando de verdade" na demonstração, em vez de uma tela
+  vazia;
+- o reformato de mensagem por regex (`formatAlertMessage`, específico dos
+  templates do `GenerateScaleAlertsUseCase` real) não foi portado, pois os
+  templates do `GenerateLabAlerts` do laboratório já têm formato próprio.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE
