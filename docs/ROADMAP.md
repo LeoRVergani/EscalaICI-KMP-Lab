@@ -7,6 +7,24 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 10.0 — Split mecânico do App.kt (porte visual completo)
+
+- **Status:** DONE
+- Nota: nova série `FASE 10.x`, para paridade visual **completa** com o app
+  Android real (correção de escopo pedida pelo usuário — a aproximação da
+  FASE 9c-1 não é suficiente). Plano completo em
+  `/home/lvergani/.claude/plans/humble-spinning-yao.md`.
+- `App.kt` (1831 linhas) splitado em: `ui/theme/{LabColors,LabTheme,ShiftColors}.kt`,
+  `ui/components/{PremiumBackground,LabCard,PageList}.kt`, `ui/util/StringFormatting.kt`,
+  `ui/{LoginGateScreen,TodayTab,ScheduleTab,ImportTab,AlertsTab,ProfileTab}.kt`,
+  e `ui/App.kt` (shell: `EscalaIciLabApp`, `LabTab`, `BottomNav`).
+- Split mecânico: só `package`/`import`/`private`→`internal`/movimentação de
+  bloco — nenhuma mudança de cor, texto ou comportamento, exceto `HeroCard`
+  ganhar um parâmetro `gradient` com valor padrão idêntico ao anterior
+  (habilita a correção da FASE 10.8 sem mudar nada agora).
+- Evidência: build `assembleDebug` + `wasmJsBrowserDistribution` +
+  `testDebugUnitTest` (13 testes) passando sem alteração de resultado.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

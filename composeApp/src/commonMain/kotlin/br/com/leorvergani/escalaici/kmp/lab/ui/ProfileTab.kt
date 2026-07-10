@@ -1,0 +1,237 @@
+package br.com.leorvergani.escalaici.kmp.lab.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import br.com.leorvergani.escalaici.kmp.lab.model.GenerateLabAlerts
+import br.com.leorvergani.escalaici.kmp.lab.model.LabAlert
+import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
+import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
+import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
+import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
+import br.com.leorvergani.escalaici.kmp.lab.ui.util.initials
+
+@Composable
+internal fun ProfileTab(summary: ScheduleSummary, onLogout: () -> Unit) {
+    val criticalAlerts = remember(summary) { GenerateLabAlerts(summary).count { it.severity == LabAlert.Severity.CRITICO } }
+    PageList(title = "Perfil", subtitle = if (summary.isImported) "Perfil importado do XLS" else "Identidade demonstrativa") {
+        item {
+            LabCard(title = "Perfil selecionado", icon = Icons.Default.Person) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(
+                        modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(LabColors.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(summary.member.displayName.initials(), color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Perfil selecionado", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelMedium)
+                        Text(summary.member.displayName, color = LabColors.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (summary.isImported) "Escala lida do XLS" else "Demonstração local", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                Text(summary.member.email, color = LabColors.onSurfaceMuted)
+                Text("Time ${summary.team.name} · ${summary.team.teamId}", color = LabColors.onSurfaceMuted)
+                summary.sourceFileName?.let { fileName ->
+                    Text("Fonte: $fileName", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                TextButton(onClick = onLogout) {
+                    Text("Sair (login fake)")
+                }
+            }
+        }
+        item {
+            LabCard(title = "Identidade da escala", icon = Icons.Default.Security, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
+                Text("Colaborador identificado: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("A associação Microsoft -> member -> teamId está representada visualmente no lab.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        item {
+            LabCard(title = "Resumo do perfil", icon = Icons.Default.Analytics, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    ProfileMetric("Trabalho", "${summary.workedDays}d", Modifier.weight(1f))
+                    ProfileMetric("Folgas", "${summary.restDays}d", Modifier.weight(1f))
+                    ProfileMetric("Horas", "${summary.totalHours}h", Modifier.weight(1f))
+                }
+                Text("Alertas críticos: $criticalAlerts", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        item {
+            LabCard(title = "Administração da escala", icon = Icons.Default.AdminPanelSettings, borderColor = LabColors.primary.copy(alpha = 0.22f)) {
+                StatusLine("Modo ADM", "visual no lab")
+                StatusLine("OneDrive ADM", "não conectado")
+                StatusLine("Dropbox ADM", "não conectado")
+                StatusLine("Mês atual", if (summary.isImported) "arquivo carregado" else "aguardando importação")
+                DisabledAction("Importação Firebase")
+                DisabledAction("Buscar escala no OneDrive ADM")
+                DisabledAction("Conectar Dropbox ADM")
+                DisabledAction("Publicar escala no Dropbox")
+            }
+        }
+        item {
+            LabCard(title = "Conta corporativa", icon = Icons.Default.Security, borderColor = LabColors.tertiary.copy(alpha = 0.25f)) {
+                StatusLine("Conta", "não conectada no lab")
+                Text("Entre para identificar seu usuário no app real. MSAL fica fora desta POC.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                DisabledAction("Entrar com conta corporativa")
+            }
+        }
+        item {
+            LabCard(title = "Modo demo", icon = Icons.Default.Person, borderColor = LabColors.outline.copy(alpha = 0.32f)) {
+                Text("Dados fake, somente laboratório.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                DisabledAction("Entrar como Teste SOC A")
+                DisabledAction("Entrar como Teste SOC B")
+                DisabledAction("Entrar como Aprovador SOC")
+                DisabledAction("Criar/atualizar time demo")
+            }
+        }
+        item {
+            LabCard(title = "Trocas de escala", icon = Icons.Default.SwapHoriz, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
+                Text("Veja e responda pedidos de troca de turno.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                DisabledAction("Ver minhas solicitações")
+            }
+        }
+        item {
+            LabCard(title = "Notificações", icon = Icons.Default.Notifications, borderColor = LabColors.primary.copy(alpha = 0.30f), gradient = listOf(LabColors.surfaceElevated.copy(alpha = 0.88f), LabColors.surface.copy(alpha = 0.96f))) {
+                StatusLine("Status", "ativas visualmente")
+                Text("Alertas são problemas detectados na escala. Notificações são lembretes enviados pelo celular.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                VisualToggle("Plantão amanhã", true)
+                VisualToggle("Folga amanhã", true)
+                VisualToggle("Saída do turno", false)
+                HorizontalDivider(color = LabColors.outline.copy(alpha = 0.22f))
+                Text("Entrada do turno", color = LabColors.onSurface, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                Text("Receba um aviso antes do seu turno começar.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    ProfileChip("No horário", false, Modifier.weight(1f))
+                    ProfileChip("15 min antes", true, Modifier.weight(1f))
+                    ProfileChip("30 min antes", false, Modifier.weight(1f))
+                }
+                Text("Analista: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                DisabledAction("Reprogramar notificações")
+            }
+        }
+        item {
+            LabCard(title = "Pausa de 15 minutos", icon = Icons.Default.Schedule, iconTint = LabColors.tertiary, borderColor = LabColors.tertiary.copy(alpha = 0.30f), gradient = listOf(Color(0xFF0D2832), Color(0xFF092A28), Color(0xFF0D1730))) {
+                Text("Horário calculado a partir do próximo turno do analista selecionado.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                VisualToggle("Lembrete de pausa", true)
+                Text("Permitido 1h após o início do turno", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    ProfileChip(summary.pauseLabel.substringBefore(" - "), true, Modifier.weight(1f))
+                    ProfileChip("Outro horário", false, Modifier.weight(1f))
+                }
+                Text("Analista: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        item {
+            LabCard(title = "Resumo", icon = Icons.Default.Checklist, borderColor = LabColors.primary.copy(alpha = 0.22f)) {
+                Text("Entrada do turno: 15 min antes", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Pausa: ${summary.pauseLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Janela permitida: ${summary.pauseOffsetLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        item {
+            LabCard(title = "Armazenamento local", icon = Icons.Default.Storage, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
+                Text("Arquivo salvo: ${summary.sourceFileName ?: "mock interno do laboratório"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Status: ${if (summary.isImported) "Escala lida na sessão Web/Android Lab" else "Sem XLS aplicado"}", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
+                DisabledAction("Remover escala local")
+            }
+        }
+        item {
+            LabCard(title = "Aplicativo", icon = Icons.Default.SystemUpdate, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
+                Text("Versão atual: 0.1.0-lab", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Atualização APK/Dropbox fica no app Android real.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                DisabledAction("Atualizar aplicativo")
+            }
+        }
+        item {
+            LabCard(title = "POC KMP", icon = Icons.Default.CloudDone, borderColor = LabColors.outline.copy(alpha = 0.35f)) {
+                Text("Visual completo em laboratório. MSAL, Firebase, Dropbox, notificações reais e parser oficial continuam fora desta etapa.", color = LabColors.onSurfaceMuted)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(LabColors.surfaceElevated.copy(alpha = 0.62f))
+            .border(1.dp, LabColors.primary.copy(alpha = 0.18f), RoundedCornerShape(12.dp))
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(value, color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(label, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun StatusLine(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, modifier = Modifier.width(112.dp), color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        Text(value, modifier = Modifier.weight(1f), color = LabColors.onSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun DisabledAction(label: String) {
+    TextButton(onClick = {}) {
+        Text(label, color = LabColors.primary.copy(alpha = 0.82f))
+    }
+}
+
+@Composable
+private fun VisualToggle(label: String, checked: Boolean) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = LabColors.onSurface, style = MaterialTheme.typography.bodyMedium)
+        Switch(checked = checked, onCheckedChange = {})
+    }
+}
+
+@Composable
+private fun ProfileChip(text: String, selected: Boolean, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) LabColors.primary.copy(alpha = 0.20f) else LabColors.surfaceElevated.copy(alpha = 0.78f))
+            .border(1.dp, if (selected) LabColors.primary.copy(alpha = 0.62f) else LabColors.outline.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = if (selected) Color.White else LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}

@@ -168,6 +168,46 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.0 — split mecânico do App.kt
+
+Data da validacao: 2026-07-09.
+
+Objetivo desta etapa: preparar o terreno para o porte visual **completo** do
+app Android real (correção de escopo — a FASE 9c-1 foi só uma aproximação
+visual, o objetivo agora é paridade total de cores, tipografia, shapes,
+ícones e telas). Plano completo em
+`/home/lvergani/.claude/plans/humble-spinning-yao.md`.
+
+`ui/App.kt` (1831 linhas) foi splitado, sem nenhuma mudança de valor/cor/texto,
+em:
+
+- `ui/theme/LabColors.kt`, `LabTheme.kt`, `ShiftColors.kt`;
+- `ui/components/PremiumBackground.kt`, `LabCard.kt` (`LabCard`+`HeroCard`+
+  `NocHeroTexture`), `PageList.kt`;
+- `ui/util/StringFormatting.kt` (`String.initials()`);
+- `ui/LoginGateScreen.kt`, `TodayTab.kt`, `ScheduleTab.kt`, `ImportTab.kt`,
+  `AlertsTab.kt`, `ProfileTab.kt`;
+- `ui/App.kt` (shell: `EscalaIciLabApp`, `LabTab`, `BottomNav`).
+
+Única mudança além de puro split: `HeroCard` ganhou um parâmetro `gradient`
+com valor padrão idêntico ao gradiente fixo anterior — habilita a correção
+de um gradiente incorreto na aba Alertas (FASE 10.8) sem alterar nada agora.
+
+Limites assumidos:
+
+- nenhum arquivo do app Android principal foi alterado;
+- nenhuma mudança visual nesta etapa — só reorganização de código.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 9g — PWA real (manifest, icones, service worker, cache offline)
 
 Data da validacao: 2026-07-09.
