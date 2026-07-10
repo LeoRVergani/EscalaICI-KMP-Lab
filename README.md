@@ -168,6 +168,33 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.5 — polimento fino da aba Hoje
+
+Data da validacao: 2026-07-09.
+
+Comparado `TodayTab.kt` linha a linha com `ui/home/TodayScreen.kt` real e
+corrigido: estado vazio da hero (sem turno) com `ImportVisualButton` real;
+"Analista:"/"Com:" como texto anotado com rotulo azul Black; clima com
+emoji "☀️" em vez de icone Material; gradiente/borda de
+`WeekSummaryCard`/`EventsCard` para os valores exatos do `TodayCard` real;
+badge "demo" so quando nao importado; borda do card de Pausa com o teal
+literal `#14B8A6` (nao `LabColors.tertiary`); titulo/subtitulo do resumo do
+periodo distinguindo demo de real; dimensoes exatas do `MetricCard`.
+
+Limite assumido: variacoes "compact" do real para telas estreitas
+(`BoxWithConstraints`) nao portadas — o laboratorio roda num container
+sempre largo, entao nao se aplicam.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuicao Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.4 — navegacao em pilha + PremiumHeader
 
 Data da validacao: 2026-07-09.

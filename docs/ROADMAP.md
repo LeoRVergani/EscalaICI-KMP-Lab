@@ -171,6 +171,54 @@ Comandos executados com sucesso:
 Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
 continuam compilando.
 
+## FASE 10.5 — Polimento fino da aba Hoje
+
+- **Status:** DONE
+- Comparado `TodayTab.kt` linha a linha com `ui/home/TodayScreen.kt` real.
+- `NextTurnHero`: agora trata de fato o caso `nextShift == null` (fiel ao
+  real) — "Importe uma escala" + texto explicativo + `ImportVisualButton`
+  (chip "Importar escala" com seta), sem chip de clima/linha de equipe
+  (que só existem quando há turno). Caso populado: "Analista:"/"Com:" viram
+  texto anotado com o rótulo em azul (`#60A5FA`) Black, igual ao real
+  (`heroMetaText`).
+- `WeatherChip`: emoji "☀️" (32sp) em vez do ícone `Icons.Default.Cloud` —
+  o real não usa nenhum ícone Material aqui, só emoji.
+- `WeekSummaryCard`: gradiente/borda trocados para os valores do
+  `TodayCard` real (`#0B1B2C,#0D1A2D` / `SocPrimary@0.42`, antes usava os
+  defaults genéricos do `LabCard`); badge agora é `"demo"` só quando não
+  importado (removida a tag `"xls"`, que não existe no real).
+- `EventsCard`: mesmo ajuste de gradiente/borda; textos de evento
+  reescritos via `ShiftDay?.eventLabel()` igual ao real ("Não encontrado"
+  em vez de "--/-- · Sem turno").
+- `PauseCard`: corrigida a cor da borda para o teal literal `#14B8A6`
+  (o real usa essa cor fixa pro card, diferente do `SocTertiary`/
+  `LabColors.tertiary` #18A874 usado só no ícone).
+- `PeriodSummary`: título/subtítulo agora distinguem demo ("RESUMO DA
+  SEMANA"/"Demonstração" + badge "demo") de real ("RESUMO DO PERÍODO"/
+  período) — o real nunca mostra "RESUMO DO PERÍODO" em modo demo.
+- `MetricCard`: dimensões exatas do real (altura 118dp não 112dp, ícone
+  20dp não 19dp, box do ícone 36dp não 34dp, alpha do gradiente 0.12 não
+  0.13).
+- `onImportClick` novo: o botão da hero vazia agora navega de fato para a
+  aba Importar (`activeTab = LabTab.Importar` no shell).
+
+Limite assumido (documentado, não corrigido): o real usa um `TodayCard`
+privado com variações "compact" via `BoxWithConstraints` para telas
+estreitas (`QuickEventsCard`/`PauseCard` lado a lado, métricas em
+`LazyRow`) — o laboratório roda sempre num container largo
+(`widthIn(max=760.dp)`), então essas variações de largura estreita não se
+aplicam e não foram portadas.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
+continuam compilando.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

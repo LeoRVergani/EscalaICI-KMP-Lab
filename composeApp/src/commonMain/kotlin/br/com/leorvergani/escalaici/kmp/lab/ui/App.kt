@@ -166,7 +166,11 @@ fun EscalaIciLabApp() {
                                 )
                             } else {
                                 when (activeTab) {
-                                    LabTab.Hoje -> TodayTab(summary = summary, onOpenPlantao = onOpenPlantao)
+                                    LabTab.Hoje -> TodayTab(
+                                        summary = summary,
+                                        onOpenPlantao = onOpenPlantao,
+                                        onImportClick = { activeTab = LabTab.Importar }
+                                    )
                                     LabTab.Escala -> ScheduleTab(summary = summary, onOpenPlantao = onOpenPlantao)
                                     LabTab.Importar -> ImportTab(
                                         preview = importPreview,
