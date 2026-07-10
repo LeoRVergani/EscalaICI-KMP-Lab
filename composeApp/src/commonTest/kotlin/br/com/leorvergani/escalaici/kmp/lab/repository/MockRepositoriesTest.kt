@@ -62,7 +62,7 @@ class MockRepositoriesTest {
                 targetMemberId = "b@ici.tec.br",
                 originalDate = "2026-07-06",
                 requestedDate = "2026-07-07",
-                status = br.com.leorvergani.escalaici.kmp.lab.model.SwapStatus.PENDING
+                status = br.com.leorvergani.escalaici.kmp.lab.model.SwapStatus.PENDENTE_TECNICO_DESTINO
             )
         )
 

@@ -4,17 +4,13 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Home
@@ -26,7 +22,6 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -46,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.kmp.lab.model.ImportedWorkbook
 import br.com.leorvergani.escalaici.kmp.lab.model.LabWorkbookParser
@@ -57,7 +51,6 @@ import br.com.leorvergani.escalaici.kmp.lab.model.mockScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.platform.rememberWorkbookImportLauncher
 import br.com.leorvergani.escalaici.kmp.lab.repository.InMemoryAuthSessionRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.MockMemberRepository
-import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumBackground
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColorScheme
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
@@ -160,8 +153,8 @@ fun EscalaIciLabApp() {
                         ) {
                             when (stackedScreen) {
                                 StackedScreen.PLANTAO -> PlantaoScreen(onBack = { stackedScreen = null })
-                                StackedScreen.SWAP -> StackedScreenPlaceholder(
-                                    title = StackedScreen.SWAP.title,
+                                StackedScreen.SWAP -> ShiftSwapScreen(
+                                    currentMemberId = summary.member.id,
                                     onBack = { stackedScreen = null }
                                 )
                                 null -> {
@@ -224,37 +217,6 @@ private fun WorkbookImportResult.toImportPreview(): ScheduleImportPreview {
             errors = listOf(message),
             summary = null
         )
-    }
-}
-
-/**
- * Placeholder temporario para as telas empilhadas (Plantao/Trocas de
- * escala) enquanto elas nao sao implementadas de fato (FASES 10.10/10.11).
- */
-@Composable
-private fun StackedScreenPlaceholder(title: String, onBack: () -> Unit) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = LabColors.onSurface)
-                }
-                Text(title, color = LabColors.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            }
-        }
-        item {
-            LabCard(title = "Em construção") {
-                Text(
-                    "Esta tela ainda sera implementada no laboratorio (mock visual, sem Firebase real).",
-                    color = LabColors.onSurfaceMuted,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
     }
 }
 

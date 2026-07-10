@@ -189,7 +189,41 @@ fun mockShiftSwapRequests(): List<ShiftSwapRequest> = listOf(
         targetMemberId = "alamancio@ici.tec.br",
         originalDate = "2026-07-08",
         requestedDate = "2026-07-09",
-        status = SwapStatus.PENDING
+        status = SwapStatus.PENDENTE_TECNICO_DESTINO,
+        requesterName = "lvergani",
+        targetName = "alamancio",
+        requesterShiftType = ShiftType.MANHA,
+        targetShiftType = ShiftType.TARDE,
+        teamName = "SOC",
+        createdAt = "2026-07-07"
+    ),
+    ShiftSwapRequest(
+        id = "swap-2",
+        requesterMemberId = "altaborda@ici.tec.br",
+        targetMemberId = "lvergani@ici.tec.br",
+        originalDate = "2026-07-12",
+        requestedDate = "2026-07-13",
+        status = SwapStatus.PENDENTE_TECNICO_DESTINO,
+        requesterName = "altaborda",
+        targetName = "lvergani",
+        requesterShiftType = ShiftType.NOITE,
+        targetShiftType = ShiftType.MANHA,
+        teamName = "SOC",
+        createdAt = "2026-07-06"
+    ),
+    ShiftSwapRequest(
+        id = "swap-3",
+        requesterMemberId = "alamancio@ici.tec.br",
+        targetMemberId = "lvergani@ici.tec.br",
+        originalDate = "2026-07-03",
+        requestedDate = "2026-07-04",
+        status = SwapStatus.APROVADA,
+        requesterName = "alamancio",
+        targetName = "lvergani",
+        requesterShiftType = ShiftType.TARDE,
+        targetShiftType = ShiftType.MANHA,
+        teamName = "SOC",
+        createdAt = "2026-07-01"
     )
 )
 

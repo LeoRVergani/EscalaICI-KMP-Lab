@@ -412,6 +412,52 @@ Comandos executados com sucesso:
 Resultados: 13 testes continuam passando; APK debug e distribuição Web/Wasm
 continuam compilando.
 
+## FASE 10.11 — Tela Trocas de escala nova (mock)
+
+- **Status:** DONE
+- `ui/ShiftSwapScreen.kt` (novo): porte de `ui/swap/ShiftSwapScreen.kt`
+  real — seções "Recebidos"/"Enviados" (`ShiftSwapSectionCard` equivalente
+  inline), `ShiftSwapRequestCard` (nome do colega, "Seu turno: X",
+  "Turno de Y: Z", "Time: X", "Status: X", "Criada em: X"), botões
+  Aceitar/Recusar (recebidos, quando `PENDENTE_TECNICO_DESTINO`) ou
+  Cancelar (enviados). Sem Firestore — aceitar/recusar/cancelar mutam o
+  status **em memória** (`remember { mutableStateOf(...) }`), sem
+  persistência real.
+- **Extensão de modelo** (única fase que mexeu em `DomainModels.kt`):
+  `SwapStatus` foi de 4 para os 6 valores textuais reais
+  (`PENDENTE_TECNICO_DESTINO`, `AGUARDANDO_COORDENADOR`, `APROVADA`,
+  `RECUSADA_TECNICO_DESTINO`, `RECUSADA_COORDENADOR`, `CANCELADA`);
+  `ShiftSwapRequest` ganhou campos opcionais com default
+  (`requesterName`, `targetName`, `requesterShiftType`, `targetShiftType`,
+  `teamName`, `createdAt`) — todos com valor padrão, então
+  `MockShiftSwapRepository`/testes existentes continuam compilando sem
+  alteração (só uma referência a `SwapStatus.PENDING` no teste precisou
+  virar `SwapStatus.PENDENTE_TECNICO_DESTINO`).
+- `mockShiftSwapRequests()` engordado de 1 para 3 pedidos, cobrindo
+  "recebido pendente", "enviado pendente" e "já aprovado" (usando
+  lvergani/alamancio/altaborda, os 3 membros mock já mapeados no login
+  fake da FASE 10.3).
+- Substituído no shell (`App.kt`): "Ver minhas solicitações" (Perfil) agora
+  abre esta tela de verdade, filtrando por `summary.member.id`. Removido o
+  `StackedScreenPlaceholder` (código morto — as duas telas empilhadas
+  agora são reais).
+
+Limites assumidos: sem Firestore/backend — ações alteram só o estado local
+da tela (não persistem entre reaberturas); sem verificação de "logado"
+(a tela só é alcançável depois do login fake, então essa checagem do real
+não se aplica).
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando (só 1 linha ajustada por causa da
+renomeação de `SwapStatus`); APK debug e distribuição Web/Wasm continuam
+compilando.
+
 ## FASE 9g (spec 27) — PWA real (manifest, ícones, service worker, cache offline)
 
 - **Status:** DONE

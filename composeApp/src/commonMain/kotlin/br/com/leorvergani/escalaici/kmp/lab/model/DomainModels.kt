@@ -35,11 +35,17 @@ enum class OnCallStatus {
     CANCELLED
 }
 
+/**
+ * Portado 1:1 de `ShiftSwapStatus` (app real, `data/swap/`) — 6 estados
+ * textuais distintos usados pela tela de Trocas de escala (FASE 10.11).
+ */
 enum class SwapStatus {
-    PENDING,
-    APPROVED,
-    REJECTED,
-    CANCELLED
+    PENDENTE_TECNICO_DESTINO,
+    AGUARDANDO_COORDENADOR,
+    APROVADA,
+    RECUSADA_TECNICO_DESTINO,
+    RECUSADA_COORDENADOR,
+    CANCELADA
 }
 
 enum class ScheduleSourceType {
@@ -99,7 +105,13 @@ data class ShiftSwapRequest(
     val originalDate: String,
     val requestedDate: String,
     val status: SwapStatus,
-    val notes: String? = null
+    val notes: String? = null,
+    val requesterName: String = requesterMemberId,
+    val targetName: String = targetMemberId,
+    val requesterShiftType: ShiftType? = null,
+    val targetShiftType: ShiftType? = null,
+    val teamName: String? = null,
+    val createdAt: String = ""
 )
 
 data class ImportJob(

@@ -168,6 +168,32 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 10.11 — tela Trocas de escala nova (mock)
+
+Data da validacao: 2026-07-09.
+
+`ui/ShiftSwapScreen.kt` (novo): porte de `ui/swap/ShiftSwapScreen.kt` real —
+secoes Recebidos/Enviados, cards com turno/time/status/data, botoes
+Aceitar/Recusar/Cancelar mutando o status em memoria (sem Firestore).
+
+Unica extensao de modelo do porte visual completo: `SwapStatus` foi de 4
+para os 6 valores reais; `ShiftSwapRequest` ganhou campos opcionais com
+default (nao quebra nada existente). `mockShiftSwapRequests()` engordado
+para 3 pedidos cobrindo os 3 membros mock. "Ver minhas solicitacoes"
+(Perfil) agora abre esta tela de verdade.
+
+Limites assumidos: sem persistencia real entre reaberturas da tela.
+
+Comandos executados com sucesso:
+
+```bash
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Resultados: 13 testes continuam passando; APK debug e distribuicao Web/Wasm
+continuam compilando.
+
 ## Validacao da FASE 10.10 — tela Plantao nova (mock)
 
 Data da validacao: 2026-07-09.
