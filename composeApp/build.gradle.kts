@@ -30,6 +30,8 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.cio)
         }
 
         androidMain.dependencies {
@@ -52,7 +54,7 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = "br.com.leorvergani.escalaici.kmp.lab"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-lab"
+        versionCode = 2
+        versionName = "0.1.1-lab"
     }
 }

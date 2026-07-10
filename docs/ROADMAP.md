@@ -7,6 +7,23 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 11.0 — Fundação de rede (Ktor)
+
+- **Status:** DONE
+- Nota: abre a série `FASE 11.x` — integrações reais (Dropbox, parser XLS,
+  MSAL) do app Android de produção `EscalaSOC`. Plano completo e estado
+  atual para retomada por outra IA/sessão em
+  `EscalaSOC/docs/spec/33-KMP-LAB-INTEGRACOES-REAIS.md`.
+- Adicionado `io.ktor:ktor-client-core` + `io.ktor:ktor-client-cio` em
+  `commonMain` (engine CIO cobre Android/Web/Native/JVM com uma única
+  dependência, sem `expect/actual` de engine).
+- `ktor = "3.5.1"` inicial quebrou o build Web/Wasm (stdlib não resolvida) —
+  downgrade para `ktor = "3.3.0"` (mesma linha do Kotlin 2.2 do projeto)
+  resolveu.
+- Nova regra: `versionCode`/`versionName` do lab sobem a cada sub-fase
+  (`1`/`0.1.0-lab` → `2`/`0.1.1-lab`).
+- Build Android + Web/Wasm + `testDebugUnitTest` verificados.
+
 ## FASE 10.0 — Split mecânico do App.kt (porte visual completo)
 
 - **Status:** DONE

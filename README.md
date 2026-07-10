@@ -168,6 +168,39 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 11.0 — fundacao de rede (Ktor)
+
+Inicio da serie **FASE 11.x**, que liga integracoes reais (Dropbox, parser,
+MSAL) ja usadas pelo app Android de producao `EscalaSOC`. Ver
+`docs/spec/33-KMP-LAB-INTEGRACOES-REAIS.md` (repositorio Android principal)
+para o plano completo e o estado atual, incluido para outra IA/sessao
+continuar o trabalho.
+
+- Adicionado `io.ktor:ktor-client-core` + `io.ktor:ktor-client-cio` em
+  `commonMain` (`gradle/libs.versions.toml`, `composeApp/build.gradle.kts`).
+  O engine CIO cobre JVM/Android/Native/JS/WasmJs a partir de uma unica
+  dependencia — nao precisa de engine por plataforma nem de `expect/actual`
+  so para escolher o cliente HTTP.
+- `versionCode`/`versionName` do lab passam a ser incrementados a cada
+  sub-fase (regra nova, ver `docs/spec/33-...`): `1` → `2`,
+  `0.1.0-lab` → `0.1.1-lab`.
+- Nenhuma integracao real ainda usa o Ktor nesta fase — e so a fundacao.
+
+Validado:
+
+```bash
+cd /home/lvergani/AndroidStudioProjects/EscalaICI-KMP-Lab
+./gradlew :composeApp:assembleDebug
+./gradlew :composeApp:wasmJsBrowserDistribution
+./gradlew :composeApp:testDebugUnitTest
+```
+
+Nota tecnica: a versao inicial `ktor = "3.5.1"` quebrou a compilacao Web/Wasm
+(`Missing stdlib class` no codigo gerado de resources) — incompatibilidade de
+versao entre o Kotlin do Ktor 3.5.x e o Kotlin `2.2.10` fixado neste projeto.
+Downgrade para `ktor = "3.3.0"` (construido contra Kotlin 2.2) resolveu. Se
+uma fase futura atualizar o Kotlin do projeto, reavaliar subir o Ktor junto.
+
 ## Checklist de paridade visual completa (FASE 10)
 
 A FASE 9c-1 (2026-07-07) tinha feito uma **aproximacao** visual do app real.

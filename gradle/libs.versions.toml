@@ -13,6 +13,7 @@ apachePoi = "5.2.5"
 msal = "4.9.0"
 googleServices = "4.5.0"
 firebaseBom = "34.15.0"
+ktor = "3.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -36,6 +37,8 @@ apache-poi-ooxml = { group = "org.apache.poi", name = "poi-ooxml", version.ref =
 msal = { group = "com.microsoft.identity.client", name = "msal", version.ref = "msal" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktor-client-cio = { group = "io.ktor", name = "ktor-client-cio", version.ref = "ktor" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
