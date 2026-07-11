@@ -182,6 +182,108 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 11.2c — importação real de Plantão + mais correções de fidelidade
+
+Testando o resultado real (Dropbox já configurado e funcionando pelo
+usuário), mais divergências com o app Android real foram apontadas:
+
+- **Importação de Plantão ausente**: no app real, o botão para importar o
+  relatório de plantão (COSI) fica **dentro da tela Plantão** (chip
+  "Plantão" no cabeçalho de qualquer aba → abre a tela → botão "Importar
+  relatório"), não na aba Importar — que só importa a escala 6x1. O lab
+  tinha o chip do cabeçalho, mas a tela em si não tinha nenhum jeito de
+  importar um relatório real, só mock fixo.
+  - Novo `model/PlantaoWorkbookParser.kt`: parser próprio (código novo, não
+    copiado), regras portadas **exatamente** do parser oficial
+    `PlantaoWorkbookParser.kt` (`EscalaSOC`, só leitura) — mesma busca de
+    cabeçalho por colunas "plantonista"/"data início"/"data fim" (qualquer
+    aba, normalizado sem acento/case/espaço), mesma regex de data+hora
+    (`(\d{1,2})/(\d{1,2})/(\d{2,4})\s*-?\s*(\d{1,2}):(\d{2})`, aceita "-"
+    opcional entre data e hora), mesmas 3 validações de linha (vazia →
+    ignora silenciosamente; incompleta → aviso "Linha N: plantão
+    incompleto ignorado."; fim ≤ início → aviso "Linha N: data final menor
+    ou igual à inicial."), mesma ordenação (início, depois nome), e o
+    mesmo erro exato quando nada é encontrado: "Não encontrei plantões no
+    formato esperado: Plantonista Segurança, Data Inicio e Data Fim.".
+  - `PlantaoScreen.kt`: reaproveita o mesmo `rememberWorkbookImportLauncher`
+    já usado pela escala (seletor de arquivo real Android/Web); botão
+    "Importar relatório"/"Importar outro relatório" no hero, com status
+    "Nenhum relatório real importado — mostrando dados de exemplo." /
+    "Relatório importado: `<arquivo>`" e card de erro amigável.
+  - 7 testes novos (`PlantaoWorkbookParserTest.kt`) cobrindo cada regra
+    acima com planilhas sintéticas.
+  - Limitação conhecida documentada (igual ao parser de escala): sem
+    atalho para células de data POI cruas.
+- **"Hoje" não vinha da data real do dispositivo**: `nextShift`/`nextRest`
+  eram sempre "o primeiro dia da lista importada", não a data real de
+  hoje — então em qualquer aparelho o app sempre mostrava o mesmo dia,
+  nunca o realmente atual. Novo `platform/CurrentDate.kt`
+  (`expect fun todayLabDate()`, actuals `java.time.LocalDate.now()` no
+  Android e `new Date()` via JS no Web/Wasm) usado para: `nextShift`/
+  `nextRest` (primeiro turno de trabalho/descanso **a partir de hoje**,
+  com fallback pro primeiro item se hoje não estiver nos dados), e seleção
+  inicial da aba Escala (mostra o dia de hoje se ele existir na escala
+  carregada, senão o próximo turno futuro). Consistente entre Hoje e
+  Escala agora, já que as duas usam a mesma âncora de data real.
+- **Resumo do período sem limite de ciclo**: `workedDays`/`restDays`/
+  `totalHours` contavam **todos** os dias da lista, sem checar se batiam
+  com o ciclo de pagamento do SOC (dia 26 de um mês até dia 25 do
+  próximo). O app real não tem essa validação explícita (confiava que a
+  leitura fixa de 30 linhas da aba Escala já era sempre um ciclo só) —
+  aqui adicionamos como proteção extra: novo `periodDays` (privado, em
+  `ScheduleSummary`) filtra os dias para o ciclo 26–25 ancorado em "hoje"
+  real antes de contar. Não muda o resultado para o arquivo real de hoje
+  (que já é exatamente um ciclo), só protege contra dados fora do ciclo no
+  futuro.
+- **Sugestões de pausa**: só havia 1 horário fixo + um botão "Outro
+  horário" desabilitado. Real oferece 6 sugestões (a cada 30min dentro da
+  janela permitida) — novo `ShiftType.pauseSuggestions()` +
+  `ScheduleSummary.pauseSuggestions`, renderizado em 2 linhas de 3 chips.
+- **Ícone do clima sem ícone na Web**: `WeatherChip` (Hoje) usava um
+  emoji (`"☀️"` como `Text`) em vez de um `Icon` vetorial — Compose Web/Wasm
+  (Skia) não inclui fonte de emoji colorida por padrão, então o emoji podia
+  não renderizar no navegador (funcionava no Android, que tem fonte de
+  emoji do sistema). Trocado para `Icons.Default.WbSunny`, igual ao
+  `WeatherMiniCard` da aba Escala (que já usava `Icons.Default.Cloud`,
+  vetorial, e por isso sempre funcionou nas duas plataformas).
+- **Logo do cabeçalho ainda era o escudo do SOC com "S"**: a FASE 11.0b só
+  trocou o ícone do launcher/PWA — o logo desenhado à mão dentro do
+  cabeçalho (`ui/components/SocLogo.kt`, `LabShieldLogo`, usado em toda
+  tela via `LabPremiumHeader`) continuava sendo um porte literal do
+  escudo azul/roxo com um traço em "S" do app real. Como este app
+  representa o ICI inteiro agora (não só o SOC), trocado por um mini
+  calendário sem nenhuma letra (mesmo gradiente/paleta), mesmo motivo e
+  mesmo estilo do ícone do launcher da FASE 11.0b.
+
+**Testado:**
+
+- `testDebugUnitTest`: 28 testes no total (21 + 7 novos do Plantão), 0
+  falhas.
+- Manual no emulador Android (data real do aparelho: 11/07/2026, sábado):
+  - Logo do cabeçalho: calendário, sem "S", em todas as abas.
+  - Clima: ícone de sol vetorial (não emoji) na Hoje.
+  - "Próximo turno" mudou de 06/07 (primeiro dia da lista) para **12/07**
+    (o próximo turno de trabalho real a partir de hoje, já que hoje
+    11/07 é folga no mock) — confirma a âncora de data real funcionando.
+  - Aba Escala: dia **11** (hoje real) selecionado por padrão, não mais o
+    primeiro dia com turno.
+  - Perfil: 6 chips de horário de pausa (09:00 a 11:30 para o turno
+    Manhã) em vez de 1 fixo.
+  - Plantão: botão "Importar relatório" visível e abre o seletor de
+    arquivo real do sistema (Android `OpenDocument`) sem travar.
+
+Validado:
+
+```bash
+cd /home/lvergani/AndroidStudioProjects/EscalaICI-KMP-Lab
+./gradlew :composeApp:assembleDebug :composeApp:testDebugUnitTest
+./gradlew :composeApp:wasmJsBrowserDistribution
+~/Android/Sdk/platform-tools/adb install -r composeApp/build/outputs/apk/debug/composeApp-debug.apk
+```
+
+`versionCode`/`versionName`: `8`/`0.4.1` → `9`/`0.5.0` (MINOR — importação
+real de Plantão passa a funcionar de ponta a ponta no Android/Web).
+
 ## Validacao da FASE 11.2b — fidelidade visual/funcional ao app Android real
 
 O usuário revisou o resultado visual e apontou duas divergências reais com

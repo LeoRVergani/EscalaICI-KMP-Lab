@@ -7,5 +7,5 @@ package br.com.leorvergani.escalaici.kmp.lab.model
  * constante e a fonte exibida na aba Perfil.
  */
 object AppVersion {
-    const val LABEL: String = "0.4.1"
+    const val LABEL: String = "0.5.0"
 }

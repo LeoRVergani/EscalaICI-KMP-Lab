@@ -24,6 +24,39 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   (`1`/`0.1.0-lab` → `2`/`0.1.1-lab`).
 - Build Android + Web/Wasm + `testDebugUnitTest` verificados.
 
+## FASE 11.2c — Importação real de Plantão + mais correções de fidelidade
+
+- **Status:** DONE
+- Novo `model/PlantaoWorkbookParser.kt`, regras portadas exatamente do
+  parser oficial (`PlantaoWorkbookParser.kt`, `EscalaSOC`): busca de
+  cabeçalho por colunas plantonista/data início/data fim em qualquer aba,
+  regex de data+hora idêntica, mesmas 3 validações de linha (vazia
+  ignorada, incompleta com aviso, fim≤início com aviso), mesma ordenação,
+  mesmo erro exato quando nada é encontrado. Botão "Importar relatório" na
+  tela Plantão (mesmo seletor de arquivo real já usado pela escala). 7
+  testes novos.
+- Nova âncora de "hoje" real (`platform/CurrentDate.kt`,
+  `todayLabDate()`, Android `java.time.LocalDate.now()` / Web `new Date()`
+  via JS): `nextShift`/`nextRest` e a seleção inicial da aba Escala agora
+  refletem a data real do dispositivo, não mais o primeiro dia da lista
+  importada — consistente entre as abas Hoje e Escala.
+- Resumo do período agora filtra os dias para o ciclo fixo 26→25 (ancorado
+  em "hoje" real) antes de contar trabalho/folga/horas — proteção extra
+  que o app real não tem explicitamente (confia na leitura fixa de 30
+  linhas), sem mudar o resultado do arquivo real de hoje.
+- 6 sugestões de horário de pausa (a cada 30min, igual ao app real) em vez
+  de 1 fixo + botão desabilitado.
+- Ícone do clima trocado de emoji para `Icon` vetorial (emoji podia não
+  renderizar no Compose Web/Wasm, sem fonte de emoji colorida por
+  padrão).
+- Logo do cabeçalho (`SocLogo.kt`/`LabShieldLogo`) trocado do escudo
+  azul/roxo com "S" (porte literal do app real) para um mini calendário
+  sem letra, já que este app representa o ICI inteiro agora, não só o SOC
+  — mesmo motivo/estilo do ícone do launcher da FASE 11.0b.
+- Testado: 28 testes (0 falhas) + validação manual completa no emulador.
+- Evidência: seção "Validação da FASE 11.2c" no `README.md`.
+- `versionCode`/`versionName`: `8`/`0.4.1` → `9`/`0.5.0`.
+
 ## FASE 11.2b — Fidelidade visual/funcional ao app Android real
 
 - **Status:** DONE
@@ -68,8 +101,9 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
 ## FASE 11.1b — Dropbox real na Web (OAuth) + remoção de linguagem mock/demo/POC
 
-- **Status:** DONE no código; **PENDENTE** confirmação de ponta a ponta na
-  Web (depende de 2 ações externas no Dropbox App Console, ver abaixo).
+- **Status:** DONE — usuário confirmou em 2026-07-11 que o download real
+  do Dropbox está funcionando na Web após cadastrar o escopo `sharing.read`
+  e o redirect URI no App Console.
 - Projeto reenquadrado como oficial (não mais "laboratório"/POC
   descartável) — textos de UI, launcher, título da aba e nome do PWA
   trocados de "mock"/"demo"/"POC"/"Lab" para linguagem neutra. Nome de

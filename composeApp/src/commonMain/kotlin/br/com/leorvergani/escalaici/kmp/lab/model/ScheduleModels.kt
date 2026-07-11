@@ -1,5 +1,7 @@
 package br.com.leorvergani.escalaici.kmp.lab.model
 
+import br.com.leorvergani.escalaici.kmp.lab.platform.todayLabDate
+
 enum class ShiftType(
     val label: String,
     val shortLabel: String,
@@ -60,23 +62,59 @@ data class ScheduleSummary(
      */
     val pauseWindowStart: String = "--:--",
     val pauseWindowEnd: String = "--:--",
+    /** Horários sugeridos dentro da janela (6 opções, a cada 30min), igual
+     *  ao `suggestedPauseTimes()` do app real. */
+    val pauseSuggestions: List<String> = emptyList(),
     val sourceFileName: String? = null,
     val sheetNames: List<String> = emptyList(),
     val collaborators: List<String> = emptyList(),
     val warnings: List<String> = emptyList(),
     val errors: List<String> = emptyList()
 ) {
+    /**
+     * "Hoje" real (data do dispositivo/navegador via `todayLabDate()`),
+     * não o primeiro dia da lista — assim `nextShift`/`nextRest` sempre
+     * refletem a data real atual, igual em todas as abas (Hoje, Escala,
+     * Alertas), em vez de ficar preso ao primeiro dia do arquivo
+     * importado.
+     */
     val nextShift: ShiftDay?
-        get() = days.firstOrNull { it.type.isWorkShift }
+        get() {
+            val today = todayLabDate()
+            return days.firstOrNull { it.type.isWorkShift && it.date != null && it.date!! >= today }
+                ?: days.firstOrNull { it.type.isWorkShift }
+        }
 
     val nextRest: ShiftDay?
-        get() = days.firstOrNull { !it.type.isWorkShift }
+        get() {
+            val today = todayLabDate()
+            return days.firstOrNull { !it.type.isWorkShift && it.date != null && it.date!! >= today }
+                ?: days.firstOrNull { !it.type.isWorkShift }
+        }
+
+    /**
+     * Ciclo fixo do período (dia 26 de um mês até dia 25 do próximo),
+     * ancorado em "hoje" real — não no primeiro/último dia do arquivo
+     * importado. Protege o resumo contra dados fora do ciclo esperado
+     * (ex.: linhas extras na planilha), mesmo que o app real não valide
+     * isso explicitamente (ele confia que a leitura fixa de 30 linhas da
+     * aba Escala já é sempre um ciclo só).
+     */
+    private val periodDays: List<ShiftDay>
+        get() {
+            val today = todayLabDate()
+            val startMonth = if (today.day >= 26) today.yearMonth() else today.yearMonth().plusMonths(-1)
+            val periodStart = LabDate(startMonth.year, startMonth.month, 26)
+            val endMonth = startMonth.plusMonths(1)
+            val periodEnd = LabDate(endMonth.year, endMonth.month, 25)
+            return days.filter { day -> day.date != null && day.date!! >= periodStart && day.date!! <= periodEnd }
+        }
 
     val workedDays: Int
-        get() = days.count { it.type.isWorkShift }
+        get() = periodDays.count { it.type.isWorkShift }
 
     val restDays: Int
-        get() = days.size - workedDays
+        get() = periodDays.size - workedDays
 
     val totalHours: Int
         get() = workedDays * 6

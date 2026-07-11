@@ -169,6 +169,7 @@ object LabWorkbookParser {
         val nextShift = days.firstOrNull { it.type.isWorkShift }
         val pause = nextShift?.type?.pauseLabel() ?: "Pausa não calculada"
         val pauseWindow = nextShift?.type?.pauseWindow()
+        val pauseSuggestions = nextShift?.type?.pauseSuggestions().orEmpty()
 
         return ScheduleSummary(
             member = Member(
@@ -186,6 +187,7 @@ object LabWorkbookParser {
             pauseOffsetLabel = "1h após o início",
             pauseWindowStart = pauseWindow?.first ?: "--:--",
             pauseWindowEnd = pauseWindow?.second ?: "--:--",
+            pauseSuggestions = pauseSuggestions,
             sourceFileName = workbook.fileName,
             sheetNames = workbook.sheetNames,
             collaborators = collaborators,
@@ -249,6 +251,16 @@ object LabWorkbookParser {
         ShiftType.TARDE -> "15:00" to "17:45"
         ShiftType.NOITE -> "21:00" to "23:45"
         else -> null
+    }
+
+    // Horarios sugeridos dentro da janela permitida, a cada 30min, igual
+    // ao `suggestedPauseTimes()` do app real (6 opcoes por turno).
+    private fun ShiftType.pauseSuggestions(): List<String> = when (this) {
+        ShiftType.MADRUGADA -> listOf("03:00", "03:30", "04:00", "04:30", "05:00", "05:30")
+        ShiftType.MANHA -> listOf("09:00", "09:30", "10:00", "10:30", "11:00", "11:30")
+        ShiftType.TARDE -> listOf("15:00", "15:30", "16:00", "16:30", "17:00", "17:30")
+        ShiftType.NOITE -> listOf("21:00", "21:30", "22:00", "22:30", "23:00", "23:30")
+        else -> emptyList()
     }
 
     private data class ShiftCellMatch(val type: ShiftType, val rawCell: String)

@@ -10,20 +10,22 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 
 /**
- * Porte literal do shield in-app (`SocShieldLogo`/`SocAppTitle`, app Android
- * real, `ui/components/SocLogo.kt`). Path fracionario do proprio `size`,
- * gradiente azul->roxo, "S" tracado e linha diagonal — os mesmos valores do
- * app real, sem nenhum path/hex diferente.
+ * Mini calendário sem texto/letra (mesma paleta/gradiente do escudo antigo,
+ * FASE 11.0b) — este app representa o ICI inteiro, não só o SOC, então o
+ * logo do cabeçalho não deve mais carregar um "S". Mesmo motivo do ícone
+ * do launcher/PWA: header com dois "aneis" de espiral, grade/marcador de
+ * "hoje".
  */
 @Composable
 internal fun LabShieldLogo(
@@ -31,35 +33,39 @@ internal fun LabShieldLogo(
     accent: Color = LabColors.primary
 ) {
     Canvas(modifier = modifier.size(32.dp)) {
-        val shield = Path().apply {
-            moveTo(size.width * 0.5f, size.height * 0.04f)
-            lineTo(size.width * 0.88f, size.height * 0.18f)
-            lineTo(size.width * 0.82f, size.height * 0.66f)
-            quadraticTo(size.width * 0.5f, size.height * 0.96f, size.width * 0.18f, size.height * 0.66f)
-            lineTo(size.width * 0.12f, size.height * 0.18f)
-            close()
-        }
-        drawPath(
-            path = shield,
-            brush = Brush.linearGradient(
-                colors = listOf(accent, Color(0xFF4F7DFF), Color(0xFF7C3AED)),
-                start = Offset.Zero,
-                end = Offset(size.width, size.height)
-            )
+        val bodyTop = size.height * 0.20f
+        val bodyHeight = size.height * 0.74f
+        val bodyWidth = size.width * 0.84f
+        val bodyLeft = size.width * 0.08f
+        val corner = CornerRadius(size.width * 0.14f)
+        val gradient = Brush.linearGradient(
+            colors = listOf(accent, Color(0xFF4F7DFF), Color(0xFF7C3AED)),
+            start = Offset.Zero,
+            end = Offset(size.width, size.height)
         )
-        drawPath(path = shield, color = Color.White.copy(alpha = 0.20f), style = Stroke(width = 1.4.dp.toPx()))
 
-        val mark = Path().apply {
-            moveTo(size.width * 0.66f, size.height * 0.23f)
-            cubicTo(size.width * 0.40f, size.height * 0.22f, size.width * 0.32f, size.height * 0.35f, size.width * 0.52f, size.height * 0.45f)
-            cubicTo(size.width * 0.74f, size.height * 0.56f, size.width * 0.60f, size.height * 0.74f, size.width * 0.30f, size.height * 0.72f)
-        }
-        drawPath(path = mark, color = Color.White.copy(alpha = 0.86f), style = Stroke(width = 3.dp.toPx()))
+        drawRoundRect(brush = gradient, topLeft = Offset(bodyLeft, bodyTop), size = Size(bodyWidth, bodyHeight), cornerRadius = corner)
+        drawRoundRect(
+            color = Color.White.copy(alpha = 0.20f),
+            topLeft = Offset(bodyLeft, bodyTop),
+            size = Size(bodyWidth, bodyHeight),
+            cornerRadius = corner,
+            style = Stroke(width = 1.4.dp.toPx())
+        )
         drawLine(
-            color = Color.White.copy(alpha = 0.35f),
-            start = Offset(size.width * 0.30f, size.height * 0.82f),
-            end = Offset(size.width * 0.70f, size.height * 0.30f),
-            strokeWidth = 1.2.dp.toPx()
+            color = Color.White.copy(alpha = 0.55f),
+            start = Offset(bodyLeft, bodyTop + bodyHeight * 0.22f),
+            end = Offset(bodyLeft + bodyWidth, bodyTop + bodyHeight * 0.22f),
+            strokeWidth = 1.6.dp.toPx()
+        )
+        val ringRadius = size.width * 0.045f
+        drawCircle(color = Color.White.copy(alpha = 0.85f), radius = ringRadius, center = Offset(bodyLeft + bodyWidth * 0.28f, bodyTop))
+        drawCircle(color = Color.White.copy(alpha = 0.85f), radius = ringRadius, center = Offset(bodyLeft + bodyWidth * 0.72f, bodyTop))
+        drawRoundRect(
+            color = Color.White.copy(alpha = 0.90f),
+            topLeft = Offset(bodyLeft + bodyWidth * 0.58f, bodyTop + bodyHeight * 0.42f),
+            size = Size(bodyWidth * 0.28f, bodyHeight * 0.28f),
+            cornerRadius = CornerRadius(size.width * 0.02f)
         )
     }
 }

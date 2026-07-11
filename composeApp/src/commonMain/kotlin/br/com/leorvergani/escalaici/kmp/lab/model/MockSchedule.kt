@@ -33,7 +33,8 @@ fun mockScheduleSummary(): ScheduleSummary {
         pauseLabel = "08:00 - 08:15",
         pauseOffsetLabel = "1h após o início",
         pauseWindowStart = "09:00",
-        pauseWindowEnd = "11:45"
+        pauseWindowEnd = "11:45",
+        pauseSuggestions = listOf("09:00", "09:30", "10:00", "10:30", "11:00", "11:30")
     )
 }
 

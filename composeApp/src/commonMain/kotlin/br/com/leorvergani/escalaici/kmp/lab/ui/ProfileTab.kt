@@ -167,9 +167,12 @@ internal fun ProfileTab(
                 Text("Horário calculado a partir do próximo turno do analista selecionado.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 VisualToggle("Lembrete de pausa", true)
                 Text("Permitido entre ${summary.pauseWindowStart} e ${summary.pauseWindowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    ProfileChip(summary.pauseLabel.substringBefore(" - "), true, Modifier.weight(1f))
-                    ProfileChip("Outro horário", false, Modifier.weight(1f))
+                summary.pauseSuggestions.chunked(3).forEach { rowTimes ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        rowTimes.forEach { time ->
+                            ProfileChip(time, time == summary.pauseSuggestions.firstOrNull(), Modifier.weight(1f))
+                        }
+                    }
                 }
                 Text("Analista: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

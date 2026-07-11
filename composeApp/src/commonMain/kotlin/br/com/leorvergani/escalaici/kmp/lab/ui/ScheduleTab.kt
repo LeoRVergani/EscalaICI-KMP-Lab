@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
+import br.com.leorvergani.escalaici.kmp.lab.platform.todayLabDate
 import br.com.leorvergani.escalaici.kmp.lab.model.LabYearMonth
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftDay
@@ -59,8 +60,12 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.shiftColor
 @Composable
 internal fun ScheduleTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
     val sortedDays = summary.days.sortedBy { it.date }
+    val today = remember { todayLabDate() }
     val initialDay = remember(summary) {
-        sortedDays.firstOrNull { it.type.isWorkShift } ?: sortedDays.firstOrNull()
+        sortedDays.firstOrNull { it.date == today }
+            ?: sortedDays.firstOrNull { it.type.isWorkShift && it.date != null && it.date!! >= today }
+            ?: sortedDays.firstOrNull { it.type.isWorkShift }
+            ?: sortedDays.firstOrNull()
     }
     var selectedDate by remember(summary) { mutableStateOf(initialDay?.date) }
     var visibleMonth by remember(summary) { mutableStateOf((selectedDate ?: sortedDays.firstNotNullOfOrNull { it.date } ?: LabDate(2026, 7, 1)).yearMonth()) }

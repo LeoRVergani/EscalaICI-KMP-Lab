@@ -21,8 +21,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,22 +47,52 @@ import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
 import br.com.leorvergani.escalaici.kmp.lab.model.LabYearMonth
 import br.com.leorvergani.escalaici.kmp.lab.model.OnCallAssignment
 import br.com.leorvergani.escalaici.kmp.lab.model.OnCallStatus
+import br.com.leorvergani.escalaici.kmp.lab.model.PlantaoWorkbookParser
+import br.com.leorvergani.escalaici.kmp.lab.model.WorkbookImportResult
 import br.com.leorvergani.escalaici.kmp.lab.model.mockOnCallAssignments
+import br.com.leorvergani.escalaici.kmp.lab.platform.rememberWorkbookImportLauncher
+import br.com.leorvergani.escalaici.kmp.lab.platform.todayLabDate
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 
 /**
- * Porte de `ui/plantao/PlantaoScreen.kt` (app real), mock: sem importação
- * de relatório real (não há `PlantaoWorkbookParser`/file picker de plantão
- * no laboratório) — usa `OnCallAssignment`/`OnCallStatus` (FASE 9c) e os
- * mocks de `MockSchedule.kt`. Sem relógio disponível em `commonMain`, o
- * "agora" é decidido pelo campo `status` já mockado (`ACTIVE`), não por
- * comparação de data real.
+ * Porte de `ui/plantao/PlantaoScreen.kt` (app real). Importação real do
+ * relatório de plantão via `PlantaoWorkbookParser` (FASE 11.2c) — mesmo
+ * seletor de arquivo (`rememberWorkbookImportLauncher`) já usado pela
+ * escala, parser próprio e separado (igual ao app real: plantão trabalha
+ * com intervalos de data/hora, não com dias 6x1). Enquanto nenhum
+ * relatório é importado, mostra `OnCallAssignment`/`OnCallStatus` mock
+ * (FASE 9c) de `MockSchedule.kt`.
  */
 @Composable
 internal fun PlantaoScreen(onBack: () -> Unit) {
-    val assignments = remember { mockOnCallAssignments() }
+    var assignments by remember { mutableStateOf(mockOnCallAssignments()) }
+    var isImported by remember { mutableStateOf(false) }
+    var importedFileName by remember { mutableStateOf<String?>(null) }
+    var importMessage by remember { mutableStateOf<String?>(null) }
+    var importError by remember { mutableStateOf<String?>(null) }
+
+    val importLauncher = rememberWorkbookImportLauncher { result ->
+        when (result) {
+            is WorkbookImportResult.Success -> {
+                val parsed = PlantaoWorkbookParser.parse(result.workbook)
+                if (parsed.error != null) {
+                    importError = parsed.error
+                } else {
+                    assignments = parsed.assignments
+                    isImported = true
+                    importedFileName = parsed.fileName
+                    importMessage = parsed.warnings.firstOrNull()
+                    importError = null
+                }
+            }
+            is WorkbookImportResult.Failure -> {
+                importError = result.message
+            }
+        }
+    }
+
     val sortedAssignments = remember(assignments) { assignments.sortedBy { it.date } }
     val activeAssignments = remember(assignments) { assignments.filter { it.status == OnCallStatus.ACTIVE } }
     val nextAssignment = remember(sortedAssignments) { sortedAssignments.firstOrNull { it.status == OnCallStatus.SCHEDULED } }
@@ -74,8 +107,8 @@ internal fun PlantaoScreen(onBack: () -> Unit) {
             ?.date?.let { LabDate.parseIso(it) }
     }
 
-    var selectedDate by remember { mutableStateOf(referenceDate ?: LabDate(2026, 7, 1)) }
-    var visibleMonth by remember { mutableStateOf(selectedDate.yearMonth()) }
+    var selectedDate by remember(assignments) { mutableStateOf(referenceDate ?: todayLabDate()) }
+    var visibleMonth by remember(assignments) { mutableStateOf(selectedDate.yearMonth()) }
 
     val selectedDayAssignments = remember(selectedDate, assignments) {
         assignments.filter { LabDate.parseIso(it.date) == selectedDate }
@@ -96,7 +129,19 @@ internal fun PlantaoScreen(onBack: () -> Unit) {
             }
         }
         item {
-            PlantaoHeroCard(title = heroTitle, active = activeAssignments.isNotEmpty(), heroShifts = heroShifts)
+            PlantaoHeroCard(
+                title = heroTitle,
+                active = activeAssignments.isNotEmpty(),
+                heroShifts = heroShifts,
+                isImported = isImported,
+                importedFileName = importedFileName,
+                importMessage = importMessage,
+                importError = importError,
+                onImportClick = {
+                    importError = null
+                    importLauncher.launch()
+                }
+            )
         }
         item {
             PlantaoMonthHeader(
@@ -121,7 +166,16 @@ internal fun PlantaoScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun PlantaoHeroCard(title: String, active: Boolean, heroShifts: List<OnCallAssignment>) {
+private fun PlantaoHeroCard(
+    title: String,
+    active: Boolean,
+    heroShifts: List<OnCallAssignment>,
+    isImported: Boolean,
+    importedFileName: String?,
+    importMessage: String?,
+    importError: String?,
+    onImportClick: () -> Unit
+) {
     val accent = when {
         active -> LabColors.primary
         heroShifts.isNotEmpty() -> LabColors.purple
@@ -165,6 +219,27 @@ private fun PlantaoHeroCard(title: String, active: Boolean, heroShifts: List<OnC
                     Text("${shift.startTime} → ${shift.endTime}", style = MaterialTheme.typography.bodySmall, color = accent, fontWeight = FontWeight.SemiBold)
                 }
             }
+        }
+        Text(
+            if (isImported) "Relatório importado: ${importedFileName ?: "arquivo"}" else "Nenhum relatório real importado — mostrando dados de exemplo.",
+            style = MaterialTheme.typography.labelSmall,
+            color = LabColors.onSurfaceMuted
+        )
+        importMessage?.let { message ->
+            Text(message, style = MaterialTheme.typography.labelSmall, color = Color(0xFFFDE68A))
+        }
+        importError?.let { error ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Error, contentDescription = null, tint = LabColors.red, modifier = Modifier.size(14.dp))
+                Text(error, style = MaterialTheme.typography.labelSmall, color = LabColors.red)
+            }
+        }
+        Button(
+            onClick = onImportClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White)
+        ) {
+            Text(if (isImported) "Importar outro relatório" else "Importar relatório")
         }
     }
 }
