@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Autorização Dropbox</title>
+</head>
+<body>
+  <p>Autorização concluída. Esta janela pode ser fechada.</p>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var payload = {
+        type: "escala-ici-dropbox-oauth-callback",
+        code: params.get("code"),
+        state: params.get("state"),
+        error: params.get("error")
+      };
+      if (window.opener) {
+        window.opener.postMessage(payload, window.location.origin);
+      }
+      window.close();
+    })();
+  </script>
+</body>
+</html>

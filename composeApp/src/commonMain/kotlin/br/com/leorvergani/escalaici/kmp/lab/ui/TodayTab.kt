@@ -182,7 +182,7 @@ private fun WeekSummaryCard(summary: ScheduleSummary) {
     val selectedDate = summary.nextShift?.date ?: summary.days.firstOrNull()?.date
     LabCard(
         title = "Resumo da semana",
-        badge = if (!summary.isImported) "demo" else null,
+        badge = if (!summary.isImported) "exemplo" else null,
         icon = Icons.Default.CalendarMonth,
         gradient = listOf(Color(0xFF0B1B2C), Color(0xFF0D1A2D)),
         borderColor = LabColors.primary.copy(alpha = 0.42f)
@@ -300,7 +300,7 @@ private fun PeriodSummary(summary: ScheduleSummary) {
                     fontWeight = FontWeight.Black
                 )
                 Text(
-                    if (summary.isImported) summary.periodLabel else "Demonstração",
+                    if (summary.isImported) summary.periodLabel else "Exemplo",
                     color = LabColors.onSurfaceMuted,
                     style = MaterialTheme.typography.labelSmall
                 )
@@ -324,7 +324,7 @@ private fun DemoBadge() {
             .border(1.dp, LabColors.primary.copy(alpha = 0.32f), RoundedCornerShape(12.dp))
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
-        Text("demo", color = LabColors.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+        Text("exemplo", color = LabColors.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
     }
 }
 

@@ -21,7 +21,7 @@ object GenerateLabAlerts {
         val alerts = mutableListOf<LabAlert>()
         alerts += LabAlert(
             title = "Fonte da escala",
-            message = "${summary.sourceFileName ?: "Demonstração local"} • ${summary.periodLabel} • ${summary.member.scaleName}",
+            message = "${summary.sourceFileName ?: "Dados de exemplo"} • ${summary.periodLabel} • ${summary.member.scaleName}",
             severity = LabAlert.Severity.INFO,
             date = days.firstOrNull()?.date
         )

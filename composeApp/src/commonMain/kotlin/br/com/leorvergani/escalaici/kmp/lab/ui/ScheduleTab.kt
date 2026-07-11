@@ -295,9 +295,9 @@ private fun DemoCalendarCard() {
     LabCard(borderColor = LabColors.primary.copy(alpha = 0.35f)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Demonstração", color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium)
+                Text("Exemplo", color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Importe e analise uma escala para preencher este calendário com dados reais. Os dias abaixo são apenas um mock visual.",
+                    "Importe e analise uma escala para preencher este calendário com dados reais. Os dias abaixo são apenas ilustrativos.",
                     color = LabColors.onSurfaceMuted,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -309,7 +309,7 @@ private fun DemoCalendarCard() {
                     .border(1.dp, LabColors.primary.copy(alpha = 0.30f), LabShapes.chip)
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
-                Text("Demonstração", color = LabColors.primary, style = MaterialTheme.typography.labelSmall)
+                Text("Exemplo", color = LabColors.primary, style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -439,7 +439,7 @@ private fun WeatherMiniCard() {
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(Icons.Default.Cloud, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-        Text("Clima previsto: 17° · laboratório", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+        Text("Clima previsto: 17° · valor ilustrativo", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
     }
 }
 

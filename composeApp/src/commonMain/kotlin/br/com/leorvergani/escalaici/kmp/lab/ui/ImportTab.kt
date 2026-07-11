@@ -116,7 +116,7 @@ internal fun ImportTab(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = LabColors.onSurface),
                     border = BorderStroke(1.dp, LabColors.outline.copy(alpha = 0.70f))
                 ) {
-                    Text("Voltar para mock")
+                    Text("Voltar para dados de exemplo")
                 }
             }
         }
@@ -173,7 +173,7 @@ private fun LocalFileCard(preview: ScheduleImportPreview?, onClick: () -> Unit) 
                             Spacer(Modifier.height(8.dp))
                             Text(preview.fileName, color = LabColors.onSurface, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text("Dias processados: ${preview.daysRead}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                            Text("Status: salva no dispositivo (mock do laboratório)", color = LabColors.primary, style = MaterialTheme.typography.bodySmall)
+                            Text("Status: salva apenas neste dispositivo (sem sincronização)", color = LabColors.primary, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -214,7 +214,7 @@ private fun ScaleSummaryCard(preview: ScheduleImportPreview) {
         SectionLine("Abas encontradas", preview.sheetNames.joinToString(", ").ifBlank { "Nenhuma" })
         SectionLine("Colaborador selecionado", preview.selectedCollaborator ?: "Nenhum", valueColor = LabColors.primary)
         SectionLine("Dias processados", "${preview.daysRead} dias")
-        SectionLine("Status", "Salva no dispositivo (mock do laboratório)", valueColor = LabColors.tertiary)
+        SectionLine("Status", "Salva apenas neste dispositivo (sem sincronização)", valueColor = LabColors.tertiary)
 
         if (preview.collaborators.isNotEmpty()) {
             SectionLine("Colaboradores encontrados", preview.collaborators.joinToString(", "))

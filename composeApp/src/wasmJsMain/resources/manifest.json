@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Escala ICI KMP Lab",
-  "short_name": "KMP Lab",
-  "description": "POC Kotlin Multiplatform do Escala ICI para Android e Web/Wasm.",
+  "name": "Escala ICI KMP",
+  "short_name": "Escala KMP",
+  "description": "App oficial em Kotlin Multiplatform do Escala ICI (Android + Web/Wasm), rodando em paralelo ao app Android atual até substituí-lo.",
   "lang": "pt-BR",
   "start_url": ".",
   "scope": ".",

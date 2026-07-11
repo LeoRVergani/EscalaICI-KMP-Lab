@@ -1,25 +1,37 @@
 # Escala ICI KMP Lab
 
-Laboratorio paralelo da FASE 9b para validar Kotlin Multiplatform com Android e Web/Wasm.
+Projeto oficial em Kotlin Multiplatform (Android + Web/Wasm) do Escala ICI,
+rodando em paralelo ao app Android atual (`EscalaSOC`, escrito em Kotlin puro)
+até substituí-lo por completo. O nome do repositório/pacote (`EscalaICI-KMP-Lab`,
+`br.com.leorvergani.escalaici.kmp.lab`) é só histórico — o app em si já é
+tratado como caminho oficial de migração, não como experimento descartável.
 
-Este projeto nao porta o app real e nao depende de Firebase, MSAL ou parser XLS.
+Ver `docs/spec/33-KMP-LAB-INTEGRACOES-REAIS.md` (repositório `EscalaSOC`) para
+o plano de integrações reais em andamento.
 
 ## Escopo
 
 - Target Android.
 - Target Web/Wasm.
-- UI minima em Compose Multiplatform.
-- Modelos e dados mock em `commonMain`.
-- PWA basico como POC: `manifest.json`, service worker e icone placeholder SVG.
-- Importacao XLS experimental dentro do laboratorio, sem reaproveitar nem alterar o parser oficial Android.
+- UI completa em Compose Multiplatform, com paridade visual total com o app
+  Android atual (série `FASE 10.x`).
+- Download real da escala via Dropbox (Android real; Web depende de OAuth,
+  ver seção "Fora do escopo" abaixo).
+- Importação XLS real (Apache POI no Android, SheetJS no Web/Wasm) usando o
+  parser compartilhado `LabWorkbookParser.kt`.
+- PWA instalável: `manifest.json`, service worker e ícone próprio.
+- Login por colaborador de teste enquanto o MSAL real (FASE 11.3) não é
+  implementado — único caminho de entrada hoje, ver seção
+  "Validação da FASE 11.1" abaixo.
 
-## Fora do escopo
+## Fora do escopo (por enquanto)
 
 - Firebase.
-- MSAL.
-- Parser XLS oficial do app Android principal.
-- App Android principal.
-- iOS compilavel. iOS fica para estudo futuro com macOS/Xcode.
+- Login MSAL real (planejado, FASE 11.3).
+- Parser 100% fiel ao oficial do app Android principal (`ScaleWorkbookParser.kt`)
+  — o parser deste projeto é próprio, refinamento previsto na FASE 11.2.
+- App Android principal (`EscalaSOC`) não é alterado por este projeto.
+- iOS compilável. iOS fica para quando houver um Mac disponível.
 
 ## Comandos
 
@@ -167,6 +179,99 @@ composeApp/
 ## Observacao
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
+
+## Validacao da FASE 11.1b — Dropbox real na Web (OAuth) + remoção de linguagem mock/demo/POC
+
+Duas mudanças pedidas depois de validar a FASE 11.1 pela primeira vez: (1) o
+projeto passa a ser tratado como **oficial**, rodando em paralelo ao app
+Android atual até substituí-lo — não mais um "laboratório"/"POC" descartável
+— e todo texto de UI que dizia "mock"/"demo"/"POC" foi trocado por linguagem
+neutra; (2) o download real do Dropbox na Web, que falhava por CORS
+(FASE 11.1), ganhou uma correção de verdade em vez de só documentar a
+limitação.
+
+**Rebrand de textos (sem mexer em nome de pasta/pacote/applicationId — só
+nomes visíveis):**
+
+- Launcher Android: `"Escala ICI KMP Lab"` → `"Escala ICI KMP"`.
+- Título da aba do navegador / nome do PWA: `"Escala ICI KMP Lab"` →
+  `"Escala ICI KMP"` (`index.html`, `manifest.json`).
+- Login: "Modo Demo" → "Login de teste" (continua sendo o único jeito de
+  entrar até o MSAL real da FASE 11.3 — decisão explícita, ver spec 33).
+- Badges/labels "demo"/"mock"/"POC" na Hoje, Escala, Alertas, Perfil,
+  Plantão e Importar → "exemplo"/"dados de exemplo"/wording neutro
+  descrevendo o que de fato acontece (ex.: "Status: salva apenas neste
+  dispositivo (sem sincronização)" em vez de "mock do laboratório").
+- Card "POC KMP" no Perfil virou "Migração KMP", com texto atualizado
+  refletindo o que já é real (Dropbox Android) vs. pendente (MSAL,
+  Firebase, parser oficial).
+- Versão exibida no Perfil passou a vir de `model/AppVersion.kt` (constante
+  única, mantida manualmente em sincronia com `versionName` do Gradle — KMP
+  não gera BuildConfig em `commonMain` sem plugin adicional).
+
+**Dropbox real na Web — troca de link direto por API oficial (OAuth PKCE):**
+
+O link direto (`RemoteScaleConfig.DROPBOX_SCALE_URL`) nunca vai funcionar no
+navegador: é bloqueio de CORS do próprio Dropbox, não um bug de código. A
+correção real é autenticar contra a API oficial do Dropbox
+(`content.dropboxapi.com`), que suporta CORS para chamadas autenticadas.
+
+- `model/DropboxAuthConfig.kt`: reaproveita o mesmo App Key PKCE do fluxo
+  ADM do app Android real (`AdminConfig.DROPBOX_APP_KEY` — cliente público,
+  sem secret, copiar não cria risco novo).
+- `platform/DropboxSharedLinkFetcher.kt` (`expect downloadDropboxSharedLink`):
+  Android continua usando o link direto (`downloadBytes`, sem CORS, sem
+  mudança de comportamento). Web/Wasm roda o fluxo OAuth completo:
+  - `resources/dropbox-auth.js`: gera PKCE (`crypto.subtle.digest` SHA-256,
+    verifier/challenge base64url), abre um **popup** (não navega a página
+    inteira — preserva o estado em memória do Compose) para
+    `dropbox.com/oauth2/authorize`, escuta o retorno via `postMessage` da
+    `dropbox-callback.html`, troca o `code` por token
+    (`api.dropboxapi.com/oauth2/token`), guarda `access_token`/
+    `refresh_token`/validade em `localStorage`, renova sozinho quando
+    expira, e finalmente chama
+    `content.dropboxapi.com/2/sharing/get_shared_link_file` com o link
+    compartilhado para baixar os bytes reais.
+  - `resources/dropbox-callback.html`: página estática que só lê
+    `code`/`state`/`error` da URL, repassa por `postMessage` pro `opener` e
+    fecha a própria janela.
+  - `DropboxScaleRepository.kt` simplificado: chama só
+    `downloadDropboxSharedLink`, sem mais nenhuma lógica de engine HTTP —
+    isso já foi isolado no `expect`/`actual`.
+
+**Testado (o que dá para testar sem o cadastro pendente no Dropbox, ver
+abaixo):**
+
+- Chromium headless (Playwright) confirmou que o clique em "Procurar
+  escalas (Dropbox)" abre corretamente um popup apontando pra
+  `dropbox.com/oauth2/authorize` com `client_id`, `redirect_uri`,
+  `code_challenge_method=S256` e `scope=sharing.read` — ou seja, a
+  integração Kotlin → JS → Dropbox está certa de ponta a ponta.
+- **Pendência real encontrada nesse teste**: o Dropbox devolveu
+  `error_name=scope_not_granted` ("No scope requested can be granted for
+  this app") — o App Key `5by0pkzt2bgx95g` ainda não tem o escopo
+  `sharing.read` habilitado no App Console (ele já tem
+  `files.content.read`/`files.content.write`, usados pelo fluxo ADM, que são
+  escopos diferentes).
+- Android: regressão confirmada no emulador — segue baixando e processando
+  a escala real do Dropbox exatamente como na FASE 11.1, sem nenhuma
+  mudança de comportamento.
+
+**Duas ações pendentes, só o dono da conta Dropbox pode fazer** (App
+Console, app do `client_id` `5by0pkzt2bgx95g`):
+
+1. **Permissions** → habilitar o escopo `sharing.read` e salvar.
+2. **OAuth 2 → Redirect URIs** → adicionar
+   `http://localhost:8080/dropbox-callback.html` (dev local; quando o PWA
+   tiver um host de produção, adicionar a URI de produção também).
+
+Sem essas duas, o popup sempre vai terminar em erro do próprio Dropbox
+(como no teste acima) — o código já está pronto, só falta essa configuração
+externa. Depois de feita, testar manualmente clicando em "Procurar escalas
+(Dropbox)" na Web e completando o login/consentimento real do Dropbox.
+
+`versionCode`/`versionName`: `5`/`0.3.0-lab` → `6`/`0.3.1` (sem sufixo
+`-lab` a partir de agora, seguindo o rebrand para projeto oficial).
 
 ## Validacao da FASE 11.1 — download real da escala via Dropbox
 

@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import br.com.leorvergani.escalaici.kmp.lab.model.AppVersion
 import br.com.leorvergani.escalaici.kmp.lab.model.GenerateLabAlerts
 import br.com.leorvergani.escalaici.kmp.lab.model.LabAlert
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
@@ -71,24 +72,24 @@ internal fun ProfileTab(
                         Text("Perfil selecionado", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelMedium)
                         Text(summary.member.displayName, color = LabColors.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            if (summary.isImported) "Escala salva no dispositivo (mock do laboratório)" else "Demonstração local",
+                            if (summary.isImported) "Escala salva apenas neste dispositivo" else "Dados de exemplo",
                             color = LabColors.tertiary,
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
                 }
                 Text("Período: ${summary.periodLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Fonte: ${summary.sourceFileName ?: "mock do laboratório"}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Fonte: ${summary.sourceFileName ?: "dados de exemplo"}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(summary.member.email, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = onLogout) {
-                    Text("Sair (login fake)", color = LabColors.primary)
+                    Text("Sair (login de teste)", color = LabColors.primary)
                 }
             }
         }
         item {
             LabCard(title = "Identidade da escala", icon = Icons.Default.Security, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
                 Text("Colaborador identificado: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("A associação Microsoft -> member -> teamId está representada visualmente no lab.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("A associação Microsoft -> member -> teamId já está representada visualmente aqui.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
         item {
@@ -103,7 +104,7 @@ internal fun ProfileTab(
         }
         item {
             LabCard(title = "Administração da escala", icon = Icons.Default.AdminPanelSettings, borderColor = LabColors.primary.copy(alpha = 0.22f)) {
-                StatusLine("Modo ADM", "visual no lab")
+                StatusLine("Modo ADM", "ainda não implementado")
                 StatusLine("OneDrive ADM", "não conectado")
                 StatusLine("Dropbox ADM", "não conectado")
                 StatusLine("Mês atual", if (summary.isImported) "arquivo carregado" else "aguardando importação")
@@ -115,18 +116,18 @@ internal fun ProfileTab(
         }
         item {
             LabCard(title = "Conta corporativa", icon = Icons.Default.Security, borderColor = LabColors.tertiary.copy(alpha = 0.25f)) {
-                StatusLine("Conta", "não conectada no lab")
-                Text("Entre para identificar seu usuário no app real. MSAL fica fora desta POC.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                StatusLine("Conta", "login Microsoft ainda não conectado")
+                Text("Entre com sua conta Microsoft para identificar seu usuário. Login MSAL real está na FASE 11.3.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 DisabledAction("Entrar com conta corporativa")
             }
         }
         item {
-            LabCard(title = "Modo demo", icon = Icons.Default.Person, borderColor = LabColors.outline.copy(alpha = 0.32f)) {
-                Text("Dados fake, somente laboratório.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+            LabCard(title = "Login de teste", icon = Icons.Default.Person, borderColor = LabColors.outline.copy(alpha = 0.32f)) {
+                Text("Colaboradores de teste, sem dados reais.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 DisabledAction("Entrar como Teste SOC A")
                 DisabledAction("Entrar como Teste SOC B")
                 DisabledAction("Entrar como Aprovador SOC")
-                DisabledAction("Criar/atualizar time demo")
+                DisabledAction("Criar/atualizar time de teste")
             }
         }
         item {
@@ -182,21 +183,26 @@ internal fun ProfileTab(
         }
         item {
             LabCard(title = "Armazenamento local", icon = Icons.Default.Storage, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
-                Text("Arquivo salvo: ${summary.sourceFileName ?: "mock interno do laboratório"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Status: ${if (summary.isImported) "Escala lida na sessão Web/Android Lab" else "Sem XLS aplicado"}", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
+                Text("Arquivo salvo: ${summary.sourceFileName ?: "dados de exemplo"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Status: ${if (summary.isImported) "Escala lida na sessão Web/Android" else "Sem XLS aplicado"}", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
                 DisabledAction("Remover escala local")
             }
         }
         item {
             LabCard(title = "Aplicativo", icon = Icons.Default.SystemUpdate, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
-                Text("Versão atual: 0.1.0-lab", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Versão atual: ${AppVersion.LABEL}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 Text("Atualização APK/Dropbox fica no app Android real.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 DisabledAction("Atualizar aplicativo")
             }
         }
         item {
-            LabCard(title = "POC KMP", icon = Icons.Default.CloudDone, borderColor = LabColors.outline.copy(alpha = 0.35f)) {
-                Text("Visual completo em laboratório. MSAL, Firebase, Dropbox, notificações reais e parser oficial continuam fora desta etapa.", color = LabColors.onSurfaceMuted)
+            LabCard(title = "Migração KMP", icon = Icons.Default.CloudDone, borderColor = LabColors.outline.copy(alpha = 0.35f)) {
+                Text(
+                    "Projeto oficial em Kotlin Multiplatform, rodando em paralelo ao app Android atual até substituí-lo. " +
+                        "Dropbox real já funciona no Android (Web depende da autorização OAuth do Dropbox). " +
+                        "MSAL, Firebase, notificações reais e parser oficial completo seguem em andamento.",
+                    color = LabColors.onSurfaceMuted
+                )
             }
         }
     }

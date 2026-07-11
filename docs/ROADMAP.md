@@ -24,6 +24,29 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   (`1`/`0.1.0-lab` → `2`/`0.1.1-lab`).
 - Build Android + Web/Wasm + `testDebugUnitTest` verificados.
 
+## FASE 11.1b — Dropbox real na Web (OAuth) + remoção de linguagem mock/demo/POC
+
+- **Status:** DONE no código; **PENDENTE** confirmação de ponta a ponta na
+  Web (depende de 2 ações externas no Dropbox App Console, ver abaixo).
+- Projeto reenquadrado como oficial (não mais "laboratório"/POC
+  descartável) — textos de UI, launcher, título da aba e nome do PWA
+  trocados de "mock"/"demo"/"POC"/"Lab" para linguagem neutra. Nome de
+  pasta/pacote/`applicationId` **não** mudou (decisão explícita).
+- Dropbox real na Web: troca do link direto (bloqueado por CORS) pela API
+  oficial do Dropbox via OAuth PKCE — popup (não navega a página inteira),
+  `dropbox-callback.html`, token em `localStorage` com renovação automática,
+  chamada a `sharing/get_shared_link_file`. Android continua no link direto,
+  sem mudança.
+- Testado com Chromium headless (Playwright): popup abre com os parâmetros
+  OAuth corretos, mas o Dropbox recusa com `scope_not_granted` — falta
+  habilitar o escopo `sharing.read` no App Console do App Key
+  `5by0pkzt2bgx95g` e registrar o redirect URI
+  `http://localhost:8080/dropbox-callback.html`. Só o dono da conta Dropbox
+  pode fazer isso.
+- Android: regressão confirmada no emulador, sem mudança de comportamento.
+- Evidência: seção "Validação da FASE 11.1b" no `README.md`.
+- `versionCode`/`versionName`: `5`/`0.3.0-lab` → `6`/`0.3.1`.
+
 ## FASE 11.1 — Download real da escala via Dropbox
 
 - **Status:** DONE

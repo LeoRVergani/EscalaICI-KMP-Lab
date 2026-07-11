@@ -37,11 +37,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Porte fiel de `ui/auth/LoginScreen.kt` (app Android real): mesmo layout,
- * textos e fluxo de "Modo Demo". A unica diferenca inevitavel e o backend —
- * aqui nao ha MSAL nem Firestore: "Login" sempre termina em mensagem de
- * indisponibilidade e "Modo Demo" seleciona um dos 3 membros mock do
- * laboratorio em vez de carregar um `DemoUser` real.
+ * Porte fiel de `ui/auth/LoginScreen.kt` (app Android real): mesmo layout e
+ * textos. Diferenca atual: o login Microsoft (MSAL) ainda nao foi portado
+ * (ver FASE 11.3 do spec 33) — "Login" sempre termina em mensagem de
+ * indisponibilidade e o "Login de teste" seleciona um dos 3 colaboradores
+ * de teste em vez de carregar um usuario Microsoft real. Fica como unico
+ * caminho de entrada ate o MSAL real estar pronto.
  */
 @Composable
 internal fun LoginGateScreen(
@@ -59,7 +60,7 @@ internal fun LoginGateScreen(
         scope.launch {
             delay(600)
             isLoggingIn = false
-            errorMessage = "Login corporativo indisponível nesta POC. Use o Modo Demo abaixo."
+            errorMessage = "Login corporativo Microsoft ainda não disponível. Use o login de teste abaixo."
         }
     }
 
@@ -125,7 +126,7 @@ internal fun LoginGateScreen(
 
             Spacer(Modifier.height(24.dp))
             TextButton(onClick = { showDemoOptions = true }) {
-                Text("Modo Demo", color = LabColors.primary)
+                Text("Login de teste", color = LabColors.primary)
             }
         }
     }
@@ -136,7 +137,7 @@ internal fun LoginGateScreen(
             containerColor = LabColors.background,
             titleContentColor = LabColors.onSurface,
             textContentColor = LabColors.onSurfaceMuted,
-            title = { Text("Modo Demo") },
+            title = { Text("Login de teste") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     members.getOrNull(0)?.let { member ->

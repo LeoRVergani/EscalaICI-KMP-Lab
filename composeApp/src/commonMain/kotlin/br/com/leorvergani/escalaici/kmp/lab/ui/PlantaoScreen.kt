@@ -103,9 +103,9 @@ internal fun PlantaoScreen(onBack: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Schedule, contentDescription = null, tint = LabColors.tertiary, modifier = Modifier.size(18.dp))
                     Column {
-                        Text("Dados de plantão (mock)", color = LabColors.tertiary, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text("Dados de plantão (exemplo)", color = LabColors.tertiary, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Text(
-                            "Este laboratório não importa relatórios reais de plantão — os dados vêm de um mock fixo.",
+                            "Este app ainda não importa relatórios reais de plantão — os dados abaixo são um exemplo fixo.",
                             color = LabColors.onSurfaceMuted,
                             style = MaterialTheme.typography.bodySmall
                         )
