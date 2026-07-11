@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,8 +25,6 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -74,7 +71,6 @@ internal fun ScheduleTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
     val firstMonth = sortedDays.firstNotNullOfOrNull { it.date }?.yearMonth() ?: visibleMonth
     val lastMonth = sortedDays.mapNotNull { it.date }.lastOrNull()?.yearMonth() ?: visibleMonth
     val selectedDay = selectedDate?.let { daysByDate[it] }
-    val monthDays = sortedDays.filter { it.date?.yearMonth() == visibleMonth }
 
     fun moveMonth(offset: Int) {
         val target = visibleMonth.plusMonths(offset)
@@ -128,21 +124,6 @@ internal fun ScheduleTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
             item {
                 TeamOnDutyCard(day = day, selectedCollaborator = summary.member.scaleName)
             }
-        }
-        if (selectedDay == null) {
-            item {
-                LabCard(title = "Dia sem escala", icon = Icons.Default.CalendarMonth, borderColor = LabColors.outline.copy(alpha = 0.42f)) {
-                    Text("Selecione um dia com marcador para ver os detalhes da escala.", color = LabColors.onSurfaceMuted)
-                }
-            }
-        }
-        item {
-            LabCard(title = "Lista do mês", badge = visibleMonth.periodMonthLabel(), icon = Icons.Default.Checklist) {
-                Text("${monthDays.size} dia(s) da escala neste mês.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        items(monthDays) { day ->
-            ShiftDayRow(day = day)
         }
     }
 }
@@ -532,39 +513,5 @@ private fun ShiftMarker(type: ShiftType, size: Int = 34) {
             fontWeight = FontWeight.Black,
             maxLines = 1
         )
-    }
-}
-
-@Composable
-private fun ShiftDayRow(day: ShiftDay) {
-    val statusText = day.sourceStatus?.takeIf { it.isNotBlank() } ?: if (day.type.isWorkShift) "ativo" else "folga"
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = LabColors.surface)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.size(42.dp).clip(CircleShape).background(day.type.shiftColor()),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(day.type.shortLabel, color = Color.White, fontWeight = FontWeight.Black)
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("${day.dayLabel} · ${day.dateLabel}", color = LabColors.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Text("${day.label} · ${day.type.timeRange}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                if (day.teamMembers.isNotEmpty()) {
-                    Text("Com: ${day.teamMembers.joinToString(", ")}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                if (!day.note.isNullOrBlank()) {
-                    Text(day.note, color = Color(0xFFFDE68A), style = MaterialTheme.typography.labelSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-            }
-            Text(statusText, color = if (day.type.isWorkShift) LabColors.primary else LabColors.tertiary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-        }
     }
 }

@@ -166,7 +166,7 @@ internal fun ProfileTab(
             LabCard(title = "Pausa de 15 minutos", icon = Icons.Default.Schedule, iconTint = LabColors.tertiary, borderColor = LabColors.tertiary.copy(alpha = 0.30f), gradient = listOf(Color(0xFF0D2832), Color(0xFF092A28), Color(0xFF0D1730))) {
                 Text("Horário calculado a partir do próximo turno do analista selecionado.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 VisualToggle("Lembrete de pausa", true)
-                Text("Permitido 1h após o início do turno", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Permitido entre ${summary.pauseWindowStart} e ${summary.pauseWindowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     ProfileChip(summary.pauseLabel.substringBefore(" - "), true, Modifier.weight(1f))
                     ProfileChip("Outro horário", false, Modifier.weight(1f))
@@ -178,7 +178,7 @@ internal fun ProfileTab(
             LabCard(title = "Resumo", icon = Icons.Default.Checklist, borderColor = LabColors.primary.copy(alpha = 0.22f)) {
                 Text("Entrada do turno: 15 min antes", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 Text("Pausa: ${summary.pauseLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Janela permitida: ${summary.pauseOffsetLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Janela permitida: ${summary.pauseWindowStart}–${summary.pauseWindowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
         item {
@@ -193,16 +193,6 @@ internal fun ProfileTab(
                 Text("Versão atual: ${AppVersion.LABEL}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 Text("Atualização APK/Dropbox fica no app Android real.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 DisabledAction("Atualizar aplicativo")
-            }
-        }
-        item {
-            LabCard(title = "Migração KMP", icon = Icons.Default.CloudDone, borderColor = LabColors.outline.copy(alpha = 0.35f)) {
-                Text(
-                    "Projeto oficial em Kotlin Multiplatform, rodando em paralelo ao app Android atual até substituí-lo. " +
-                        "Dropbox real já funciona no Android (Web depende da autorização OAuth do Dropbox). " +
-                        "MSAL, Firebase, notificações reais e parser oficial completo seguem em andamento.",
-                    color = LabColors.onSurfaceMuted
-                )
             }
         }
     }

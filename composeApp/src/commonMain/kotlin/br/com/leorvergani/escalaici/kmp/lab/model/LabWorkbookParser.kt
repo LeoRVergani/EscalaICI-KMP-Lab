@@ -168,6 +168,7 @@ object LabWorkbookParser {
         val end = days.mapNotNull { it.date }.lastOrNull()
         val nextShift = days.firstOrNull { it.type.isWorkShift }
         val pause = nextShift?.type?.pauseLabel() ?: "Pausa não calculada"
+        val pauseWindow = nextShift?.type?.pauseWindow()
 
         return ScheduleSummary(
             member = Member(
@@ -183,6 +184,8 @@ object LabWorkbookParser {
             periodLabel = if (start != null && end != null) "${start.periodToken()} - ${end.periodToken()} ${end.year}" else "Período importado",
             pauseLabel = pause,
             pauseOffsetLabel = "1h após o início",
+            pauseWindowStart = pauseWindow?.first ?: "--:--",
+            pauseWindowEnd = pauseWindow?.second ?: "--:--",
             sourceFileName = workbook.fileName,
             sheetNames = workbook.sheetNames,
             collaborators = collaborators,
@@ -226,12 +229,26 @@ object LabWorkbookParser {
         return alerts
     }
 
+    // Horario sugerido de pausa (15 min), igual ao offset padrao do app real
+    // (`NotificationPreferences.offsetMinutesAfterShiftStart = 60`): inicio
+    // do turno + 60min ate +75min.
     private fun ShiftType.pauseLabel(): String = when (this) {
         ShiftType.MADRUGADA -> "02:00 - 02:15"
         ShiftType.MANHA -> "08:00 - 08:15"
         ShiftType.TARDE -> "14:00 - 14:15"
         ShiftType.NOITE -> "20:00 - 20:15"
         else -> "Pausa não calculada"
+    }
+
+    // Janela permitida para a pausa, igual ao `getPauseWindow()` do app
+    // real (`PauseWindow.kt`): inicio do turno + 120min ate +285min (165
+    // minutos de janela), fixa por tipo de turno.
+    private fun ShiftType.pauseWindow(): Pair<String, String>? = when (this) {
+        ShiftType.MADRUGADA -> "03:00" to "05:45"
+        ShiftType.MANHA -> "09:00" to "11:45"
+        ShiftType.TARDE -> "15:00" to "17:45"
+        ShiftType.NOITE -> "21:00" to "23:45"
+        else -> null
     }
 
     private data class ShiftCellMatch(val type: ShiftType, val rawCell: String)

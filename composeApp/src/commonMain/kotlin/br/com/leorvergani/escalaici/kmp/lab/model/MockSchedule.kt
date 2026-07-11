@@ -31,7 +31,9 @@ fun mockScheduleSummary(): ScheduleSummary {
         days = days,
         periodLabel = "26 jun. - 25 jul. 2026",
         pauseLabel = "08:00 - 08:15",
-        pauseOffsetLabel = "1h após o início"
+        pauseOffsetLabel = "1h após o início",
+        pauseWindowStart = "09:00",
+        pauseWindowEnd = "11:45"
     )
 }
 

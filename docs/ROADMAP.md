@@ -24,6 +24,25 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   (`1`/`0.1.0-lab` → `2`/`0.1.1-lab`).
 - Build Android + Web/Wasm + `testDebugUnitTest` verificados.
 
+## FASE 11.2b — Fidelidade visual/funcional ao app Android real
+
+- **Status:** DONE
+- Auditoria tela a tela contra o app real (`EscalaSOC`, só leitura)
+  encontrou 4 cards genuinamente extras (sem equivalente real) e uma
+  divergência de cálculo, ambos apontados pelo usuário:
+  - Removidos: `"Migração KMP"` (Perfil), `"Dia sem escala"` + `"Lista do
+    mês"` + lista dia-a-dia (`ShiftDayRow`) inteira (Escala — principal
+    fonte de cards extras), aviso `"Dados de plantão (exemplo)"`
+    (Plantão).
+  - Corrigido: `"Janela permitida"` da pausa agora usa a fórmula real do
+    app (`PauseWindow.kt`: início do turno +120min a +285min) por tipo de
+    turno, em vez de repetir o texto de offset fixo. Novo
+    `ScheduleSummary.pauseWindowStart`/`pauseWindowEnd`.
+- 21 testes (0 falhas, nenhum dependia do que foi removido). Validado
+  visualmente no emulador.
+- Evidência: seção "Validação da FASE 11.2b" no `README.md`.
+- `versionCode`/`versionName`: `7`/`0.4.0` → `8`/`0.4.1`.
+
 ## FASE 11.2 — Parser compartilhado alinhado com o oficial
 
 - **Status:** DONE

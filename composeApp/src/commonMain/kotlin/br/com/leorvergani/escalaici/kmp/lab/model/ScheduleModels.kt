@@ -50,6 +50,16 @@ data class ScheduleSummary(
     val periodLabel: String,
     val pauseLabel: String,
     val pauseOffsetLabel: String,
+    /**
+     * Janela permitida para a pausa (ex.: início "09:00", fim "11:45"),
+     * igual ao `getPauseWindow()` do app real (`PauseWindow.kt`: início do
+     * turno + 120min até início do turno + 285min). Distinta de
+     * `pauseLabel` (horário sugerido específico) e de `pauseOffsetLabel`
+     * (texto de offset, ex. "1h após o início") — o app real mostra as
+     * três coisas em textos diferentes.
+     */
+    val pauseWindowStart: String = "--:--",
+    val pauseWindowEnd: String = "--:--",
     val sourceFileName: String? = null,
     val sheetNames: List<String> = emptyList(),
     val collaborators: List<String> = emptyList(),

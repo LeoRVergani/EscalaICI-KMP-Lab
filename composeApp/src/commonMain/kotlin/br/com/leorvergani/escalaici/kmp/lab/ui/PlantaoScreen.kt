@@ -99,21 +99,6 @@ internal fun PlantaoScreen(onBack: () -> Unit) {
             PlantaoHeroCard(title = heroTitle, active = activeAssignments.isNotEmpty(), heroShifts = heroShifts)
         }
         item {
-            LabCard(borderColor = LabColors.outline.copy(alpha = 0.32f)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Schedule, contentDescription = null, tint = LabColors.tertiary, modifier = Modifier.size(18.dp))
-                    Column {
-                        Text("Dados de plantão (exemplo)", color = LabColors.tertiary, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text(
-                            "Este app ainda não importa relatórios reais de plantão — os dados abaixo são um exemplo fixo.",
-                            color = LabColors.onSurfaceMuted,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-        }
-        item {
             PlantaoMonthHeader(
                 visibleMonth = visibleMonth,
                 onPrevious = { visibleMonth = visibleMonth.plusMonths(-1) },

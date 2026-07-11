@@ -182,6 +182,57 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 11.2b — fidelidade visual/funcional ao app Android real
+
+O usuário revisou o resultado visual e apontou duas divergências reais com
+o app Android oficial (`EscalaSOC`, comparado por leitura): **cards a
+mais** que não existem no app real, e o **horário de pausa** não batendo.
+Auditoria feita comparando tela a tela (`ProfileTab`↔`SettingsScreen`,
+`ScheduleTab`↔`CalendarScreen`, `PlantaoScreen`↔`ui/plantao/PlantaoScreen.kt`,
+etc., todos no app real, só leitura) confirmou 4 cards genuinamente extras
+e 1 divergência real de cálculo — corrigidos:
+
+**Cards extras removidos** (nenhum equivalente no app real):
+
+- **Perfil** (`ProfileTab.kt`): card `"Migração KMP"` (meta-comentário
+  sobre a própria migração — não existe nenhum card assim no
+  `SettingsScreen.kt` real).
+- **Escala** (`ScheduleTab.kt`): card `"Dia sem escala"` (mostrado quando
+  nenhum dia está selecionado — o `CalendarScreen.kt` real não mostra nada
+  nesse caso) e o card `"Lista do mês"` + a lista completa de um card por
+  dia do mês (`items(monthDays) { ShiftDayRow(...) }`) — o app real não
+  tem lista dia-a-dia nenhuma na tela de calendário, só o grid + o detalhe
+  do dia selecionado + "Quem trabalha nesse dia". Esse era o principal
+  gerador de "cards a mais" (um card extra por dia visível no mês).
+- **Plantão** (`PlantaoScreen.kt`): card de aviso `"Dados de plantão
+  (exemplo)"` — sem equivalente no `ui/plantao/PlantaoScreen.kt` real.
+
+**Horário de pausa corrigido**: o texto "Janela permitida" sempre mostrava
+`"1h após o início"` (o mesmo texto de offset, repetido) para qualquer
+turno — o app real calcula uma **janela real por turno**
+(`PauseWindow.kt`: início do turno + 120min até início do turno + 285min,
+165 minutos de janela) e mostra `"Permitido entre X e Y"` /
+`"Janela permitida: X–Y"`. Adicionado `ScheduleSummary.pauseWindowStart`/
+`pauseWindowEnd`, calculados por tipo de turno
+(`LabWorkbookParser.pauseWindow()`): Madrugada 03:00–05:45, Manhã
+09:00–11:45, Tarde 15:00–17:45, Noite 21:00–23:45. O horário específico já
+sugerido (`pauseLabel`, ex. "08:00 - 08:15") já batia com o padrão real
+(offset de 60min + 15min de duração) — não precisou mudar.
+
+**Testado:**
+
+- `testDebugUnitTest` (21 testes, 0 falhas — nenhum teste dependia dos
+  cards/textos removidos).
+- Manual no emulador Android: confirmado visualmente que a aba Escala
+  termina em "Quem trabalha nesse dia" (sem lista de dias abaixo); Perfil
+  termina em "Aplicativo" (sem "Migração KMP"); os dois textos de pausa no
+  Perfil mostram `"Permitido entre 09:00 e 11:45"` e
+  `"Janela permitida: 09:00–11:45"` para o turno Manhã, batendo com a
+  fórmula do app real.
+
+`versionCode`/`versionName`: `7`/`0.4.0` → `8`/`0.4.1` (PATCH — correção de
+fidelidade, nenhuma integração nova).
+
 ## Validacao da FASE 11.2 — parser compartilhado alinhado com o oficial
 
 Refina `model/LabWorkbookParser.kt` (Android + Web, código próprio, não
