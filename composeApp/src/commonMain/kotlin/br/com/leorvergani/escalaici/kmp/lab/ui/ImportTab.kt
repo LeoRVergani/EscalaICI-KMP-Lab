@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -61,6 +62,8 @@ internal fun ImportTab(
     preview: ScheduleImportPreview?,
     selectedCollaborator: String,
     onSelectXls: () -> Unit,
+    onFetchFromDropbox: () -> Unit,
+    isFetchingFromCloud: Boolean,
     onUseImported: () -> Unit,
     onSelectCollaborator: (String) -> Unit,
     onResetMock: () -> Unit,
@@ -91,7 +94,11 @@ internal fun ImportTab(
             item { IdentifiedCollaboratorCard(preview = p) }
         }
         item {
-            CloudFileCard(onChooseFile = onSelectXls)
+            CloudFileCard(
+                onChooseFile = onSelectXls,
+                onFetchFromDropbox = onFetchFromDropbox,
+                isFetchingFromCloud = isFetchingFromCloud
+            )
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -305,7 +312,11 @@ private fun CollaboratorPreviewCard(preview: ScheduleImportPreview, onSelectColl
 }
 
 @Composable
-private fun CloudFileCard(onChooseFile: () -> Unit) {
+private fun CloudFileCard(
+    onChooseFile: () -> Unit,
+    onFetchFromDropbox: () -> Unit,
+    isFetchingFromCloud: Boolean
+) {
     LabCard(borderColor = LabColors.primary.copy(alpha = 0.32f)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(
@@ -317,7 +328,7 @@ private fun CloudFileCard(onChooseFile: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("Arquivo em nuvem", color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Importe pelo seletor do sistema ou baixe a escala publicada no Dropbox.",
+                    "Importe pelo seletor do sistema ou baixe a escala publicada no Dropbox (mesmo link do app Android).",
                     color = LabColors.onSurfaceMuted,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 2,
@@ -325,12 +336,26 @@ private fun CloudFileCard(onChooseFile: () -> Unit) {
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            TextButton(onClick = onChooseFile) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            TextButton(onClick = onChooseFile, enabled = !isFetchingFromCloud) {
                 Text("Escolher arquivo", color = LabColors.primary, fontWeight = FontWeight.Bold)
             }
-            TextButton(onClick = {}, enabled = false) {
-                Text("Procurar escalas (Dropbox — fora de escopo)", color = LabColors.onSurfaceMuted)
+            TextButton(onClick = onFetchFromDropbox, enabled = !isFetchingFromCloud) {
+                if (isFetchingFromCloud) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = LabColors.primary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Buscando no Dropbox…", color = LabColors.onSurfaceMuted)
+                } else {
+                    Text("Procurar escalas (Dropbox)", color = LabColors.primary, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

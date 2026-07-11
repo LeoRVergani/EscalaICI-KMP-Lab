@@ -168,6 +168,74 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 11.1 — download real da escala via Dropbox
+
+Primeira integracao real da serie `FASE 11.x`: o botao "Procurar escalas
+(Dropbox)" da aba Importar agora baixa o arquivo real publicado no mesmo
+link Dropbox que o app Android de producao usa
+(`model/RemoteScaleConfig.DROPBOX_SCALE_URL`, shared link `dl=1`, sem
+token/App Key), alimentando o parser heuristico compartilhado
+(`LabWorkbookParser`) com bytes reais — igual ao seletor de arquivo local.
+
+- `platform/RemoteBytesDownloader.kt` (`expect fun downloadBytes(url): ByteArray`)
+  isola a diferenca de plataforma: Android usa Ktor (`RemoteBytesDownloader.android.kt`,
+  `HttpTimeout` 15s); Web/Wasm usa `fetch` nativo via interop com JS
+  (`RemoteBytesDownloader.wasmJs.kt` + `resources/remote-download.js`,
+  `AbortController` + timeout 15s) em vez do engine Ktor CIO — o CIO no
+  alvo Wasm nao rejeitava a coroutine de forma confiavel quando o `fetch`
+  interno falhava, deixando o spinner "Buscando no Dropbox…" girando para
+  sempre em vez de mostrar o erro.
+- `platform/WorkbookBytesReader.kt` (`expect fun readWorkbookFromBytes`)
+  reaproveita o mesmo parser binario ja usado pelo seletor de arquivo local
+  em cada plataforma (Apache POI no Android via
+  `WorkbookImportLauncher.android.kt#parseWorkbookBytesAndroid`; SheetJS no
+  Web/Wasm via `workbook-import.js#escalaIciParseWorkbookBase64`).
+- `repository/DropboxScaleRepository.kt`: nunca lanca — qualquer falha vira
+  `WorkbookImportResult.Failure`, exibida como card de erro amigavel
+  ("Toque para tentar novamente") na aba Importar, sem quebrar a tela.
+- `ui/App.kt`/`ui/ImportTab.kt`: novo estado `isFetchingFromCloud` (spinner
+  no botao "Procurar escalas (Dropbox)" enquanto baixa).
+- `AndroidManifest.xml`: `android.permission.INTERNET` adicionada (faltava
+  desde a fundacao de rede da FASE 11.0, que ainda nao tinha nenhuma chamada
+  de rede real).
+
+**Resultado por plataforma (testado manualmente):**
+
+- **Android**: funciona de ponta a ponta. Testado no emulador — baixou o
+  XLS real, encontrou as abas `Escala`/`Escalistas` e os colaboradores reais
+  da producao (`aleilima`, `ivcarvalho`, `alamancio`, `altaborda`,
+  `lvergani`, `cestradioto`, `thaisvribeiro`, `dschlottag`, `luizneto`).
+- **Web/Wasm**: **bloqueado por CORS** — testado com Chromium headless
+  (Playwright) apontando para `wasmJsBrowserDevelopmentRun`, erro
+  `net::ERR_FAILED` no `fetch`. O link compartilhado do Dropbox nao devolve
+  `Access-Control-Allow-Origin` para origens arbitrarias como
+  `http://localhost:8080`, entao o navegador bloqueia a resposta antes de
+  qualquer byte chegar ao Kotlin. **Limitacao de plataforma, nao um bug
+  daqui** — não há workaround sem um proxy/servidor intermediário (fora de
+  escopo). A tela nao quebra: mostra o card de erro amigavel com a mensagem
+  exata (`Failed to fetch`) e "Toque para tentar novamente". O seletor de
+  arquivo local (`Escolher arquivo`) continua sendo o caminho real para
+  demonstrar dados reais no Web durante uma apresentacao.
+
+Validado:
+
+```bash
+cd /home/lvergani/AndroidStudioProjects/EscalaICI-KMP-Lab
+./gradlew :composeApp:assembleDebug :composeApp:testDebugUnitTest
+./gradlew :composeApp:wasmJsBrowserDistribution
+~/Android/Sdk/platform-tools/adb install -r composeApp/build/outputs/apk/debug/composeApp-debug.apk
+~/Android/Sdk/platform-tools/adb shell am start -n br.com.leorvergani.escalaici.kmp.lab/.MainActivity
+```
+
+- APK debug reinstalado no emulador; fluxo completo testado manualmente
+  (Modo Demo → Importar → "Procurar escalas (Dropbox)" → dados reais na
+  tela).
+- Web/Wasm testado via `wasmJsBrowserDevelopmentRun` + Chromium headless
+  (Playwright), confirmando o erro de CORS documentado acima e o card de
+  erro amigavel.
+- `versionCode`/`versionName`: `4`/`0.2.1-lab` → `5`/`0.3.0-lab` (MINOR —
+  primeira integracao real funcionando de ponta a ponta, no Android).
+
 ## Validacao da FASE 11.0 — fundacao de rede (Ktor)
 
 Inicio da serie **FASE 11.x**, que liga integracoes reais (Dropbox, parser,

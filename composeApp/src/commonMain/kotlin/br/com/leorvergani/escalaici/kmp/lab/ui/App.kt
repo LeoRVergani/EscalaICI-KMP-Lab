@@ -49,6 +49,7 @@ import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleImportPreview
 import br.com.leorvergani.escalaici.kmp.lab.model.WorkbookImportResult
 import br.com.leorvergani.escalaici.kmp.lab.model.mockScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.platform.rememberWorkbookImportLauncher
+import br.com.leorvergani.escalaici.kmp.lab.repository.DropboxScaleRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.InMemoryAuthSessionRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.MockMemberRepository
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumBackground
@@ -95,7 +96,9 @@ fun EscalaIciLabApp() {
         var summary by remember { mutableStateOf(mockScheduleSummary()) }
         var importPreview by remember { mutableStateOf<ScheduleImportPreview?>(null) }
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
-        val importLauncher = rememberWorkbookImportLauncher { result ->
+        var isFetchingFromCloud by remember { mutableStateOf(false) }
+
+        fun handleWorkbookImportResult(result: WorkbookImportResult) {
             when (result) {
                 is WorkbookImportResult.Success -> {
                     importedWorkbook = result.workbook
@@ -108,6 +111,18 @@ fun EscalaIciLabApp() {
                 }
             }
             activeTab = LabTab.Importar
+        }
+
+        val importLauncher = rememberWorkbookImportLauncher { result -> handleWorkbookImportResult(result) }
+
+        fun fetchFromDropbox() {
+            if (isFetchingFromCloud) return
+            scope.launch {
+                isFetchingFromCloud = true
+                val result = DropboxScaleRepository().downloadCurrentScale()
+                isFetchingFromCloud = false
+                handleWorkbookImportResult(result)
+            }
         }
 
         fun resetMock() {
@@ -169,6 +184,8 @@ fun EscalaIciLabApp() {
                                         preview = importPreview,
                                         selectedCollaborator = summary.member.scaleName,
                                         onSelectXls = { importLauncher.launch() },
+                                        onFetchFromDropbox = ::fetchFromDropbox,
+                                        isFetchingFromCloud = isFetchingFromCloud,
                                         onUseImported = {
                                             importPreview?.summary?.let { imported ->
                                                 summary = imported

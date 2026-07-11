@@ -47,9 +47,14 @@ actual fun rememberWorkbookImportLauncher(
 
 private fun readWorkbook(context: Context, uri: Uri): WorkbookImportResult {
     val fileName = context.displayName(uri) ?: "planilha.xls"
+    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        ?: return WorkbookImportResult.Failure(fileName, "Não foi possível abrir o arquivo selecionado.")
+    return parseWorkbookBytesAndroid(fileName, bytes)
+}
+
+/** Compartilhado pelo seletor de arquivo local e pelo download remoto (Dropbox). */
+internal fun parseWorkbookBytesAndroid(fileName: String, bytes: ByteArray): WorkbookImportResult {
     return runCatching {
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: return WorkbookImportResult.Failure(fileName, "Não foi possível abrir o arquivo selecionado.")
         val extension = fileName.substringAfterLast('.', "xls").lowercase(Locale.ROOT)
         val workbook = when (extension) {
             "xls" -> HSSFWorkbook(ByteArrayInputStream(bytes))

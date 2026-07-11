@@ -24,6 +24,27 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   (`1`/`0.1.0-lab` → `2`/`0.1.1-lab`).
 - Build Android + Web/Wasm + `testDebugUnitTest` verificados.
 
+## FASE 11.1 — Download real da escala via Dropbox
+
+- **Status:** DONE
+- `platform/RemoteBytesDownloader.kt` (`expect downloadBytes`): Android via
+  Ktor, Web/Wasm via `fetch` nativo (`remote-download.js`) — não via engine
+  Ktor CIO, que não rejeitava a coroutine de forma confiável no Wasm quando
+  o `fetch` interno falhava.
+- `repository/DropboxScaleRepository.kt` baixa o mesmo link Dropbox do app
+  Android real (`model/RemoteScaleConfig`) e alimenta o parser
+  compartilhado (`LabWorkbookParser`) via `platform/WorkbookBytesReader.kt`
+  (reaproveita Apache POI/SheetJS já usados pelo seletor de arquivo local).
+- Botão "Procurar escalas (Dropbox)" na aba Importar, com spinner e card de
+  erro amigável (nunca quebra a tela).
+- **Android: real de ponta a ponta** (testado no emulador, dados reais da
+  produção). **Web/Wasm: bloqueado por CORS** (testado com Chromium
+  headless/Playwright, `net::ERR_FAILED` — limitação de plataforma, não
+  bug daqui).
+- Evidência: seção "Validação da FASE 11.1 — download real da escala via
+  Dropbox" no `README.md`.
+- `versionCode`/`versionName`: `4`/`0.2.1-lab` → `5`/`0.3.0-lab`.
+
 ## FASE 11.0c — Chave de assinatura própria + APK de release
 
 - **Status:** DONE
@@ -659,6 +680,8 @@ Trocas de escala) criadas como mock.
 
 ## Fora do escopo deste laboratório (lembrete)
 
-Login MSAL real, Firebase real, sync global, Dropbox/OneDrive, publicação em
-loja, dashboard React, troca real de escala, notificações reais, iOS
-compilável, migração do app Android real para KMP.
+Login MSAL real, Firebase real, sync global, OneDrive, publicação em loja,
+dashboard React, troca real de escala, notificações reais, iOS compilável,
+migração do app Android real para KMP. Download real da escala via Dropbox
+passou a ser real no Android desde a `FASE 11.1` (bloqueado por CORS no
+Web/Wasm — ver seção da `FASE 11.1` acima).

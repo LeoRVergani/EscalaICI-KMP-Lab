@@ -22,6 +22,24 @@
     }).join(sheetSeparator);
   }
 
+  globalThis.escalaIciParseWorkbookBase64 = function (base64, fileName, callback) {
+    if (!globalThis.XLSX) {
+      callback("error", fileName, "Biblioteca XLSX indisponível. Verifique a conexão e recarregue a página.");
+      return;
+    }
+    try {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const workbook = XLSX.read(bytes, { type: "array", cellDates: false });
+      callback("success", fileName, workbookToPayload(workbook));
+    } catch (error) {
+      callback("error", fileName, error && error.message ? error.message : "Falha ao processar a planilha.");
+    }
+  };
+
   globalThis.escalaIciOpenWorkbookPicker = function (callback) {
     if (!globalThis.XLSX) {
       callback("error", "", "Biblioteca XLSX indisponível. Verifique a conexão e recarregue a página.");

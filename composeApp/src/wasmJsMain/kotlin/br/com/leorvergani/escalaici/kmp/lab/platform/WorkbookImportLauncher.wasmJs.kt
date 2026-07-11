@@ -27,7 +27,7 @@ private fun openWorkbookPicker(callback: (String, String, String) -> Unit) {
     js("globalThis.escalaIciOpenWorkbookPicker(callback)")
 }
 
-private fun String.toImportResult(status: String, fileName: String): WorkbookImportResult {
+internal fun String.toImportResult(status: String, fileName: String): WorkbookImportResult {
     if (status != "success") {
         return WorkbookImportResult.Failure(fileName.takeIf { it.isNotBlank() }, this.ifBlank { "Não foi possível ler a planilha." })
     }
