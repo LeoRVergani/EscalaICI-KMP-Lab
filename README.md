@@ -7,7 +7,9 @@ até substituí-lo por completo. O nome do repositório/pacote (`EscalaICI-KMP-L
 tratado como caminho oficial de migração, não como experimento descartável.
 
 Ver `docs/spec/33-KMP-LAB-INTEGRACOES-REAIS.md` (repositório `EscalaSOC`) para
-o plano de integrações reais em andamento.
+o plano de integrações reais em andamento, e
+**`docs/PENDENCIAS-EXTERNAS.md`** para o passo a passo de toda ação fora do
+código (cadastros no Dropbox/Azure) que só o dono das contas pode fazer.
 
 ## Escopo
 
