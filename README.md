@@ -180,6 +180,81 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 11.2 — parser compartilhado alinhado com o oficial
+
+Refina `model/LabWorkbookParser.kt` (Android + Web, código próprio, não
+copiado) para bater com as regras do parser oficial
+`ScaleWorkbookParser.kt` do app Android real (`EscalaSOC`, só leitura para
+comparar). Correções aplicadas, todas confirmadas por diff linha a linha do
+código oficial:
+
+- **Ranges fixos** em vez de auto-detecção: aba Escalistas — nomes a partir
+  da linha 2 (0-index), linha de datas fixa na linha 2, colunas de status
+  fixas em `3..32`; aba Escala — 30 linhas fixas (`2..31`), data na coluna
+  0, observações na coluna 6. Antes o parser do lab escaneava linhas/colunas
+  sem limite, o que podia ler dados que o oficial ignora (ou vice-versa).
+- **Validação de calendário real** nas datas: `31/02` ou `30/02` agora são
+  rejeitadas (usando `LabDate.monthLength(year, month)`, que já existia e
+  já considerava ano bissexto) — antes o parser aceitava qualquer `dia
+  1..31` sem checar o mês, diferente do parser oficial (`LocalDate.parse`,
+  que rejeita datas de calendário inválidas).
+- **Assimetria de separadores** replicada: encontrar o colaborador na
+  célula do turno usa 4 separadores (`/`, quebra de linha, `,`, `;`);
+  extrair a equipe do mesmo turno usa só 3 (sem `;`) — exatamente como o
+  parser oficial, que tem essa mesma assimetria (não é um bug lá nem aqui).
+- **Rótulo nuançado (`labelFor`)**: novo campo `ShiftDay.label` (default
+  `type.label`, não quebra os mocks) reproduz as diferenças do oficial —
+  `BH` → "Banco de horas", `ANIVERSARIO` → "Folga aniversário", `FOLGA` com
+  status de origem → "Folga / `<status>`" (ex.: "Folga / DF"), e
+  `"Trabalho sem turno localizado"` quando o status é um número 1-6 sem
+  turno correspondente na aba Escala. Usado em `ScheduleTab.kt` (card de
+  detalhe do dia, item da lista do calendário) e `TodayTab.kt` (evento de
+  próximo descanso) — os demais usos de `type.label`/`type.shortLabel`
+  (turnos de trabalho, badge circular M/T/N/Md) não mudam, pois já eram
+  idênticos ao `labelFor` para esses casos.
+
+**Limitação conhecida, não corrigida nesta fase**: o parser oficial tem um
+atalho para células de data reais do POI (`DateUtil.isCellDateFormatted` +
+`dateCellValue`), contornando a formatação de texto. O pipeline do lab
+(Android e Web) sempre passa pela renderização de texto
+(`DataFormatter`/SheetJS), então uma célula de data com formatação Excel
+incomum poderia falhar a leitura aqui onde o oficial teria sucesso. Não
+afeta o arquivo real usado hoje (confirmado no teste manual abaixo) —
+documentado para uma fase futura se algum arquivo real expuser o problema.
+
+**Testado:**
+
+- 8 novos testes unitários em `LabWorkbookParserTest.kt`
+  (`testDebugUnitTest`, 21 testes no total, 0 falhas) cobrindo cada
+  correção acima com planilhas sintéticas: range fixo de colunas/linhas
+  ignorando dados fora do range, rejeição de data de calendário inválida
+  (`31/02`), aceitação de 29/02 só em ano bissexto, assimetria de
+  separadores, e os três casos de `labelFor` (BH, Aniversário, Folga com
+  status).
+- Manual no emulador Android: reimportei a escala real do Dropbox
+  (`Escala-SOC-Controle-Atual.xls`) — continua lendo os mesmos 30 dias e os
+  mesmos colaboradores de antes (o arquivo real já respeitava o layout
+  fixo, então a mudança de range não regrediu nada). Confirmei visualmente
+  na aba Escala que um dia de folga real mostra `"Folga / DF"` com
+  `"Status origem: DF"`, igual ao rótulo nuançado do parser oficial.
+- Web/Wasm: mesma lógica (100% `commonMain`, sem código específico de
+  plataforma nesta fase) — build `wasmJsBrowserDistribution` verificado,
+  sem teste manual adicional no navegador (o parser é compartilhado
+  byte-a-byte com o Android, já validado).
+
+Validado:
+
+```bash
+cd /home/lvergani/AndroidStudioProjects/EscalaICI-KMP-Lab
+./gradlew :composeApp:assembleDebug :composeApp:testDebugUnitTest
+./gradlew :composeApp:wasmJsBrowserDistribution
+~/Android/Sdk/platform-tools/adb install -r composeApp/build/outputs/apk/debug/composeApp-debug.apk
+```
+
+`versionCode`/`versionName`: `6`/`0.3.1` → `7`/`0.4.0` (MINOR — parser
+compartilhado agora bate com as regras oficiais, ganho de fidelidade real
+em ambas as plataformas).
+
 ## Validacao da FASE 11.1b — Dropbox real na Web (OAuth) + remoção de linguagem mock/demo/POC
 
 Duas mudanças pedidas depois de validar a FASE 11.1 pela primeira vez: (1) o

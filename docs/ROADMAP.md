@@ -24,6 +24,29 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   (`1`/`0.1.0-lab` → `2`/`0.1.1-lab`).
 - Build Android + Web/Wasm + `testDebugUnitTest` verificados.
 
+## FASE 11.2 — Parser compartilhado alinhado com o oficial
+
+- **Status:** DONE
+- `model/LabWorkbookParser.kt` (Android + Web, código próprio): ranges
+  fixos de linha/coluna (Escalistas: nomes desde linha 2, data fixa na
+  linha 2, status em `3..32`; Escala: 30 linhas fixas `2..31`) em vez de
+  auto-detecção; validação de calendário real nas datas (`31/02` rejeitado,
+  `29/02` só em ano bissexto); assimetria de separadores replicada
+  (colaborador: 4 separadores, equipe: 3, sem `;`); novo campo
+  `ShiftDay.label` reproduzindo o `labelFor` oficial (BH → "Banco de
+  horas", Aniversário → "Folga aniversário", Folga com status → "Folga /
+  X", "Trabalho sem turno localizado").
+- Limitação conhecida documentada (não corrigida): sem atalho para
+  células de data POI reais — o pipeline sempre passa por
+  `DataFormatter`/SheetJS. Não afeta o arquivo real usado hoje.
+- 8 testes novos em `commonTest` (`LabWorkbookParserTest.kt`, 21 testes no
+  total, 0 falhas via `testDebugUnitTest`).
+- Testado manualmente no emulador com a escala real do Dropbox: mesmos 30
+  dias/colaboradores de antes (sem regressão), rótulo "Folga / DF"
+  confirmado visualmente na aba Escala.
+- Evidência: seção "Validação da FASE 11.2" no `README.md`.
+- `versionCode`/`versionName`: `6`/`0.3.1` → `7`/`0.4.0`.
+
 ## FASE 11.1b — Dropbox real na Web (OAuth) + remoção de linguagem mock/demo/POC
 
 - **Status:** DONE no código; **PENDENTE** confirmação de ponta a ponta na

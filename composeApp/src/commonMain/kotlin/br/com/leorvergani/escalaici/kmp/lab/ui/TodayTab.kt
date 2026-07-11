@@ -264,7 +264,7 @@ private fun EventsCard(summary: ScheduleSummary) {
     }
 }
 
-private fun ShiftDay?.eventLabel(): String = this?.let { "${it.dateLabel} · ${it.type.label}" } ?: "Não encontrado"
+private fun ShiftDay?.eventLabel(): String = this?.let { "${it.dateLabel} · ${it.label}" } ?: "Não encontrado"
 
 @Composable
 private fun EventLine(icon: ImageVector, text: String, color: Color) {

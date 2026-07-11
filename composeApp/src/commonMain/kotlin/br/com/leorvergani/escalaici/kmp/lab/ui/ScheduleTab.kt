@@ -398,7 +398,7 @@ private fun CalendarDayDetailCard(day: ShiftDay) {
         }
         HorizontalDivider(color = LabColors.outline.copy(alpha = 0.22f))
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(day.type.label, color = color, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(day.label, color = color, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(day.type.timeRange, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodyMedium)
         }
         Text(
@@ -556,7 +556,7 @@ private fun ShiftDayRow(day: ShiftDay) {
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text("${day.dayLabel} · ${day.dateLabel}", color = LabColors.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Text("${day.type.label} · ${day.type.timeRange}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("${day.label} · ${day.type.timeRange}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 if (day.teamMembers.isNotEmpty()) {
                     Text("Com: ${day.teamMembers.joinToString(", ")}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }

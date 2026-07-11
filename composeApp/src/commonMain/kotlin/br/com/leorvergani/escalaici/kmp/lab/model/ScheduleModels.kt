@@ -32,7 +32,15 @@ data class ShiftDay(
     val teamMembers: List<String> = emptyList(),
     val membersByShift: Map<ShiftType, List<String>> = emptyMap(),
     val sourceStatus: String? = null,
-    val note: String? = null
+    val note: String? = null,
+    /**
+     * Rótulo apresentável, distinto de `type.label` para alguns tipos (ex.:
+     * BH -> "Banco de horas", ANIVERSARIO -> "Folga aniversário", FOLGA com
+     * `sourceStatus` -> "Folga / <status>"), igual ao `labelFor()` do parser
+     * oficial (`ScaleWorkbookParser.kt`). Default cai para `type.label` para
+     * não quebrar os mocks existentes, que não passam por esse cálculo.
+     */
+    val label: String = type.label
 )
 
 data class ScheduleSummary(

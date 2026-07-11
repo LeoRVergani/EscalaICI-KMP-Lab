@@ -1,5 +1,21 @@
 package br.com.leorvergani.escalaici.kmp.lab.model
 
+/**
+ * Parser proprio do laboratorio (codigo novo, nao copiado) cujas REGRAS
+ * foram alinhadas na FASE 11.2 com o parser oficial
+ * `ScaleWorkbookParser.kt` do app Android real (`EscalaSOC`, so leitura),
+ * lendo o mesmo layout fixo de planilha: aba "Escalistas" com nomes a
+ * partir da linha 2 (0-index) e status diarios nas colunas 3..32 da linha
+ * 2; aba "Escala" com 30 linhas fixas (2..31), data na coluna 0, turnos nas
+ * colunas 2..5 (Madrugada/Manha/Tarde/Noite) e observacoes na coluna 6.
+ *
+ * Limitacao conhecida (nao corrigida nesta fase): datas em celulas com
+ * formatacao Excel que nao renderizam como `dd/MM/yyyy`/`d/M/yyyy`/`dd/MM`/
+ * `d/M` via `DataFormatter`/SheetJS podem falhar a leitura aqui, onde o
+ * parser oficial tem um atalho lendo o valor de data cru da celula POI.
+ * Nao afeta o arquivo real usado hoje (`Escala-SOC-Controle-Atual.xls`,
+ * confirmado na FASE 11.1/11.1b) — documentado para retomada futura.
+ */
 object LabWorkbookParser {
     fun parse(workbook: ImportedWorkbook, requestedCollaborator: String? = DefaultCollaborator): ScheduleImportPreview {
         val warnings = mutableListOf<String>()
@@ -51,22 +67,29 @@ object LabWorkbookParser {
         )
     }
 
+    /** Aba Escalistas: nomes vivem a partir da linha 2 (0-index), coluna 2. */
     private fun ImportedSheet.readCollaborators(): List<String> {
-        return rows
-            .mapNotNull { it.cell(2).trim().takeIf { name -> name.isValidCollaboratorName() } }
+        return rows.drop(EscalistasHeaderRows)
+            .mapNotNull { it.cell(EscalistasNameColumn).trim().takeIf { name -> name.isValidCollaboratorName() } }
             .distinctBy { it.normalizedKey() }
     }
 
+    /**
+     * Linha de datas fixa na linha 2 (0-index), colunas 3..32 (30 colunas),
+     * igual ao parser oficial — nao auto-detecta mais a linha com mais
+     * datas, para bater exatamente com o layout real da planilha.
+     */
     private fun ImportedSheet.readStatusesByDate(
         collaborator: String,
         warnings: MutableList<String>
     ): Map<LabDate, String> {
-        val dateRow = rows.maxByOrNull { row -> (3 until row.size).count { row.cell(it).parseDateToken() != null } }
-            ?: return emptyMap()
-        val dateColumns = dateRow.mapIndexedNotNull { index, value ->
-            if (index < 3) null else value.parseDateToken()?.let { index to it }
+        val dateRow = rows.getOrNull(EscalistasDateRowIndex) ?: return emptyMap()
+        val dateColumns = EscalistasStatusColumns.mapNotNull { column ->
+            dateRow.cell(column).parseDateToken()?.let { column to it }
         }
-        val collaboratorRow = rows.firstOrNull { it.cell(2).sameToken(collaborator) } ?: return emptyMap()
+        val collaboratorRow = rows.drop(EscalistasHeaderRows)
+            .firstOrNull { it.cell(EscalistasNameColumn).sameToken(collaborator) }
+            ?: return emptyMap()
         val statuses = linkedMapOf<LabDate, String>()
 
         dateColumns.forEach { (column, date) ->
@@ -78,14 +101,20 @@ object LabWorkbookParser {
         return statuses
     }
 
+    /**
+     * Aba Escala: 30 linhas fixas (2..31), data na coluna 0, observacoes na
+     * coluna 6, turnos nas colunas 2..5 — igual ao parser oficial, sem
+     * limite superior de linhas antes disso (agora com o mesmo range fixo).
+     */
     private fun ImportedSheet.readScaleDays(
         collaborator: String,
         statusByDate: Map<LabDate, String>,
         warnings: MutableList<String>
     ): List<ShiftDay> {
-        val days = rows.mapNotNull { row ->
-            val date = row.cell(0).parseDateToken() ?: return@mapNotNull null
-            val note = row.cell(6).trim().takeIf { it.isNotBlank() }
+        val days = EscalaDayRows.mapNotNull { rowIndex ->
+            val row = rows.getOrNull(rowIndex) ?: return@mapNotNull null
+            val date = row.cell(EscalaDateColumn).parseDateToken() ?: return@mapNotNull null
+            val note = row.cell(EscalaNoteColumn).trim().takeIf { it.isNotBlank() }
             val membersByShift = ShiftColumns
                 .mapNotNull { (column, type) ->
                     row.cell(column).teamMembers().takeIf { it.isNotEmpty() }?.let { type to it }
@@ -104,6 +133,11 @@ object LabWorkbookParser {
             } else {
                 note
             }
+            val label = if (missingTurnWithWorkSequence) {
+                "Trabalho sem turno localizado"
+            } else {
+                labelFor(type, sourceStatus)
+            }
 
             ShiftDay(
                 dayLabel = date.dayOfWeekShort(),
@@ -114,7 +148,8 @@ object LabWorkbookParser {
                 teamMembers = foundShift?.rawCell.orEmpty().teamMembersExcluding(collaborator),
                 membersByShift = membersByShift,
                 sourceStatus = sourceStatus,
-                note = finalNote
+                note = finalNote,
+                label = label
             )
         }.sortedBy { it.date }
 
@@ -214,8 +249,27 @@ object LabWorkbookParser {
         }
     }
 
+    /**
+     * Rotulo apresentavel por tipo, igual ao `labelFor()` do parser oficial
+     * — distinto de `ShiftType.label` para alguns tipos (BH, Aniversario,
+     * Folga com status de origem).
+     */
+    private fun labelFor(type: ShiftType, sourceStatus: String?): String {
+        return when (type) {
+            ShiftType.FOLGA -> if (sourceStatus.isNullOrBlank()) "Folga" else "Folga / $sourceStatus"
+            ShiftType.FERIAS -> "Férias"
+            ShiftType.BH -> "Banco de horas"
+            ShiftType.ANIVERSARIO -> "Folga aniversário"
+            ShiftType.HORA_EXTRA -> "Hora extra"
+            ShiftType.AFASTAMENTO -> "Afastamento"
+            ShiftType.INDEFINIDO -> "Indefinido"
+            else -> type.label
+        }
+    }
+
     private fun String?.isWorkSequenceNumber(): Boolean = this?.trim()?.matches(Regex("[1-6]")) == true
 
+    /** Colunas de turno usam 4 separadores para achar o colaborador. */
     private fun String.containsCollaborator(collaborator: String): Boolean {
         return split('/', '\n', ',', ';')
             .map { it.trim() }
@@ -223,8 +277,16 @@ object LabWorkbookParser {
             .any { it.sameToken(collaborator) }
     }
 
+    /**
+     * Extrai a equipe do turno encontrado usando so 3 separadores (sem
+     * `;`) — igual ao parser oficial, que usa um conjunto diferente do
+     * usado para achar o colaborador (`containsCollaborator`, 4
+     * separadores). Assimetria intencional, replicada aqui.
+     */
     private fun String.teamMembersExcluding(collaborator: String): List<String> {
-        return teamMembers()
+        return split('/', '\n', ',')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
             .filterNot { it.sameToken(collaborator) }
             .distinctBy { it.normalizedKey() }
     }
@@ -243,7 +305,8 @@ object LabWorkbookParser {
         val day = parts.getOrNull(0)?.toIntOrNull() ?: return null
         val month = parts.getOrNull(1)?.toIntOrNull() ?: return null
         val year = parts.getOrNull(2)?.toIntOrNull() ?: YearFallback
-        if (day !in 1..31 || month !in 1..12 || year !in 2000..2100) return null
+        if (month !in 1..12 || year !in 2000..2100) return null
+        if (day !in 1..LabDate.monthLength(year, month)) return null
         return LabDate(year, month, day)
     }
 
@@ -278,6 +341,21 @@ object LabWorkbookParser {
 
     private const val DefaultCollaborator = "lvergani"
     private const val YearFallback = 2026
+
+    // Layout fixo da aba Escalistas (igual ao parser oficial): header nas
+    // linhas 0-1, dados a partir da linha 2; a propria linha 2 tambem
+    // carrega as datas (colunas 3..32) — nao conflita com nomes porque
+    // "colaborador"/"nome" estao no blocklist de isValidCollaboratorName.
+    private const val EscalistasHeaderRows = 2
+    private const val EscalistasDateRowIndex = 2
+    private const val EscalistasNameColumn = 2
+    private val EscalistasStatusColumns = 3..32
+
+    // Layout fixo da aba Escala (igual ao parser oficial): 30 linhas (um
+    // mes), data na coluna 0, observacoes na coluna 6.
+    private val EscalaDayRows = 2..31
+    private const val EscalaDateColumn = 0
+    private const val EscalaNoteColumn = 6
     private val ShiftColumns = listOf(
         2 to ShiftType.MADRUGADA,
         3 to ShiftType.MANHA,
