@@ -52,21 +52,56 @@ compartilhado, sem OAuth, desde a FASE 11.1.
 
 ---
 
-## 2. Azure AD — login Microsoft real (FASE 11.3, quando for implementada)
+## 2. Azure AD — login Microsoft real no Android (FASE 11.3)
 
-Ainda **não implementado** neste projeto. Quando essa fase for feita, o
-Android vai precisar de uma **nova redirect URI registrada no Azure AD**
-(app registration usado pelo `auth_config_single_account.json` do app
-oficial), porque o KMP lab tem um `applicationId`
+**Por quê:** o KMP lab tem um `applicationId`
 (`br.com.leorvergani.escalaici.kmp.lab`) e uma chave de assinatura
 (`escalaici-kmp-lab.jks`) diferentes do app oficial — o hash de assinatura
-que o MSAL usa na redirect URI do Android muda com a chave, então a URI já
-cadastrada para o app oficial não serve para o lab.
+que o MSAL usa dentro da redirect URI do Android muda com a chave, então a
+URI já cadastrada para o app oficial (`br.com.leorvergani.escalasoc`) não
+serve para o lab. Sem isso cadastrado, o login Microsoft real abre o
+navegador/broker mas a Microsoft recusa o retorno com erro de redirect URI
+não reconhecida.
 
-Esta seção será preenchida com o valor exato a cadastrar (`msauth://...`)
-quando a FASE 11.3 for implementada e o hash da chave `escalaici-kmp-lab.jks`
-for calculado. Web (se/quando MSAL Web for implementado) vai precisar de
-outra redirect URI própria, no mesmo padrão do item 1 acima.
+**Onde:** [portal.azure.com](https://portal.azure.com) → **Azure Active
+Directory** → **App registrations** → abra o app registration cujo
+`client_id` é `e5b5154d-e65e-4605-b221-73d7ee570580` (o mesmo usado pelo
+app oficial, `tenant_id` `d2d23346-e737-4cac-96ec-fb25e7889f01`) →
+**Authentication** (menu lateral).
+
+**Passo a passo:**
+
+- [ ] Em **Platform configurations**, clique em **Add a platform** →
+      **Android** (se ainda não houver uma entrada Android separada para
+      o lab; pode reaproveitar a mesma seção Android existente, adicionando
+      mais uma redirect URI a ela).
+- [ ] **Package name**: `br.com.leorvergani.escalaici.kmp.lab`
+- [ ] **Signature hash**: `CNEvyhyc8lYTPFcNPDJzzJe1XyI=` (calculado a
+      partir de `escalaici-kmp-lab.jks`, o keystore de assinatura já
+      usado por toda build debug/release deste projeto desde a FASE 11.0c
+      — ver seção 10 do spec 33).
+- [ ] Isso gera a redirect URI completa, que também pode ser adicionada
+      manualmente se o portal pedir o valor pronto:
+      ```
+      msauth://br.com.leorvergani.escalaici.kmp.lab/CNEvyhyc8lYTPFcNPDJzzJe1XyI%3D
+      ```
+- [ ] Clique em **Configure**/**Save**.
+
+**Se algum dia recriar o keystore do lab** (`escalaici-kmp-lab.jks`), esse
+hash muda e este passo precisa ser refeito — recalcular com:
+```bash
+keytool -exportcert -alias escalaici-kmp-lab -keystore escalaici-kmp-lab.jks -storepass <senha do keystore.properties> | openssl sha1 -binary | openssl base64
+```
+
+**Depois de feito**: aguarde a FASE 11.3 ser implementada (login MSAL real
+no Android, ainda não codado neste projeto) e teste o botão "Login" na
+tela de entrada do app — deve abrir o fluxo Microsoft real em vez da
+mensagem "Login corporativo Microsoft ainda não disponível".
+
+**Web**: se/quando o MSAL Web for implementado, vai precisar de outra
+redirect URI própria (tipo **Single-page application**, não Android), no
+mesmo espírito do item 1 acima — será documentada aqui quando essa fase
+for planejada.
 
 ---
 
