@@ -29,7 +29,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,10 +41,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import br.com.leorvergani.escalaici.kmp.lab.model.AppUpdateResult
 import br.com.leorvergani.escalaici.kmp.lab.model.AppVersion
 import br.com.leorvergani.escalaici.kmp.lab.model.GenerateLabAlerts
 import br.com.leorvergani.escalaici.kmp.lab.model.LabAlert
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
+import br.com.leorvergani.escalaici.kmp.lab.platform.rememberAppUpdateChecker
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCollaboratorAvatar
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
@@ -48,6 +54,7 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 import br.com.leorvergani.escalaici.kmp.lab.ui.util.initials
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun ProfileTab(
@@ -192,10 +199,34 @@ internal fun ProfileTab(
             }
         }
         item {
+            val updateChecker = rememberAppUpdateChecker()
+            val scope = rememberCoroutineScope()
+            var updateMessage by remember { mutableStateOf("") }
+
             LabCard(title = "Aplicativo", icon = Icons.Default.SystemUpdate, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
                 Text("Versão atual: ${AppVersion.LABEL}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Atualização APK/Dropbox fica no app Android real.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                DisabledAction("Atualizar aplicativo")
+                Text(
+                    updateMessage.ifBlank { "Atualização real via Dropbox — mesmo mecanismo do app Android oficial." },
+                    color = LabColors.onSurfaceMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                TextButton(onClick = {
+                    updateMessage = "Verificando atualização..."
+                    scope.launch {
+                        updateMessage = when (val result = updateChecker.checkAndInstall()) {
+                            AppUpdateResult.UpToDate -> "Você já está usando a versão mais recente."
+                            is AppUpdateResult.InstallStarted -> buildString {
+                                append("Nova versão disponível: v${result.versionName}")
+                                result.changelog?.let { append(". $it") }
+                            }
+                            AppUpdateResult.PermissionRequired -> "Permita instalar atualizações deste app e tente novamente."
+                            AppUpdateResult.NotSupported -> "Atualização automática disponível só no Android."
+                            is AppUpdateResult.Failure -> result.message
+                        }
+                    }
+                }) {
+                    Text("Atualizar aplicativo", color = LabColors.primary)
+                }
             }
         }
     }

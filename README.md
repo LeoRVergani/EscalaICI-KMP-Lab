@@ -182,6 +182,67 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 11.2d — atualização real do app via Dropbox
+
+Botão "Atualizar aplicativo" (Perfil, card "Aplicativo") passa de
+desabilitado para real: verifica, baixa e instala uma nova versão do APK,
+igual ao app Android oficial.
+
+**Reaproveita o mesmo `version.json`** que o app oficial já usa
+(`DropboxCloudConfig.APP_UPDATE_MANIFEST_URL`, `EscalaSOC`) — não é um
+arquivo novo. Confirmado por leitura do código real: o parser oficial
+(`AppUpdateManager.fetchManifest()`) usa `org.json.JSONObject` manual com
+`optInt`/`optString`, que ignora em silêncio qualquer chave desconhecida
+(o manifesto já convive hoje com um campo extra `releaseNotes` que o app
+oficial nunca lê) — então dá para adicionar campos novos só para o KMP
+sem quebrar o app oficial, desde que não reusem os nomes que ele lê
+(`versionCode`/`versionName`/`apkUrl`/`changelog`). Campos novos, só para
+este app: `kmpVersionCode` (Int), `kmpVersionName` (String), `kmpApkUrl`
+(String), `kmpChangelog` (String, opcional).
+
+- `model/AppUpdateModels.kt`: `AppUpdateResult` (`UpToDate`,
+  `InstallStarted`, `PermissionRequired`, `NotSupported`, `Failure`) +
+  `AppUpdateConfig.MANIFEST_URL` (mesma URL do app real).
+- `model/AppVersion.kt`: novo `CODE` (Int), ao lado do `LABEL` já
+  existente — usado na comparação de versão (igual ao
+  `BuildConfig.VERSION_CODE` do app real; KMP não gera BuildConfig em
+  `commonMain` sem plugin adicional, por isso mantido manualmente).
+- `platform/AppUpdateChecker.kt` (`expect`): Android baixa o manifesto
+  (reaproveita `downloadBytes`), compara `kmpVersionCode` com
+  `AppVersion.CODE`, checa permissão "instalar apps desconhecidos"
+  (Android 8+, abre as configurações do sistema se faltar), baixa o APK
+  para `cacheDir/updates/EscalaICI-KMP-latest.apk` e abre o instalador via
+  `FileProvider` + `ACTION_VIEW` — **porte fiel** do
+  `AppUpdateManager.kt`/`checkDownloadAndInstall()` real (mesmo algoritmo,
+  mesmas etapas, mesma mensagem de erro genérica). Web retorna
+  `NotSupported` (instalar `.apk` não existe no navegador; o app oficial
+  também não tem esse recurso fora do Android).
+- `AndroidManifest.xml`: nova permissão `REQUEST_INSTALL_PACKAGES` +
+  `<provider>` `FileProvider` com `android:authorities="${applicationId}.fileprovider"`
+  (resolve para `br.com.leorvergani.escalaici.kmp.lab.fileprovider`,
+  confirmado no manifest final compilado) + novo
+  `res/xml/file_paths.xml` (`<cache-path name="updates" path="updates/" />`,
+  mesmo padrão do app real).
+- `ProfileTab.kt`: botão real com texto de status evoluindo exatamente
+  como no app oficial — "Verificando atualização..." →
+  "Você já está usando a versão mais recente." /
+  "Nova versão disponível: v`<versão>`. `<changelog>`" /
+  "Permita instalar atualizações deste app e tente novamente." / mensagem
+  de erro.
+
+**Testado no emulador** (rede real, `version.json` real de produção): o
+manifesto de hoje ainda não tem os campos `kmp*` (pendência externa, ver
+abaixo) — o app buscou o arquivo real, não achou os campos, e mostrou
+corretamente **"Você já está usando a versão mais recente."** (o caminho
+seguro esperado quando `kmpVersionCode` não está presente, já que
+`optInt` sem o campo devolve `0`, sempre `<= AppVersion.CODE`). Confirma
+que a chamada de rede real, o parser e a UI funcionam ponta a ponta; falta
+só o usuário adicionar os campos `kmp*` no `version.json` (que já hospeda
+o app oficial) para validar o caminho completo de baixar+instalar.
+
+`versionCode`/`versionName`: `9`/`0.5.0` → `10`/`0.6.0`. APK de release
+gerado e copiado para `~/Downloads/EscalaICI-KMP-Lab-latest.apk`.
+
 ## Validacao da FASE 11.2c — importação real de Plantão + mais correções de fidelidade
 
 Testando o resultado real (Dropbox já configurado e funcionando pelo

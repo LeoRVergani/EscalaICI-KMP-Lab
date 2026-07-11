@@ -62,8 +62,8 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = "br.com.leorvergani.escalaici.kmp.lab"
         minSdk = 28
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.5.0"
+        versionCode = 10
+        versionName = "0.6.0"
     }
 
     signingConfigs {

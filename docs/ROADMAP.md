@@ -24,6 +24,33 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   (`1`/`0.1.0-lab` → `2`/`0.1.1-lab`).
 - Build Android + Web/Wasm + `testDebugUnitTest` verificados.
 
+## FASE 11.2d — Atualização real do app via Dropbox
+
+- **Status:** DONE no código; **PENDENTE** confirmação de ponta a ponta
+  (depende do usuário adicionar os campos `kmp*` no `version.json`
+  existente do app oficial, ver `docs/PENDENCIAS-EXTERNAS.md`).
+- Botão "Atualizar aplicativo" (Perfil) real: verifica, baixa e instala
+  APK novo, reaproveitando o mesmo `version.json` do app Android oficial
+  (`DropboxCloudConfig.APP_UPDATE_MANIFEST_URL`) com campos novos
+  (`kmpVersionCode`/`kmpVersionName`/`kmpApkUrl`/`kmpChangelog`) —
+  confirmado que o parser oficial (`org.json.JSONObject` manual) ignora
+  chaves desconhecidas, então isso não quebra o app oficial.
+- Porte fiel do `AppUpdateManager.kt` real: mesmo algoritmo (baixa
+  manifesto → compara versionCode → checa permissão "instalar apps
+  desconhecidos" → baixa APK pro cache → abre instalador via
+  `FileProvider`/`ACTION_VIEW`). Web retorna `NotSupported` (sem conceito
+  de instalar APK no navegador).
+- Novo `AndroidManifest.xml`: `REQUEST_INSTALL_PACKAGES` + `FileProvider`
+  + `res/xml/file_paths.xml`.
+- Testado no emulador com a rede real: buscou o `version.json` de
+  produção de verdade, não achou os campos `kmp*` ainda (esperado) e
+  mostrou "Você já está usando a versão mais recente." — confirma a
+  chamada de rede, o parser e a UI funcionando ponta a ponta.
+- APK de release gerado, copiado para
+  `~/Downloads/EscalaICI-KMP-Lab-latest.apk`.
+- Evidência: seção "Validação da FASE 11.2d" no `README.md`.
+- `versionCode`/`versionName`: `9`/`0.5.0` → `10`/`0.6.0`.
+
 ## FASE 11.2c — Importação real de Plantão + mais correções de fidelidade
 
 - **Status:** DONE

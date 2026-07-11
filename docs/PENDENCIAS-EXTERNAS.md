@@ -13,7 +13,7 @@ funcionando na Web via OAuth. Removido deste checklist — ver
 
 ---
 
-## 1. Azure AD — login Microsoft real no Android (FASE 11.3)
+## 1. Microsoft Entra ID — login Microsoft real no Android (FASE 11.3)
 
 **Por quê:** o KMP lab tem um `applicationId`
 (`br.com.leorvergani.escalaici.kmp.lab`) e uma chave de assinatura
@@ -24,11 +24,13 @@ serve para o lab. Sem isso cadastrado, o login Microsoft real abre o
 navegador/broker mas a Microsoft recusa o retorno com erro de redirect URI
 não reconhecida.
 
-**Onde:** [portal.azure.com](https://portal.azure.com) → **Azure Active
-Directory** → **App registrations** → abra o app registration cujo
+**Onde:** [entra.microsoft.com](https://entra.microsoft.com) (Microsoft
+Entra admin center — nome atual do que já foi "Azure AD") → **Identity**
+→ **Applications** → **App registrations** → abra o app registration cujo
 `client_id` é `e5b5154d-e65e-4605-b221-73d7ee570580` (o mesmo usado pelo
 app oficial, `tenant_id` `d2d23346-e737-4cac-96ec-fb25e7889f01`) →
-**Authentication** (menu lateral).
+**Authentication** (menu lateral). (Também acessível pelo caminho antigo
+`portal.azure.com` → Microsoft Entra ID, é o mesmo cadastro.)
 
 **Passo a passo:**
 
@@ -63,6 +65,76 @@ mensagem "Login corporativo Microsoft ainda não disponível".
 redirect URI própria (tipo **Single-page application**, não Android), no
 mesmo espírito do item 1 acima — será documentada aqui quando essa fase
 for planejada.
+
+---
+
+## 2. Adicionar os campos do KMP no `version.json` (FASE 11.2d)
+
+**Por quê:** o botão "Atualizar aplicativo" do KMP já busca o **mesmo**
+`version.json` que o app Android oficial usa (o arquivo já existe no
+Dropbox, hospedado ao lado do `EscalaSOC-latest.apk`) — só falta adicionar
+4 campos novos, só para o KMP, sem mexer em nada que o app oficial já lê.
+Testado no emulador: sem esses campos, o app mostra corretamente "Você já
+está usando a versão mais recente." (comportamento seguro, não quebra
+nada) — mas não vai detectar atualização nenhuma até você adicionar os
+campos abaixo.
+
+**Onde:** o mesmo `version.json` do link
+`APP_UPDATE_MANIFEST_URL` (`DropboxCloudConfig.kt` no app oficial) —
+abra esse arquivo no Dropbox (é o mesmo que você já edita/substitui a cada
+release do app oficial) e adicione as 4 linhas novas, **sem apagar nem
+mudar nenhuma das linhas que já existem** (elas continuam sendo lidas pelo
+app oficial):
+
+- [ ] `kmpVersionCode`: número, tem que ser **maior** que o `versionCode`
+      instalado no celular para o app detectar a atualização (o build
+      atual do KMP lab é `10`).
+- [ ] `kmpVersionName`: string, ex. `"0.6.0"`.
+- [ ] `kmpApkUrl`: o link do Dropbox do APK do KMP — você já me passou:
+      `https://www.dropbox.com/scl/fi/bwujohqsmenbx6279yg86/EscalaICI-latest.apk?rlkey=wqbzjht0isix9x2g8pbfcyghx&st=kqchnpky&dl=1`
+      (**precisa terminar em `dl=1`**, senão baixa a página de preview do
+      Dropbox em vez do arquivo — o link que você mandou já está certo).
+- [ ] `kmpChangelog` (opcional): texto curto que aparece pro usuário
+      quando uma atualização é encontrada.
+
+Conteúdo de hoje do `version.json` (conferido agora, `2026-07-11`) + as 4
+linhas novas — copie o arquivo inteiro abaixo (se o conteúdo do app oficial
+tiver mudado desde então, mantenha os valores atuais das 5 primeiras
+chaves e só adicione as 4 últimas):
+
+```json
+{
+  "versionCode": 31,
+  "versionName": "1.20.2",
+  "apkUrl": "https://www.dropbox.com/scl/fi/sgoi2ykk9m1c4ebw0ggwo/EscalaSOC-latest.apk?rlkey=jyhffmy7ir4stmhd04xkho83n&st=2sy7gzs6&dl=1",
+  "releaseNotes": "FASE 7k-2: cache local mais inteligente - o app so baixa a escala e o plantao completos quando algo realmente mudou no Firebase, senao usa o cache na hora. Botao Atualizar mais estavel contra cliques repetidos.",
+  "changelog": "FASE 7k-2: cache local mais inteligente - o app so baixa a escala e o plantao completos quando algo realmente mudou no Firebase, senao usa o cache na hora. Botao Atualizar mais estavel contra cliques repetidos.",
+  "kmpVersionCode": 10,
+  "kmpVersionName": "0.6.0",
+  "kmpApkUrl": "https://www.dropbox.com/scl/fi/bwujohqsmenbx6279yg86/EscalaICI-latest.apk?rlkey=wqbzjht0isix9x2g8pbfcyghx&st=kqchnpky&dl=1",
+  "kmpChangelog": "FASE 11.2c/d: importação real de Plantão, data real do dispositivo, atualização real do app."
+}
+```
+
+- [ ] Confirme que o arquivo `EscalaICI-latest.apk` já hospedado no
+      Dropbox nesse link é o build mais recente do lab (`versionCode 10`,
+      `0.6.0`) — se você subiu uma versão mais antiga antes de eu terminar
+      esta fase, re-suba o arquivo gerado em
+      `~/Downloads/EscalaICI-KMP-Lab-latest.apk` (sobrescrevendo o que já
+      está no Dropbox, o link compartilhado continua o mesmo).
+
+**Depois de feito**: peça pra eu testar de novo (ou teste você mesmo: abra
+o app KMP no celular → Perfil → "Atualizar aplicativo" → deve aparecer
+"Nova versão disponível: v0.6.0..." e abrir o instalador do Android — pode
+pedir pra permitir "instalar apps de fontes desconhecidas" na primeira
+vez, é normal).
+
+**Mantendo isso pra sempre**: a cada nova versão do KMP lab que eu
+publicar, os campos `kmpVersionCode`/`kmpVersionName`/`kmpChangelog`
+precisam ser atualizados de novo nesse mesmo arquivo (o `kmpApkUrl` só
+muda se o link do Dropbox mudar — o conteúdo do arquivo pode ser
+sobrescrito sem trocar o link). Vou lembrar de avisar quando isso for
+necessário.
 
 ---
 
