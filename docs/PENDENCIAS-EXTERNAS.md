@@ -88,28 +88,27 @@ aviso no topo) nem chamando a API do Dropbox por conta própria.
 `./gerar_update_escalaici_local.sh` nessa pasta (ver seção "FASE 11.2e" do
 `README.md` deste projeto para o procedimento completo).
 
-- [ ] Suba `EscalaICI-latest.apk` (versionCode `12`, `0.6.2` — FASE 12a-2,
-      corrige o crash/OutOfMemoryError ao baixar a atualização pelo
-      próprio app — **substitui a v0.6.1, que nunca deve ser distribuída**
-      porque o download dela quebra) para o Dropbox, no mesmo link já
-      cadastrado (sobrescrever o conteúdo, sem apagar o arquivo — senão o
-      link muda).
+- [ ] Suba `EscalaICI-latest.apk` (versionCode `13`, `0.6.3` — junta FASE
+      12b/12b-2/12b-3: modelos universais de organização/escala ainda sem
+      tela própria, base de card de atividade configurável, e rebrand
+      visual "Escala ICI" sem "KMP" em nenhum texto) para o Dropbox, no
+      mesmo link já cadastrado (sobrescrever o conteúdo, sem apagar o
+      arquivo — senão o link muda).
 - [ ] Suba `version.json` (mesma pasta) para o Dropbox, mesmo link.
 
 **Depois de feito**: peça pra eu testar (ou teste você mesmo: abra o app
-KMP no celular → Perfil → "Atualizar aplicativo" → deve aparecer "Nova
-versão disponível: v0.6.0..." e abrir o instalador do Android — pode pedir
-pra permitir "instalar apps de fontes desconhecidas" na primeira vez, é
-normal, só acontece 1x).
+Escala ICI no celular → Perfil → "Atualizar aplicativo" → deve aparecer
+"Nova versão disponível: v0.6.3..." e abrir o instalador do Android — pode
+pedir pra permitir "instalar apps de fontes desconhecidas" na primeira
+vez, é normal, só acontece 1x).
 
-**⚠️ Atenção especial para esta rodada (v0.6.2, FASE 12a-2)**: o app que
-já está instalado no celular (versão anterior à 0.6.2) tem o bug do
-download em memória — **o botão "Atualizar aplicativo" dele vai continuar
-travando/fechando sozinho**, porque o código que baixa o APK é o da versão
-**já instalada**, não o da versão nova sendo baixada. Ou seja, o próprio
-mecanismo de atualização automática não consegue se auto-curar desta vez.
-Depois de subir os dois arquivos pro Dropbox, a v0.6.2 precisa ser
-instalada **manualmente** uma última vez (ex.: `adb install -r
+**Se o celular já estiver na v0.6.2** (FASE 12a-2, que corrigiu o crash de
+download): o botão "Atualizar aplicativo" já deve funcionar normalmente
+para baixar a v0.6.3, sem precisar de instalação manual — o bug de OOM
+foi resolvido naquela versão. **Se o celular ainda estiver numa versão
+anterior à 0.6.2** (ex.: nunca chegou a instalar a 0.6.2 manualmente): o
+botão vai travar/fechar sozinho do mesmo jeito documentado na FASE 12a-2 —
+nesse caso, instale a v0.6.3 manualmente uma vez (`adb install -r
 EscalaICI-latest.apk` com o celular em depuração USB, ou baixando o link
 do Dropbox direto no navegador do celular e abrindo o instalador). A
 partir da v0.6.2 em diante, o botão "Atualizar aplicativo" volta a

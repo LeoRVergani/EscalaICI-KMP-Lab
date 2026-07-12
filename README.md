@@ -262,6 +262,23 @@ copiado para `EscalaICI-latest.apk` via `gerar_update_escalaici_local.sh`.
 `kmpChangelog`) — falta só o usuário subir os dois arquivos manualmente
 pro Dropbox (ver `docs/PENDENCIAS-EXTERNAS.md`).
 
+## Release v0.6.3 — build de teste juntando FASE 12b/12b-2/12b-3
+
+Usuário pediu um APK novo pra testar a atualização no celular depois de
+três fases só de modelos/documentação (`12b`, `12b-2`, `12b-3`), que não
+tinham gerado build nenhum. `versionCode`/`versionName`: `12`/`0.6.2` →
+`13`/`0.6.3` (`AppVersion.CODE`/`LABEL` atualizados junto, para não
+repetir o desalinhamento da FASE 12a-1/12a-2). Build limpo
+(`./gradlew clean :composeApp:assembleRelease`), assinado com a mesma
+chave de sempre (`apksigner verify` confirmou), `aapt dump badging`
+confirmou `application-label:'Escala ICI'` (sem "KMP", fruto da FASE
+12b-3). `testDebugUnitTest` (39 testes) e `compileKotlinWasmJs` passaram
+antes do build de release. APK copiado para `EscalaICI-latest.apk` via
+`gerar_update_escalaici_local.sh`, `version.json` local atualizado
+(`kmpChangelog` resume a rebrand visual e a base de modelo para
+setores/códigos configuráveis, sem prometer nenhuma tela nova ainda) —
+falta só o usuário subir os dois arquivos manualmente pro Dropbox.
+
 ## Validação da FASE 12b-3 — limpeza visual de nomenclatura: Escala ICI
 
 Remove da interface visível ao usuário qualquer termo que dê cara de
