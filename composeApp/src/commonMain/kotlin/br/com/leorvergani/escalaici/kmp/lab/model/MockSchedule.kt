@@ -246,3 +246,135 @@ fun mockSourceFileRecord(): SourceFileRecord = SourceFileRecord(
     updatedAt = "2026-07-09T07:55:04",
     hash = null
 )
+
+/**
+ * Dados mock dos modelos universais da FASE 12b (`Organization`, `OrgUnit`,
+ * `Role`, `MemberTeamMembership`, `ActivityCode`, `ScheduleProfile`,
+ * `BusinessHoursRule`), spec `EscalaSOC/docs/spec/
+ * 34-ESCALAICI-UNIVERSAL-SETORES-E-TIPOS-DE-ESCALA.md`. Representam a
+ * hierarquia ICI > GEDSI > COSI > SOC e o setor irmão N1/Service Desk (sem
+ * relação hierárquica com COSI). Ainda não consumidos pela UI nem por
+ * nenhum parser/Firestore real — existem para validar que os modelos
+ * compilam e são utilizáveis multiplataforma.
+ */
+fun mockOrganizationIci(): Organization = Organization(
+    id = "ici",
+    name = "ICI",
+    acronym = "ICI"
+)
+
+fun mockOrgUnitGedsi(): OrgUnit = OrgUnit(
+    id = "gedsi",
+    organizationId = "ici",
+    parentId = null,
+    name = "Gerência de Data Center e Segurança da Informação",
+    acronym = "GEDSI",
+    type = OrgUnitType.MANAGEMENT
+)
+
+fun mockOrgUnitCosi(): OrgUnit = OrgUnit(
+    id = "cosi",
+    organizationId = "ici",
+    parentId = "gedsi",
+    name = "Coordenação de Segurança da Informação",
+    acronym = "COSI",
+    type = OrgUnitType.COORDINATION
+)
+
+/** Setor irmão de COSI, sem relação hierárquica com GEDSI/COSI (ver spec 34 §2). */
+fun mockOrgUnitN1(): OrgUnit = OrgUnit(
+    id = "n1-service-desk",
+    organizationId = "ici",
+    parentId = null,
+    name = "N1 / Service Desk",
+    acronym = "N1",
+    type = OrgUnitType.SECTOR
+)
+
+fun mockTeamSoc(): Team = Team(
+    teamId = "soc",
+    name = "SOC",
+    displayName = "SOC",
+    members = mockTeamMembers()
+)
+
+fun mockTeamN1(): Team = Team(
+    teamId = "n1",
+    name = "Técnicos N1",
+    displayName = "Técnicos N1 (Service Desk)",
+    members = emptyList()
+)
+
+fun mockRoles(): List<Role> = listOf(
+    Role(id = "role-team-admin", name = "Administrador da equipe", acronym = "ADMIN", orgUnitId = "cosi"),
+    Role(id = "role-analyst", name = "Analista", acronym = "ANALISTA", orgUnitId = "cosi")
+)
+
+fun mockMemberTeamMemberships(): List<MemberTeamMembership> = listOf(
+    MemberTeamMembership(
+        id = "membership-lvergani-soc",
+        memberId = "lvergani@ici.tec.br",
+        teamId = "soc",
+        roleId = "role-team-admin",
+        startDate = "2026-01-01",
+        isPrimary = true
+    ),
+    MemberTeamMembership(
+        id = "membership-alamancio-soc",
+        memberId = "alamancio@ici.tec.br",
+        teamId = "soc",
+        roleId = "role-analyst",
+        startDate = "2026-01-01",
+        isPrimary = true
+    )
+)
+
+/** Códigos reais da equipe N1 (aba `Máscara` de `Escalas Equipe N1.xls`, spec 34 §3.2). */
+fun mockActivityCodesN1(): List<ActivityCode> = listOf(
+    ActivityCode(id = "n1-f", teamId = "n1", code = "F", label = "Folga (Cockpit, DSR, BH, aniversário)", type = ActivityCodeType.REST, countsAsWork = false),
+    ActivityCode(id = "n1-x", teamId = "n1", code = "X", label = "Férias", type = ActivityCodeType.VACATION, countsAsWork = false),
+    ActivityCode(id = "n1-aus", teamId = "n1", code = "AUS", label = "Ausência (atestado, declaração, falta)", type = ActivityCodeType.ABSENCE, countsAsWork = false),
+    ActivityCode(id = "n1-m", teamId = "n1", code = "M", label = "Manhã", type = ActivityCodeType.WORK, countsAsWork = true),
+    ActivityCode(id = "n1-m1", teamId = "n1", code = "M1", label = "Monitoramento 1", type = ActivityCodeType.MONITORING, countsAsWork = true),
+    ActivityCode(id = "n1-m2", teamId = "n1", code = "M2", label = "Monitoramento 2", type = ActivityCodeType.MONITORING, countsAsWork = true),
+    ActivityCode(id = "n1-m3", teamId = "n1", code = "M3", label = "Monitoramento 3", type = ActivityCodeType.MONITORING, countsAsWork = true),
+    ActivityCode(id = "n1-m4", teamId = "n1", code = "M4", label = "Monitoramento 4", type = ActivityCodeType.MONITORING, countsAsWork = true),
+    ActivityCode(id = "n1-e", teamId = "n1", code = "E", label = "E-mail", type = ActivityCodeType.EMAIL, countsAsWork = true),
+    ActivityCode(id = "n1-g", teamId = "n1", code = "G", label = "Garantia", type = ActivityCodeType.WARRANTY, countsAsWork = true),
+    ActivityCode(id = "n1-t", teamId = "n1", code = "T", label = "Treinamento", type = ActivityCodeType.MIXED, countsAsWork = true)
+)
+
+fun mockScheduleProfiles(): List<ScheduleProfile> = listOf(
+    ScheduleProfile(
+        id = "profile-soc-6x1",
+        teamId = "soc",
+        name = "SOC 6x1 por turnos",
+        type = ScheduleProfileType.ROTATING_6X1,
+        periodMode = SchedulePeriodMode.DAY_26_TO_25,
+        description = "Turnos fixos Madrugada/Manhã/Tarde/Noite, ciclo do dia 26 ao dia 25."
+    ),
+    ScheduleProfile(
+        id = "profile-n1-matrix",
+        teamId = "n1",
+        name = "N1 6x1 por códigos",
+        type = ScheduleProfileType.MATRIX_6X1,
+        periodMode = SchedulePeriodMode.MONTHLY,
+        description = "Matriz mensal por colaborador, códigos configuráveis (F, X, AUS, M1-M4, E, G, T)."
+    ),
+    ScheduleProfile(
+        id = "profile-administrativo",
+        name = "Administrativo segunda a sexta",
+        type = ScheduleProfileType.BUSINESS_HOURS,
+        periodMode = SchedulePeriodMode.CONTINUOUS,
+        description = "08:00-18:00 com 2h de almoço, sem rodízio de fim de semana."
+    )
+)
+
+fun mockBusinessHoursRule(): BusinessHoursRule = BusinessHoursRule(
+    id = "rule-administrativo",
+    scheduleProfileId = "profile-administrativo",
+    workDays = listOf(1, 2, 3, 4, 5),
+    startTime = "08:00",
+    endTime = "18:00",
+    breakMinutes = 120
+)

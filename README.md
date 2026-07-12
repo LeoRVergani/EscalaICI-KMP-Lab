@@ -187,6 +187,67 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validação da FASE 12b — modelos universais de organização e escala
+
+Primeira fase de código da série `FASE 12.x` (generalizar o Escala ICI para
+múltiplos setores do ICI, não só COSI/SOC — ver
+`EscalaSOC/docs/spec/34-ESCALAICI-UNIVERSAL-SETORES-E-TIPOS-DE-ESCALA.md`).
+Só modelos puros em `commonMain`, aditivos — nenhum modelo/mock/parser/tela
+existente foi alterado ou removido.
+
+**Novo arquivo `model/UniversalOrgModels.kt`:**
+
+- `Organization`, `OrgUnit` (+ `OrgUnitType`: `PRESIDENCY`, `DIRECTORATE`,
+  `MANAGEMENT`, `COORDINATION`, `SECTOR`, `DEPARTMENT`, `TEAM_GROUP`) — árvore
+  de diretorias/gerências/coordenações/setores do ICI, com `parentId` para
+  representar qualquer profundidade (ex.: GEDSI → COSI). `TEAM_GROUP` permite
+  representar um agrupamento de equipe (ex.: "Analistas de SOC") dentro dessa
+  árvore sem precisar alterar o `Team` já existente.
+- `Role` — papel/função dentro de uma equipe ou setor.
+- `MemberTeamMembership` — vínculo membro↔equipe com período de vigência e
+  `isPrimary`; resolve o problema de uma pessoa ficar presa a um `teamId`
+  fixo em `Member` (que continua existindo, sem mudança).
+- `ScheduleProfile` (+ `ScheduleProfileType`: `ROTATING_6X1`, `MATRIX_6X1`,
+  `TWELVE_BY_THIRTY_SIX`, `BUSINESS_HOURS`, `ON_CALL_INTERVAL`, `CUSTOM`;
+  `SchedulePeriodMode`: `DAY_26_TO_25`, `MONTHLY`, `WEEKLY`, `FIXED_RANGE`,
+  `CONTINUOUS`) — tipo estrutural de escala que uma equipe usa.
+- `ActivityCode` (+ `ActivityCodeType`) — código de atividade configurável
+  por equipe (ex.: `F`, `X`, `AUS`, `M1`-`M4`, `E`, `G`, `T` da equipe N1),
+  com `countsAsWork` para o app saber se conta como trabalho sem precisar
+  entender o significado específico do código.
+- `BusinessHoursRule` (segunda a sexta, horário fixo + almoço) e
+  `TwelveByThirtySixRule` (12h trabalhadas / 36h de folga).
+
+**Mocks novos em `MockSchedule.kt`** (não conectados à UI): organização ICI,
+`OrgUnit` GEDSI/COSI/N1 (N1 sem `parentId` — setor irmão, não subordinado a
+COSI), `Team` SOC/N1, `Role`/`MemberTeamMembership` mínimos, os 11 códigos
+reais da equipe N1 (`F`, `X`, `AUS`, `M`, `M1`-`M4`, `E`, `G`, `T`, extraídos
+da aba `Máscara` de `Escalas Equipe N1.xls`, spec 34 §3.2) e 3
+`ScheduleProfile` (SOC 6x1 por turnos, N1 6x1 por códigos, Administrativo
+segunda a sexta) + 1 `BusinessHoursRule` de exemplo.
+
+**Testes novos** (`UniversalOrgModelsTest.kt`, 5 testes): `M1`-`M4` contam
+como trabalho; `F`/`X` não contam; `Organization`/`OrgUnit`/`Team`
+representam ICI → GEDSI → COSI → SOC; N1 não tem relação hierárquica com
+COSI; `MemberTeamMembership` liga membro à equipe via vínculo.
+
+**Validado:**
+
+```bash
+cd /home/lvergani/AndroidStudioProjects/EscalaICI-KMP-Lab
+./gradlew :composeApp:compileDebugKotlinAndroid
+./gradlew :composeApp:compileKotlinWasmJs
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Os dois targets compilam, os 5 testes novos passam (33 no total, 0 falhas),
+e o build completo (APK debug + distribuição Web/Wasm) passa sem erro.
+
+`versionCode`/`versionName`: mantidos (`11`/`0.6.1`) — fase só de modelos
+puros, sem nenhuma mudança de comportamento visível no app, regra combinada
+de só subir versão quando há entrega testável de verdade.
+
 ## Validacao da FASE 11.2e — release local padronizado + upload sempre manual
 
 Padroniza o processo de gerar o APK/`version.json` do EscalaICI a cada

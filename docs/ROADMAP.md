@@ -11,7 +11,25 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 generalizar o Escala ICI para múltiplos setores do ICI (não só COSI/SOC) e
 tipos de escala configuráveis por equipe — ver
 `EscalaSOC/docs/spec/34-ESCALAICI-UNIVERSAL-SETORES-E-TIPOS-DE-ESCALA.md`.
-Não afeta nenhuma fase abaixo.
+
+## FASE 12b — Modelos universais de organização e escala no commonMain
+
+- **Status:** DONE
+- Primeiro código real da série `FASE 12.x` (spec 34 acima). Novo arquivo
+  `model/UniversalOrgModels.kt`: `Organization`, `OrgUnit`/`OrgUnitType`,
+  `Role`, `MemberTeamMembership`, `ScheduleProfile`/`ScheduleProfileType`/
+  `SchedulePeriodMode`, `ActivityCode`/`ActivityCodeType`,
+  `BusinessHoursRule`, `TwelveByThirtySixRule` — todos aditivos, nenhum
+  modelo existente (`Team`, `Member`, `SchedulePeriod`, `ScheduleAssignment`,
+  `OnCallPeriod`, `OnCallAssignment`, `ShiftType`) foi alterado.
+- Mocks novos em `MockSchedule.kt` (ICI/GEDSI/COSI/N1, equipes SOC/N1, os 11
+  códigos reais da equipe N1, 3 `ScheduleProfile`) — ainda não conectados à
+  UI, mesmo padrão dos mocks puros da FASE 9c.
+- 5 testes novos em `UniversalOrgModelsTest.kt` — ver detalhe completo no
+  `README.md`, seção "Validação da FASE 12b".
+- Não mexeu em Firebase, Firestore Rules, dashboard, MSAL, parsers
+  (SOC/Plantão), UI, update de APK, Dropbox ou scripts de release.
+- `versionCode`/`versionName`: mantidos (`11`/`0.6.1`).
 
 ## FASE 11.0 — Fundação de rede (Ktor)
 
