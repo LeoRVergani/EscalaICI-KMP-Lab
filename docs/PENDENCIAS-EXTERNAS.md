@@ -88,9 +88,10 @@ aviso no topo) nem chamando a API do Dropbox por conta própria.
 `./gerar_update_escalaici_local.sh` nessa pasta (ver seção "FASE 11.2e" do
 `README.md` deste projeto para o procedimento completo).
 
-- [ ] Suba `EscalaICI-latest.apk` (versionCode `10`, `0.6.0`) para o
-      Dropbox, no mesmo link já cadastrado (sobrescrever o conteúdo, sem
-      apagar o arquivo — senão o link muda).
+- [ ] Suba `EscalaICI-latest.apk` (versionCode `11`, `0.6.1` — FASE 12a-1,
+      corrige o resumo da semana da aba Hoje) para o Dropbox, no mesmo
+      link já cadastrado (sobrescrever o conteúdo, sem apagar o arquivo —
+      senão o link muda).
 - [ ] Suba `version.json` (mesma pasta) para o Dropbox, mesmo link.
 
 **Depois de feito**: peça pra eu testar (ou teste você mesmo: abra o app
