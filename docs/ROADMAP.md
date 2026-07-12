@@ -24,6 +24,26 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   (`1`/`0.1.0-lab` → `2`/`0.1.1-lab`).
 - Build Android + Web/Wasm + `testDebugUnitTest` verificados.
 
+## FASE 11.2e — Release local padronizado + upload sempre manual
+
+- **Status:** DONE
+- Padroniza o processo de release do EscalaICI: pasta oficial
+  `/home/lvergani/Downloads/dropbox_update_scripts` (mesma do EscalaSOC),
+  APK sempre nomeado `EscalaICI-latest.apk`, `version.json` compartilhado
+  (campos `kmp*`, FASE 11.2d).
+- Novo script `gerar_update_escalaici_local.sh` (fora deste repositório,
+  na pasta de release) — copia o APK, confere o `version.json`, imprime
+  instruções de upload manual, **nunca chama a API do Dropbox**. Scripts
+  antigos do EscalaSOC ganharam avisos deixando claro que não servem para
+  o EscalaICI.
+- Confirmado via `apksigner verify`: build limpa continua assinada com a
+  mesma keystore de sempre (`escalaici-kmp-lab.jks`, FASE 11.0c). APK
+  release reinstalado por cima do debug no emulador sem precisar
+  desinstalar — prova que a mesma chave já cobre debug+release.
+- `versionCode`/`versionName`: mantidos em `10`/`0.6.0` (sem mudança de
+  código, só padronização de processo).
+- Evidência: seção "Validação da FASE 11.2e" no `README.md`.
+
 ## FASE 11.2d — Atualização real do app via Dropbox
 
 - **Status:** DONE no código; **PENDENTE** confirmação de ponta a ponta

@@ -182,6 +182,68 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validacao da FASE 11.2e — release local padronizado + upload sempre manual
+
+Padroniza o processo de gerar o APK/`version.json` do EscalaICI a cada
+release, e deixa explícito por escrito (para qualquer IA/sessão futura)
+que o upload para o Dropbox **nunca** é automático para este app.
+
+**Pasta oficial de release manual**:
+`/home/lvergani/Downloads/dropbox_update_scripts` — a mesma pasta onde o
+usuário já publica o `EscalaSOC-latest.apk`/`version.json` do app oficial
+(via scripts próprios que chamam a API do Dropbox). Os dois apps
+compartilham o mesmo `version.json` (campos `kmp*` só para o EscalaICI,
+FASE 11.2d) mas **não** compartilham processo de publicação.
+
+- `EscalaICI-latest.apk`: nome oficial do APK do EscalaICI nessa pasta
+  (mesmo nome do arquivo já referenciado em `kmpApkUrl` no `version.json`
+  real).
+- Novo script `gerar_update_escalaici_local.sh` (na pasta, fora deste
+  repositório): localiza o APK de release já gerado pelo Gradle, copia
+  para `EscalaICI-latest.apk`, confere os campos `kmp*` do `version.json`
+  local e imprime instruções de upload manual — **nunca chama a API do
+  Dropbox**. Os scripts antigos (`publicar_update.sh`/`.bat`/
+  `upload_update_dropbox.py`) continuam existindo só para o EscalaSOC;
+  ganharam avisos no topo deixando claro que não servem para o EscalaICI.
+
+**Procedimento de release (repetir a cada versão nova)**:
+
+```bash
+cd /home/lvergani/AndroidStudioProjects/EscalaICI-KMP-Lab
+./gradlew clean :composeApp:assembleRelease
+./gradlew :composeApp:testDebugUnitTest :composeApp:wasmJsBrowserDistribution
+cd /home/lvergani/Downloads/dropbox_update_scripts
+./gerar_update_escalaici_local.sh
+# editar version.json manualmente: kmpVersionCode (sempre maior que o
+# anterior), kmpVersionName, kmpChangelog — kmpApkUrl só muda se o link
+# do Dropbox mudar
+# depois: usuário sobe EscalaICI-latest.apk + version.json manualmente
+```
+
+**Requisito não-negociável para o botão "Atualizar aplicativo" continuar
+funcionando**: toda build (debug e release, sempre) precisa usar a
+**mesma** keystore/certificado — `escalaici-kmp-lab.jks`, já estabelecida
+desde a FASE 11.0c e confirmada nesta fase via
+`apksigner verify --print-certs` (`CN=Escala ICI KMP Lab, OU=ICI, O=ICI,
+C=BR`, mesmo certificado de sempre). Trocar a chave a qualquer momento
+quebra a atualização in-place para quem já tem o app instalado (o Android
+recusa instalar um APK assinado com certificado diferente do já
+instalado — só resolve desinstalando o app antes, perdendo dados locais).
+Não usar a keystore do EscalaSOC aqui — são apps diferentes
+(`applicationId` diferente), cada um com sua própria chave estável.
+
+**Testado**: `./gradlew clean :composeApp:assembleRelease` (build limpo,
+sem cache antigo) + `testDebugUnitTest` (28 testes, 0 falhas) +
+`wasmJsBrowserDistribution`. `apksigner verify` confirmou a mesma
+assinatura de sempre. APK reinstalado **por cima** da build debug já
+presente no emulador sem precisar desinstalar (confirma que debug e
+release já usam a mesma chave) — app abriu normalmente. `version.json`
+local atualizado (`kmpChangelog` mencionando esta fase).
+
+`versionCode`/`versionName`: mantidos em `10`/`0.6.0` — esta fase é só
+padronização do processo de release, sem mudança funcional no app (regra
+combinada: só sobe versão quando há mudança de código real).
+
 ## Validacao da FASE 11.2d — atualização real do app via Dropbox
 
 Botão "Atualizar aplicativo" (Perfil, card "Aplicativo") passa de

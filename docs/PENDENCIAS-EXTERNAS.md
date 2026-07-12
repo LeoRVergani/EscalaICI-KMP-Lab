@@ -68,73 +68,42 @@ for planejada.
 
 ---
 
-## 2. Adicionar os campos do KMP no `version.json` (FASE 11.2d)
+## 2. Subir `EscalaICI-latest.apk` + `version.json` pro Dropbox (manual, sempre)
 
-**Por quê:** o botão "Atualizar aplicativo" do KMP já busca o **mesmo**
-`version.json` que o app Android oficial usa (o arquivo já existe no
-Dropbox, hospedado ao lado do `EscalaSOC-latest.apk`) — só falta adicionar
-4 campos novos, só para o KMP, sem mexer em nada que o app oficial já lê.
-Testado no emulador: sem esses campos, o app mostra corretamente "Você já
-está usando a versão mais recente." (comportamento seguro, não quebra
-nada) — mas não vai detectar atualização nenhuma até você adicionar os
-campos abaixo.
+**Status dos campos do `version.json`**: ✅ DONE — usuário confirmou em
+2026-07-11 que já adicionou `kmpVersionCode`/`kmpVersionName`/`kmpApkUrl`/
+`kmpChangelog` no `version.json` real, exatamente como pedido na FASE
+11.2d. **O que falta agora é só o upload** dos arquivos mais recentes.
 
-**Onde:** o mesmo `version.json` do link
-`APP_UPDATE_MANIFEST_URL` (`DropboxCloudConfig.kt` no app oficial) —
-abra esse arquivo no Dropbox (é o mesmo que você já edita/substitui a cada
-release do app oficial) e adicione as 4 linhas novas, **sem apagar nem
-mudar nenhuma das linhas que já existem** (elas continuam sendo lidas pelo
-app oficial):
+**Por quê o upload é manual**: rodar os scripts automáticos de publicação
+(`publicar_update.sh`/`upload_update_dropbox.py`, que chamam a API do
+Dropbox) estava dando erro para este app — o usuário sobe manualmente
+pelo site/app do Dropbox. **Nenhuma IA/sessão deve tentar automatizar esse
+upload** — nem rodando os scripts antigos (são só do EscalaSOC, ganharam
+aviso no topo) nem chamando a API do Dropbox por conta própria.
 
-- [ ] `kmpVersionCode`: número, tem que ser **maior** que o `versionCode`
-      instalado no celular para o app detectar a atualização (o build
-      atual do KMP lab é `10`).
-- [ ] `kmpVersionName`: string, ex. `"0.6.0"`.
-- [ ] `kmpApkUrl`: o link do Dropbox do APK do KMP — você já me passou:
-      `https://www.dropbox.com/scl/fi/bwujohqsmenbx6279yg86/EscalaICI-latest.apk?rlkey=wqbzjht0isix9x2g8pbfcyghx&st=kqchnpky&dl=1`
-      (**precisa terminar em `dl=1`**, senão baixa a página de preview do
-      Dropbox em vez do arquivo — o link que você mandou já está certo).
-- [ ] `kmpChangelog` (opcional): texto curto que aparece pro usuário
-      quando uma atualização é encontrada.
+**Onde os arquivos ficam prontos, localmente**:
+`/home/lvergani/Downloads/dropbox_update_scripts/EscalaICI-latest.apk` e
+`.../version.json` — gerados/atualizados a cada release rodando
+`./gerar_update_escalaici_local.sh` nessa pasta (ver seção "FASE 11.2e" do
+`README.md` deste projeto para o procedimento completo).
 
-Conteúdo de hoje do `version.json` (conferido agora, `2026-07-11`) + as 4
-linhas novas — copie o arquivo inteiro abaixo (se o conteúdo do app oficial
-tiver mudado desde então, mantenha os valores atuais das 5 primeiras
-chaves e só adicione as 4 últimas):
+- [ ] Suba `EscalaICI-latest.apk` (versionCode `10`, `0.6.0`) para o
+      Dropbox, no mesmo link já cadastrado (sobrescrever o conteúdo, sem
+      apagar o arquivo — senão o link muda).
+- [ ] Suba `version.json` (mesma pasta) para o Dropbox, mesmo link.
 
-```json
-{
-  "versionCode": 31,
-  "versionName": "1.20.2",
-  "apkUrl": "https://www.dropbox.com/scl/fi/sgoi2ykk9m1c4ebw0ggwo/EscalaSOC-latest.apk?rlkey=jyhffmy7ir4stmhd04xkho83n&st=2sy7gzs6&dl=1",
-  "releaseNotes": "FASE 7k-2: cache local mais inteligente - o app so baixa a escala e o plantao completos quando algo realmente mudou no Firebase, senao usa o cache na hora. Botao Atualizar mais estavel contra cliques repetidos.",
-  "changelog": "FASE 7k-2: cache local mais inteligente - o app so baixa a escala e o plantao completos quando algo realmente mudou no Firebase, senao usa o cache na hora. Botao Atualizar mais estavel contra cliques repetidos.",
-  "kmpVersionCode": 10,
-  "kmpVersionName": "0.6.0",
-  "kmpApkUrl": "https://www.dropbox.com/scl/fi/bwujohqsmenbx6279yg86/EscalaICI-latest.apk?rlkey=wqbzjht0isix9x2g8pbfcyghx&st=kqchnpky&dl=1",
-  "kmpChangelog": "FASE 11.2c/d: importação real de Plantão, data real do dispositivo, atualização real do app."
-}
-```
+**Depois de feito**: peça pra eu testar (ou teste você mesmo: abra o app
+KMP no celular → Perfil → "Atualizar aplicativo" → deve aparecer "Nova
+versão disponível: v0.6.0..." e abrir o instalador do Android — pode pedir
+pra permitir "instalar apps de fontes desconhecidas" na primeira vez, é
+normal, só acontece 1x).
 
-- [ ] Confirme que o arquivo `EscalaICI-latest.apk` já hospedado no
-      Dropbox nesse link é o build mais recente do lab (`versionCode 10`,
-      `0.6.0`) — se você subiu uma versão mais antiga antes de eu terminar
-      esta fase, re-suba o arquivo gerado em
-      `~/Downloads/EscalaICI-KMP-Lab-latest.apk` (sobrescrevendo o que já
-      está no Dropbox, o link compartilhado continua o mesmo).
-
-**Depois de feito**: peça pra eu testar de novo (ou teste você mesmo: abra
-o app KMP no celular → Perfil → "Atualizar aplicativo" → deve aparecer
-"Nova versão disponível: v0.6.0..." e abrir o instalador do Android — pode
-pedir pra permitir "instalar apps de fontes desconhecidas" na primeira
-vez, é normal).
-
-**Mantendo isso pra sempre**: a cada nova versão do KMP lab que eu
-publicar, os campos `kmpVersionCode`/`kmpVersionName`/`kmpChangelog`
-precisam ser atualizados de novo nesse mesmo arquivo (o `kmpApkUrl` só
-muda se o link do Dropbox mudar — o conteúdo do arquivo pode ser
-sobrescrito sem trocar o link). Vou lembrar de avisar quando isso for
-necessário.
+**Mantendo isso pra sempre**: a cada nova versão real do KMP lab, o
+procedimento é sempre: build release → `gerar_update_escalaici_local.sh`
+→ editar `kmpVersionCode`/`kmpVersionName`/`kmpChangelog` no `version.json`
+local → você sobe os dois arquivos manualmente. Vou lembrar de avisar
+quando um release novo estiver pronto pra subir.
 
 ---
 
