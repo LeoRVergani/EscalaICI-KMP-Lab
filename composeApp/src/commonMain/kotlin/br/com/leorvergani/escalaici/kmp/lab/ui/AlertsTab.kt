@@ -112,7 +112,7 @@ private fun AlertsHero(summary: ScheduleSummary, alerts: List<LabAlert>) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Alertas da escala", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                        Text("${alerts.size} itens gerados pela escala ${if (summary.isImported) "real" else "de exemplo"}", color = Color.White.copy(alpha = 0.72f), style = MaterialTheme.typography.bodySmall)
+                        Text("${alerts.size} itens gerados pela escala ${if (summary.isImported) "real" else "ainda não importada"}", color = Color.White.copy(alpha = 0.72f), style = MaterialTheme.typography.bodySmall)
                     }
                     CountBadge(alerts.size)
                 }
@@ -230,7 +230,7 @@ private fun AlertContextLine(alert: LabAlert, summary: ScheduleSummary) {
     val text = if (alert.title.contains("Fonte", ignoreCase = true)) {
         "${summary.periodLabel} • Analista: ${summary.member.scaleName}"
     } else {
-        "Fonte: ${summary.sourceFileName ?: "dados de exemplo"}"
+        "Fonte: ${summary.sourceFileName ?: "nenhuma escala importada"}"
     }
     Text(
         text,

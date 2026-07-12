@@ -281,7 +281,7 @@ private fun DemoCalendarCard() {
     LabCard(borderColor = LabColors.primary.copy(alpha = 0.35f)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Exemplo", color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium)
+                Text("Escala ainda não sincronizada", color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium)
                 Text(
                     "Importe e analise uma escala para preencher este calendário com dados reais. Os dias abaixo são apenas ilustrativos.",
                     color = LabColors.onSurfaceMuted,
@@ -295,7 +295,7 @@ private fun DemoCalendarCard() {
                     .border(1.dp, LabColors.primary.copy(alpha = 0.30f), LabShapes.chip)
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
-                Text("Exemplo", color = LabColors.primary, style = MaterialTheme.typography.labelSmall)
+                Text("não sincronizada", color = LabColors.primary, style = MaterialTheme.typography.labelSmall)
             }
         }
     }

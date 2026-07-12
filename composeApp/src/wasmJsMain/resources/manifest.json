@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Escala ICI KMP",
-  "short_name": "Escala KMP",
-  "description": "App oficial em Kotlin Multiplatform do Escala ICI (Android + Web/Wasm), rodando em paralelo ao app Android atual até substituí-lo.",
+  "name": "Escala ICI",
+  "short_name": "Escala ICI",
+  "description": "Escala ICI — app universal de escalas do ICI (Android + Web), para os setores e equipes do ICI.",
   "lang": "pt-BR",
   "start_url": ".",
   "scope": ".",

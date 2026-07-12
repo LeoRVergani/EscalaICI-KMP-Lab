@@ -79,14 +79,14 @@ internal fun ProfileTab(
                         Text("Perfil selecionado", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelMedium)
                         Text(summary.member.displayName, color = LabColors.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            if (summary.isImported) "Escala salva apenas neste dispositivo" else "Dados de exemplo",
+                            if (summary.isImported) "Escala salva apenas neste dispositivo" else "Nenhuma escala importada",
                             color = LabColors.tertiary,
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
                 }
                 Text("Período: ${summary.periodLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Fonte: ${summary.sourceFileName ?: "dados de exemplo"}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Fonte: ${summary.sourceFileName ?: "nenhuma escala importada"}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(summary.member.email, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = onLogout) {
                     Text("Sair (login de teste)", color = LabColors.primary)
@@ -193,7 +193,7 @@ internal fun ProfileTab(
         }
         item {
             LabCard(title = "Armazenamento local", icon = Icons.Default.Storage, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
-                Text("Arquivo salvo: ${summary.sourceFileName ?: "dados de exemplo"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Arquivo salvo: ${summary.sourceFileName ?: "nenhuma escala importada"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("Status: ${if (summary.isImported) "Escala lida na sessão Web/Android" else "Sem XLS aplicado"}", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
                 DisabledAction("Remover escala local")
             }

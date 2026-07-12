@@ -116,7 +116,7 @@ internal fun ImportTab(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = LabColors.onSurface),
                     border = BorderStroke(1.dp, LabColors.outline.copy(alpha = 0.70f))
                 ) {
-                    Text("Voltar para dados de exemplo")
+                    Text("Remover escala importada")
                 }
             }
         }

@@ -28,6 +28,23 @@ tipos de escala configuráveis por equipe — ver
   gerado e copiado para `EscalaICI-latest.apk`; falta só o usuário subir
   manualmente pro Dropbox.
 
+## FASE 12b-3 — Limpeza visual de nomenclatura: Escala ICI
+
+- **Status:** DONE
+- Remove "KMP"/"exemplo"/"demo" sem contexto de todo texto visível ao
+  usuário (label do app Android, título web/PWA, `manifest.json`, 12
+  textos de tela em `TodayTab`/`AlertsTab`/`ImportTab`/`ScheduleTab`/
+  `ProfileTab`/`PlantaoScreen`) — o app aparece só como **Escala ICI**
+  para quem usa. `EscalaSOC` continua o nome do app Android antigo/oficial.
+- Nenhum aviso de dado não-real foi escondido, só reescrito em linguagem
+  neutra ("Nenhuma escala importada", "Sem plantão publicado", etc.). Ver
+  tabela completa no `README.md`, seção "Validação da FASE 12b-3".
+- Nenhum nome de arquivo/classe/identificador renomeado (`LabCard`,
+  `LabColors`, pacote `...kmp.lab`, etc.) — fora de escopo desta fase.
+- `applicationId`/`versionCode`/`versionName` mantidos
+  (`br.com.leorvergani.escalaici.kmp.lab` / `12` / `0.6.2`). Sem build de
+  release, sem `version.json`, sem Dropbox.
+
 ## FASE 12b-2 — Card configurável de atividade/cargo por equipe
 
 - **Status:** DONE

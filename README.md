@@ -262,6 +262,71 @@ copiado para `EscalaICI-latest.apk` via `gerar_update_escalaici_local.sh`.
 `kmpChangelog`) — falta só o usuário subir os dois arquivos manualmente
 pro Dropbox (ver `docs/PENDENCIAS-EXTERNAS.md`).
 
+## Validação da FASE 12b-3 — limpeza visual de nomenclatura: Escala ICI
+
+Remove da interface visível ao usuário qualquer termo que dê cara de
+laboratório/POC — "KMP", "exemplo"/"demo" sem contexto — mantendo o app
+sempre identificado só como **Escala ICI**. `EscalaSOC` continua sendo o
+nome do app Android antigo/oficial do SOC (não confundir os dois nomes).
+Escopo só de texto — nenhuma mudança de arquitetura, `applicationId`,
+`versionCode`/`versionName`, build de release ou `version.json`.
+
+**Nome visível do app** (label do launcher Android, título da aba do
+navegador/PWA):
+
+| Onde | Antes | Depois |
+|---|---|---|
+| `AndroidManifest.xml` (`android:label`) | "Escala ICI KMP" | "Escala ICI" |
+| `index.html` (`<title>`, `apple-mobile-web-app-title`) | "Escala ICI KMP" | "Escala ICI" |
+| `manifest.json` (`name`, `short_name`) | "Escala ICI KMP" / "Escala KMP" | "Escala ICI" / "Escala ICI" |
+| `manifest.json` (`description`) | mencionava "Kotlin Multiplatform" | reescrita sem jargão técnico |
+
+**Textos de tela** (todos os 12 pontos encontrados pelo grep de auditoria
+`mock\|kmp lab\|kmp\|lab\|demonstra\|exemplo\|migração` em
+`composeApp/src/commonMain`/`androidMain`, restrito a strings realmente
+visíveis — nomes de arquivo/classe como `LabCard`/`LabColors` não foram
+renomeados nesta fase):
+
+| Arquivo | Antes | Depois |
+|---|---|---|
+| `TodayTab.kt` (badge do "Resumo da semana") | "exemplo" | "não importada" |
+| `TodayTab.kt` (subtítulo do período) | "Exemplo" | "Nenhuma escala importada" |
+| `TodayTab.kt` (`DemoBadge`) | "exemplo" | "não importada" |
+| `AlertsTab.kt` (hero) | "...escala de exemplo" | "...escala ainda não importada" |
+| `AlertsTab.kt` (linha de contexto) | "dados de exemplo" | "nenhuma escala importada" |
+| `ImportTab.kt` (botão) | "Voltar para dados de exemplo" | "Remover escala importada" |
+| `ScheduleTab.kt` (`DemoCalendarCard`, título) | "Exemplo" | "Escala ainda não sincronizada" |
+| `ScheduleTab.kt` (`DemoCalendarCard`, chip) | "Exemplo" | "não sincronizada" |
+| `ProfileTab.kt` (status do perfil) | "Dados de exemplo" | "Nenhuma escala importada" |
+| `ProfileTab.kt` (linha "Fonte") | "dados de exemplo" | "nenhuma escala importada" |
+| `ProfileTab.kt` (linha "Arquivo salvo") | "dados de exemplo" | "nenhuma escala importada" |
+| `PlantaoScreen.kt` (status do relatório) | "...mostrando dados de exemplo." | "Nenhum relatório de plantão publicado ainda — mostrando dados ilustrativos." |
+
+Nenhum aviso de "isso não é dado real" foi escondido — só reescrito em
+linguagem neutra (regra 6 desta fase). Nenhum nome de arquivo/classe
+(`LabCard`, `LabColors`, `LabTheme`, etc.) foi renomeado — são identificados
+internos, fora do escopo desta fase. Comentários técnicos internos
+("porte do laboratório", "adição própria do laboratório") mantidos, por
+serem documentação de desenvolvimento, não texto de UI (regra 7).
+
+**Validado:**
+
+```bash
+cd /home/lvergani/AndroidStudioProjects/EscalaICI-KMP-Lab
+./gradlew :composeApp:compileDebugKotlinAndroid
+./gradlew :composeApp:compileKotlinWasmJs
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Os dois targets compilam, os 39 testes continuam passando (0 falhas,
+nenhum teste dependia dos textos alterados), e o build completo (APK
+debug + distribuição Web/Wasm) passa sem erro.
+
+`applicationId`/`versionCode`/`versionName`: mantidos
+(`br.com.leorvergani.escalaici.kmp.lab` / `12` / `0.6.2`) — só texto
+visível, sem build de release, sem `version.json`, sem Dropbox.
+
 ## Validação da FASE 12b-2 — card configurável de atividade/cargo por equipe
 
 Continuação da FASE 12b: deixa explícito que `M1`/`M2`/`M3`/`M4`/`E`/`G`/`T`/

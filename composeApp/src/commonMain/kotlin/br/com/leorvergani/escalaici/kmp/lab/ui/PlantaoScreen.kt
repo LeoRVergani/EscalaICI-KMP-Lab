@@ -221,7 +221,7 @@ private fun PlantaoHeroCard(
             }
         }
         Text(
-            if (isImported) "Relatório importado: ${importedFileName ?: "arquivo"}" else "Nenhum relatório real importado — mostrando dados de exemplo.",
+            if (isImported) "Relatório importado: ${importedFileName ?: "arquivo"}" else "Nenhum relatório de plantão publicado ainda — mostrando dados ilustrativos.",
             style = MaterialTheme.typography.labelSmall,
             color = LabColors.onSurfaceMuted
         )
