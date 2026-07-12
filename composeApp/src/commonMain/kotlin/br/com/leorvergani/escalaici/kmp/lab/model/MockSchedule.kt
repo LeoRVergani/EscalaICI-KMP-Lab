@@ -306,8 +306,31 @@ fun mockTeamN1(): Team = Team(
 )
 
 fun mockRoles(): List<Role> = listOf(
-    Role(id = "role-team-admin", name = "Administrador da equipe", acronym = "ADMIN", orgUnitId = "cosi"),
-    Role(id = "role-analyst", name = "Analista", acronym = "ANALISTA", orgUnitId = "cosi")
+    Role(
+        id = "role-team-admin",
+        name = "Administrador da equipe",
+        acronym = "ADMIN",
+        orgUnitId = "cosi",
+        roleShortName = "Admin",
+        roleDisplayName = "Administrador da equipe"
+    ),
+    Role(
+        id = "role-analyst",
+        name = "Analista",
+        acronym = "ANALISTA",
+        orgUnitId = "cosi",
+        roleShortName = "Analista",
+        roleDisplayName = "Analista"
+    ),
+    /** Cargo exclusivo da equipe N1 — não existe em SOC/COSI/GEDSI. */
+    Role(
+        id = "role-n1-tecnico",
+        name = "Técnico de TI",
+        acronym = "TEC",
+        orgUnitId = "n1-service-desk",
+        roleShortName = "Técnico",
+        roleDisplayName = "Técnico de TI"
+    )
 )
 
 fun mockMemberTeamMemberships(): List<MemberTeamMembership> = listOf(
@@ -326,22 +349,37 @@ fun mockMemberTeamMemberships(): List<MemberTeamMembership> = listOf(
         roleId = "role-analyst",
         startDate = "2026-01-01",
         isPrimary = true
+    ),
+    MemberTeamMembership(
+        id = "membership-douglas-n1",
+        memberId = "douglas.bezerra@ici.tec.br",
+        teamId = "n1",
+        roleId = "role-n1-tecnico",
+        startDate = "2026-01-01",
+        isPrimary = true
     )
 )
 
-/** Códigos reais da equipe N1 (aba `Máscara` de `Escalas Equipe N1.xls`, spec 34 §3.2). */
+/**
+ * Códigos reais da equipe N1 (aba `Máscara` de `Escalas Equipe N1.xls`, spec
+ * 34 §3.2) — exclusivos do N1/Service Desk no contexto atual (FASE 12b-2).
+ * `F`/`X`/`AUS`/`M`/`M1`-`M4`/`E`/`G`/`T` **não pertencem** a SOC/COSI/GEDSI;
+ * `scheduleProfileId = "profile-n1-matrix"` amarra isso explicitamente (não
+ * é só o `teamId`), e nenhum código aqui tem `teamId`/`scheduleProfileId`
+ * apontando pro SOC.
+ */
 fun mockActivityCodesN1(): List<ActivityCode> = listOf(
-    ActivityCode(id = "n1-f", teamId = "n1", code = "F", label = "Folga (Cockpit, DSR, BH, aniversário)", type = ActivityCodeType.REST, countsAsWork = false),
-    ActivityCode(id = "n1-x", teamId = "n1", code = "X", label = "Férias", type = ActivityCodeType.VACATION, countsAsWork = false),
-    ActivityCode(id = "n1-aus", teamId = "n1", code = "AUS", label = "Ausência (atestado, declaração, falta)", type = ActivityCodeType.ABSENCE, countsAsWork = false),
-    ActivityCode(id = "n1-m", teamId = "n1", code = "M", label = "Manhã", type = ActivityCodeType.WORK, countsAsWork = true),
-    ActivityCode(id = "n1-m1", teamId = "n1", code = "M1", label = "Monitoramento 1", type = ActivityCodeType.MONITORING, countsAsWork = true),
-    ActivityCode(id = "n1-m2", teamId = "n1", code = "M2", label = "Monitoramento 2", type = ActivityCodeType.MONITORING, countsAsWork = true),
-    ActivityCode(id = "n1-m3", teamId = "n1", code = "M3", label = "Monitoramento 3", type = ActivityCodeType.MONITORING, countsAsWork = true),
-    ActivityCode(id = "n1-m4", teamId = "n1", code = "M4", label = "Monitoramento 4", type = ActivityCodeType.MONITORING, countsAsWork = true),
-    ActivityCode(id = "n1-e", teamId = "n1", code = "E", label = "E-mail", type = ActivityCodeType.EMAIL, countsAsWork = true),
-    ActivityCode(id = "n1-g", teamId = "n1", code = "G", label = "Garantia", type = ActivityCodeType.WARRANTY, countsAsWork = true),
-    ActivityCode(id = "n1-t", teamId = "n1", code = "T", label = "Treinamento", type = ActivityCodeType.MIXED, countsAsWork = true)
+    ActivityCode(id = "n1-f", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "F", label = "Folga (Cockpit, DSR, BH, aniversário)", type = ActivityCodeType.REST, countsAsWork = false, sortOrder = 0),
+    ActivityCode(id = "n1-x", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "X", label = "Férias", type = ActivityCodeType.VACATION, countsAsWork = false, sortOrder = 1),
+    ActivityCode(id = "n1-aus", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "AUS", label = "Ausência (atestado, declaração, falta)", type = ActivityCodeType.ABSENCE, countsAsWork = false, sortOrder = 2),
+    ActivityCode(id = "n1-m", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "M", label = "Manhã", type = ActivityCodeType.WORK, countsAsWork = true, sortOrder = 3),
+    ActivityCode(id = "n1-m1", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "M1", label = "Monitoramento 1", type = ActivityCodeType.MONITORING, countsAsWork = true, sortOrder = 4),
+    ActivityCode(id = "n1-m2", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "M2", label = "Monitoramento 2", type = ActivityCodeType.MONITORING, countsAsWork = true, sortOrder = 5),
+    ActivityCode(id = "n1-m3", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "M3", label = "Monitoramento 3", type = ActivityCodeType.MONITORING, countsAsWork = true, sortOrder = 6),
+    ActivityCode(id = "n1-m4", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "M4", label = "Monitoramento 4", type = ActivityCodeType.MONITORING, countsAsWork = true, sortOrder = 7),
+    ActivityCode(id = "n1-e", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "E", label = "E-mail", type = ActivityCodeType.EMAIL, countsAsWork = true, sortOrder = 8),
+    ActivityCode(id = "n1-g", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "G", label = "Garantia", type = ActivityCodeType.WARRANTY, countsAsWork = true, sortOrder = 9),
+    ActivityCode(id = "n1-t", teamId = "n1", scheduleProfileId = "profile-n1-matrix", code = "T", label = "Treinamento", type = ActivityCodeType.MIXED, countsAsWork = true, sortOrder = 10)
 )
 
 fun mockScheduleProfiles(): List<ScheduleProfile> = listOf(
@@ -351,7 +389,9 @@ fun mockScheduleProfiles(): List<ScheduleProfile> = listOf(
         name = "SOC 6x1 por turnos",
         type = ScheduleProfileType.ROTATING_6X1,
         periodMode = SchedulePeriodMode.DAY_26_TO_25,
-        description = "Turnos fixos Madrugada/Manhã/Tarde/Noite, ciclo do dia 26 ao dia 25."
+        description = "Turnos fixos Madrugada/Manhã/Tarde/Noite, ciclo do dia 26 ao dia 25.",
+        // SOC usa ShiftType (Madrugada/Manhã/Tarde/Noite) — sem card de código de atividade.
+        uiConfig = ScheduleUiConfig(showActivityCodeCard = false)
     ),
     ScheduleProfile(
         id = "profile-n1-matrix",
@@ -359,14 +399,16 @@ fun mockScheduleProfiles(): List<ScheduleProfile> = listOf(
         name = "N1 6x1 por códigos",
         type = ScheduleProfileType.MATRIX_6X1,
         periodMode = SchedulePeriodMode.MONTHLY,
-        description = "Matriz mensal por colaborador, códigos configuráveis (F, X, AUS, M1-M4, E, G, T)."
+        description = "Matriz mensal por colaborador, códigos configuráveis (F, X, AUS, M1-M4, E, G, T).",
+        uiConfig = ScheduleUiConfig(showActivityCodeCard = true, activityCardTitle = "Atividade do dia")
     ),
     ScheduleProfile(
         id = "profile-administrativo",
         name = "Administrativo segunda a sexta",
         type = ScheduleProfileType.BUSINESS_HOURS,
         periodMode = SchedulePeriodMode.CONTINUOUS,
-        description = "08:00-18:00 com 2h de almoço, sem rodízio de fim de semana."
+        description = "08:00-18:00 com 2h de almoço, sem rodízio de fim de semana.",
+        uiConfig = ScheduleUiConfig(showActivityCodeCard = false)
     )
 )
 

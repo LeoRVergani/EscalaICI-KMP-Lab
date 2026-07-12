@@ -57,4 +57,62 @@ class UniversalOrgModelsTest {
         assertEquals("soc", lverganiMembership.teamId)
         assertTrue(lverganiMembership.isPrimary)
     }
+
+    @Test
+    fun scheduleUiConfig_n1EnablesActivityCodeCard() {
+        val n1Profile = mockScheduleProfiles().first { it.id == "profile-n1-matrix" }
+
+        assertTrue(n1Profile.uiConfig.showActivityCodeCard)
+        assertEquals("Atividade do dia", n1Profile.uiConfig.activityCardTitle)
+    }
+
+    @Test
+    fun scheduleUiConfig_socDoesNotEnableActivityCodeCard() {
+        val socProfile = mockScheduleProfiles().first { it.id == "profile-soc-6x1" }
+        val adminProfile = mockScheduleProfiles().first { it.id == "profile-administrativo" }
+
+        assertFalse(socProfile.uiConfig.showActivityCodeCard)
+        assertFalse(adminProfile.uiConfig.showActivityCodeCard)
+    }
+
+    @Test
+    fun activityCode_m1ToM4BelongOnlyToN1Profile() {
+        val codes = mockActivityCodesN1().associateBy { it.code }
+
+        assertEquals("profile-n1-matrix", codes.getValue("M1").scheduleProfileId)
+        assertEquals("profile-n1-matrix", codes.getValue("M2").scheduleProfileId)
+        assertEquals("profile-n1-matrix", codes.getValue("M3").scheduleProfileId)
+        assertEquals("profile-n1-matrix", codes.getValue("M4").scheduleProfileId)
+        codes.values.forEach { code ->
+            assertEquals("n1", code.teamId)
+        }
+    }
+
+    @Test
+    fun activityCode_m1ToM4DoNotBelongToSocProfile() {
+        val socProfileId = mockScheduleProfiles().first { it.id == "profile-soc-6x1" }.id
+        val codes = mockActivityCodesN1().associateBy { it.code }
+
+        listOf("M1", "M2", "M3", "M4", "E", "G", "T", "F", "X", "AUS").forEach { code ->
+            assertFalse(codes.getValue(code).scheduleProfileId == socProfileId)
+            assertFalse(codes.getValue(code).teamId == "soc")
+        }
+    }
+
+    @Test
+    fun formatMemberWithRole_showsShortRoleBeforeName() {
+        val tecnico = mockRoles().first { it.id == "role-n1-tecnico" }
+        val analista = mockRoles().first { it.id == "role-analyst" }
+
+        assertEquals("Técnico: Douglas", formatMemberWithRole("Douglas", tecnico, showRoleLabel = true))
+        assertEquals("Analista: Leonardo", formatMemberWithRole("Leonardo", analista, showRoleLabel = true))
+    }
+
+    @Test
+    fun formatMemberWithRole_hidesRoleWhenShowRoleLabelIsFalse() {
+        val tecnico = mockRoles().first { it.id == "role-n1-tecnico" }
+
+        assertEquals("Douglas", formatMemberWithRole("Douglas", tecnico, showRoleLabel = false))
+        assertEquals("Douglas", formatMemberWithRole("Douglas", role = null, showRoleLabel = true))
+    }
 }

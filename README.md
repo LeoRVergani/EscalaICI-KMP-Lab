@@ -262,6 +262,64 @@ copiado para `EscalaICI-latest.apk` via `gerar_update_escalaici_local.sh`.
 `kmpChangelog`) — falta só o usuário subir os dois arquivos manualmente
 pro Dropbox (ver `docs/PENDENCIAS-EXTERNAS.md`).
 
+## Validação da FASE 12b-2 — card configurável de atividade/cargo por equipe
+
+Continuação da FASE 12b: deixa explícito que `M1`/`M2`/`M3`/`M4`/`E`/`G`/`T`/
+`F`/`X`/`AUS` são exemplos **exclusivos da equipe N1/Service Desk** — não
+pertencem a SOC/COSI/GEDSI — e prepara a base de modelo para um card de
+atividade **configurável por perfil de escala**, que só aparece quando o
+perfil daquela equipe habilitar (nenhuma equipe/card fica hardcoded no
+código).
+
+**`model/UniversalOrgModels.kt`:**
+
+- `ScheduleUiConfig` (novo) — `showActivityCodeCard`, `showRoleLabel`,
+  `activityCardTitle`. `ScheduleProfile` ganhou o campo `uiConfig =
+  ScheduleUiConfig()` (aditivo, default não quebra nada existente).
+- `ActivityCode` ganhou `visibleInApp`, `cardTitle`, `sortOrder` — só
+  metadados de exibição do card, não afetam `countsAsWork` nem nenhuma
+  regra de negócio.
+- `Role` ganhou `roleShortName`/`roleDisplayName` (nullable, caem para
+  `acronym`/`name` via `effectiveShortName`/`effectiveDisplayName` quando
+  não informados) — permite exibir "Técnico: Fulano" ou "Analista:
+  Fulano" no card.
+- `formatMemberWithRole(memberDisplayName, role, showRoleLabel)` (novo,
+  função pura) — resolve o rótulo "cargo: nome" respeitando
+  `ScheduleUiConfig.showRoleLabel`; não conectado a nenhuma tela ainda,
+  só validado por teste (regra 7 desta fase: nada de UI real além de
+  função pura/helper).
+
+**Mocks (`MockSchedule.kt`):** perfil SOC e Administrativo com
+`showActivityCodeCard = false`; perfil N1 com `showActivityCodeCard =
+true`; todos os 11 códigos de `mockActivityCodesN1()` agora amarrados
+explicitamente a `scheduleProfileId = "profile-n1-matrix"` (não só
+`teamId = "n1"`) — nenhum aponta pro SOC. Novo `Role` `role-n1-tecnico`
+("Técnico"/"Técnico de TI", exclusivo do N1) e uma
+`MemberTeamMembership` de exemplo ligando um técnico N1 a esse papel.
+
+**Testes novos** (`UniversalOrgModelsTest.kt`, 6 testes, 11 no total no
+arquivo): N1 habilita o card de atividade; SOC/Administrativo não
+habilitam; `M1`-`M4` (e todos os outros códigos N1) pertencem só ao
+perfil N1, nunca ao SOC; `formatMemberWithRole` mostra "Técnico: Nome" /
+"Analista: Nome" quando `showRoleLabel = true`, e omite o cargo quando
+`false` ou quando não há `Role`.
+
+**Validado:**
+
+```bash
+cd /home/lvergani/AndroidStudioProjects/EscalaICI-KMP-Lab
+./gradlew :composeApp:compileDebugKotlinAndroid
+./gradlew :composeApp:compileKotlinWasmJs
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:assembleDebug :composeApp:wasmJsBrowserDistribution
+```
+
+Os dois targets compilam, 39 testes passam (6 novos, 0 falhas), e o build
+completo (APK debug + distribuição Web/Wasm) passa sem erro.
+
+`versionCode`/`versionName`: mantidos (`12`/`0.6.2`) — fase só de modelos
+puros, sem build de release, sem `version.json`, sem Dropbox.
+
 ## Validação da FASE 12b — modelos universais de organização e escala
 
 Primeira fase de código da série `FASE 12.x` (generalizar o Escala ICI para

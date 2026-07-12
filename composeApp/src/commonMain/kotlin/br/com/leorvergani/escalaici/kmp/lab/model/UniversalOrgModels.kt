@@ -48,14 +48,36 @@ data class OrgUnit(
     val active: Boolean = true
 )
 
-/** Papel/funcao dentro de uma equipe ou setor (ex.: coordenador, analista). */
+/**
+ * Papel/funcao dentro de uma equipe ou setor (ex.: coordenador, analista,
+ * tecnico). `roleShortName`/`roleDisplayName` sao rotulos pensados para
+ * exibicao no app (card "Tecnico: Fulano", "Analista: Fulano") — se nulos,
+ * caem para `acronym`/`name` (`effectiveShortName`/`effectiveDisplayName`),
+ * entao um `Role` criado antes desta fase continua funcionando sem mudanca.
+ */
 data class Role(
     val id: String,
     val name: String,
     val acronym: String,
     val orgUnitId: String? = null,
-    val active: Boolean = true
-)
+    val active: Boolean = true,
+    val roleShortName: String? = null,
+    val roleDisplayName: String? = null
+) {
+    val effectiveShortName: String get() = roleShortName ?: acronym
+    val effectiveDisplayName: String get() = roleDisplayName ?: name
+}
+
+/**
+ * Formata "cargo: nome" para exibicao no app (ex.: "Tecnico: Fulano"),
+ * respeitando `ScheduleUiConfig.showRoleLabel` — funcao pura, sem nenhuma
+ * dependencia de UI, so para validar a regra antes de existir uma tela real
+ * que a use (fica para uma fase futura, apos dashboard/Firebase definidos).
+ */
+fun formatMemberWithRole(memberDisplayName: String, role: Role?, showRoleLabel: Boolean = true): String {
+    if (!showRoleLabel || role == null) return memberDisplayName
+    return "${role.effectiveShortName}: $memberDisplayName"
+}
 
 /**
  * Vinculo entre um membro e uma equipe, com periodo de vigencia — permite
@@ -92,6 +114,19 @@ enum class SchedulePeriodMode {
     CONTINUOUS
 }
 
+/**
+ * Configuracao visual de um perfil de escala — controla se o card de
+ * atividade/codigo aparece no app para aquela equipe (FASE 12b-2). Cada
+ * equipe/perfil decide por conta propria; nao ha nenhum "card do N1"
+ * hardcoded, so um card generico que so aparece quando
+ * `showActivityCodeCard = true` no perfil daquela equipe.
+ */
+data class ScheduleUiConfig(
+    val showActivityCodeCard: Boolean = false,
+    val showRoleLabel: Boolean = true,
+    val activityCardTitle: String = "Atividade do dia"
+)
+
 /** Tipo estrutural de escala que uma equipe usa (turno fixo, matriz por codigo, 12x36...). */
 data class ScheduleProfile(
     val id: String,
@@ -100,7 +135,8 @@ data class ScheduleProfile(
     val type: ScheduleProfileType,
     val periodMode: SchedulePeriodMode,
     val description: String? = null,
-    val active: Boolean = true
+    val active: Boolean = true,
+    val uiConfig: ScheduleUiConfig = ScheduleUiConfig()
 )
 
 enum class ActivityCodeType {
@@ -121,7 +157,9 @@ enum class ActivityCodeType {
  * `M4`, `E`, `G`, `T` da equipe N1) — em vez de um enum fixo tipo `ShiftType`
  * para todas as equipes, cada equipe cadastra os proprios codigos.
  * `countsAsWork` e o que faz o app saber se um dia conta como trabalho sem
- * precisar entender o significado especifico do codigo.
+ * precisar entender o significado especifico do codigo. `visibleInApp`/
+ * `cardTitle`/`sortOrder` (FASE 12b-2) sao so metadados de exibicao do card
+ * configuravel — nao afetam `countsAsWork` nem nenhuma regra de negocio.
  */
 data class ActivityCode(
     val id: String,
@@ -132,7 +170,10 @@ data class ActivityCode(
     val type: ActivityCodeType,
     val countsAsWork: Boolean,
     val colorHex: String? = null,
-    val active: Boolean = true
+    val active: Boolean = true,
+    val visibleInApp: Boolean = true,
+    val cardTitle: String = "Atividade do dia",
+    val sortOrder: Int = 0
 )
 
 /** Regra de horario administrativo (ex.: segunda a sexta, 08:00-18:00 com 2h de almoco). */

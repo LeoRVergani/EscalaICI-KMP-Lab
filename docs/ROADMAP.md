@@ -28,6 +28,26 @@ tipos de escala configuráveis por equipe — ver
   gerado e copiado para `EscalaICI-latest.apk`; falta só o usuário subir
   manualmente pro Dropbox.
 
+## FASE 12b-2 — Card configurável de atividade/cargo por equipe
+
+- **Status:** DONE
+- `ScheduleUiConfig` novo (`showActivityCodeCard`, `showRoleLabel`,
+  `activityCardTitle`) em `ScheduleProfile.uiConfig` — o card de
+  atividade/código só aparece por equipe/perfil se habilitado, nada
+  hardcoded para N1 no código do app.
+- `ActivityCode` ganhou `visibleInApp`/`cardTitle`/`sortOrder`; `Role`
+  ganhou `roleShortName`/`roleDisplayName` (nullable, com fallback) +
+  `formatMemberWithRole()` (função pura, ainda sem UI real).
+- Confirmado nos mocks e em teste: `M1`-`M4`/`E`/`G`/`T`/`F`/`X`/`AUS` só
+  existem amarrados ao perfil N1 (`scheduleProfileId =
+  "profile-n1-matrix"`), nunca ao SOC. SOC/Administrativo com
+  `showActivityCodeCard = false`; N1 com `true`.
+- Ver detalhe completo no `README.md`, seção "Validação da FASE 12b-2".
+- Não mexeu em Firebase, Firestore Rules, dashboard, MSAL, parsers,
+  update de APK, Dropbox ou scripts de release.
+- `versionCode`/`versionName`: mantidos (`12`/`0.6.2`) — sem build de
+  release, sem `version.json`, sem Dropbox.
+
 ## FASE 12b — Modelos universais de organização e escala no commonMain
 
 - **Status:** DONE
