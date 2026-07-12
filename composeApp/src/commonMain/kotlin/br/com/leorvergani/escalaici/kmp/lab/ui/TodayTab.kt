@@ -48,8 +48,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftDay
+import br.com.leorvergani.escalaici.kmp.lab.platform.todayLabDate
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.HeroCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
@@ -181,6 +183,7 @@ private fun WeatherChip() {
 @Composable
 private fun WeekSummaryCard(summary: ScheduleSummary) {
     val selectedDate = summary.nextShift?.date ?: summary.days.firstOrNull()?.date
+    val week = currentWeekWindow(summary.days)
     LabCard(
         title = "Resumo da semana",
         badge = if (!summary.isImported) "exemplo" else null,
@@ -193,12 +196,28 @@ private fun WeekSummaryCard(summary: ScheduleSummary) {
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            summary.days.take(7).forEachIndexed { index, day ->
+            week.forEachIndexed { index, day ->
                 val selected = if (selectedDate != null) day.date == selectedDate else index == 0
                 WeekDayPill(day = day, selected = selected, modifier = Modifier.weight(if (selected) 1.35f else 1f))
             }
         }
     }
+}
+
+/**
+ * Janela de 7 dias ancorada em "hoje" real (`todayLabDate()`), não os
+ * primeiros 7 registros da lista importada — a escala real começa no dia
+ * 26 de um mês, então `days.take(7)` mostrava sempre o início do ciclo
+ * importado em vez da semana que contém a data atual do dispositivo.
+ */
+private fun currentWeekWindow(days: List<ShiftDay>): List<ShiftDay> {
+    val sorted = days.filter { it.date != null }.sortedBy { it.date }
+    if (sorted.isEmpty()) return days.take(7)
+    val today: LabDate = todayLabDate()
+    val maxStart = (sorted.size - 7).coerceAtLeast(0)
+    val todayIndex = sorted.indexOfFirst { it.date!! >= today }
+    val startIndex = if (todayIndex < 0) maxStart else todayIndex.coerceAtMost(maxStart)
+    return sorted.drop(startIndex).take(7)
 }
 
 @Composable

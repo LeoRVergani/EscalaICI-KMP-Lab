@@ -60,7 +60,7 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.shiftColor
 @Composable
 internal fun ScheduleTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
     val sortedDays = summary.days.sortedBy { it.date }
-    val today = remember { todayLabDate() }
+    val today = remember(summary) { todayLabDate() }
     val initialDay = remember(summary) {
         sortedDays.firstOrNull { it.date == today }
             ?: sortedDays.firstOrNull { it.type.isWorkShift && it.date != null && it.date!! >= today }
