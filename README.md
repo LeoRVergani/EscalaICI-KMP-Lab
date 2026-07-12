@@ -11,6 +11,11 @@ o plano de integrações reais em andamento, e
 **`docs/PENDENCIAS-EXTERNAS.md`** para o passo a passo de toda ação fora do
 código (cadastros no Dropbox/Azure) que só o dono das contas pode fazer.
 
+Ver também `docs/spec/34-ESCALAICI-UNIVERSAL-SETORES-E-TIPOS-DE-ESCALA.md`
+(repositório `EscalaSOC`) para a spec (FASE 12a, ainda não implementada) de
+como generalizar o app para múltiplos setores do ICI além de COSI/SOC (ex.:
+N1 Service Desk) e tipos de escala configuráveis por equipe.
+
 ## Escopo
 
 - Target Android.

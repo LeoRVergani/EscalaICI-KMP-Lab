@@ -7,6 +7,12 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+**Nota (FASE 12a):** existe uma spec separada, ainda não implementada, sobre
+generalizar o Escala ICI para múltiplos setores do ICI (não só COSI/SOC) e
+tipos de escala configuráveis por equipe — ver
+`EscalaSOC/docs/spec/34-ESCALAICI-UNIVERSAL-SETORES-E-TIPOS-DE-ESCALA.md`.
+Não afeta nenhuma fase abaixo.
+
 ## FASE 11.0 — Fundação de rede (Ktor)
 
 - **Status:** DONE
