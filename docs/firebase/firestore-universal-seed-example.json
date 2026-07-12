@@ -1,0 +1,429 @@
+{
+  "_documentOnly": true,
+  "_safeForProductionImport": false,
+  "_sourceSpec": "/home/lvergani/AndroidStudioProjects/EscalaSOC/docs/spec/35-ESCALAICI-FIRESTORE-UNIVERSAL.md",
+  "_note": "Exemplos documentais baseados no spec 35. Nao importar em producao e nao tratar como dados reais publicados.",
+  "collections": {
+    "organizations": [
+      {
+        "id": "ici",
+        "name": "Instituto das Cidades Inteligentes",
+        "acronym": "ICI",
+        "active": true
+      }
+    ],
+    "org_units": [
+      {
+        "id": "diretoria-infra-operacoes",
+        "organizationId": "ici",
+        "parentId": null,
+        "name": "Diretoria de Infraestrutura e Operações",
+        "acronym": "DIO",
+        "type": "DIRECTORATE",
+        "active": true
+      },
+      {
+        "id": "gerencia-data-center-seguranca",
+        "organizationId": "ici",
+        "parentId": "diretoria-infra-operacoes",
+        "name": "Gerência de Data Center e Segurança da Informação",
+        "acronym": "GEDSI",
+        "type": "MANAGEMENT",
+        "active": true
+      },
+      {
+        "id": "coordenacao-seguranca-informacao",
+        "organizationId": "ici",
+        "parentId": "gerencia-data-center-seguranca",
+        "name": "Coordenação de Segurança da Informação",
+        "acronym": "COSI",
+        "type": "COORDINATION",
+        "active": true
+      },
+      {
+        "id": "gerencia-suporte-tecnico",
+        "organizationId": "ici",
+        "parentId": "diretoria-infra-operacoes",
+        "name": "Gerência de Suporte Técnico",
+        "acronym": "GST",
+        "type": "MANAGEMENT",
+        "active": true
+      },
+      {
+        "id": "coordenacao-central-servicos",
+        "organizationId": "ici",
+        "parentId": "gerencia-suporte-tecnico",
+        "name": "Coordenação de Central de Serviços",
+        "acronym": "CCS",
+        "type": "COORDINATION",
+        "active": true
+      },
+      {
+        "id": "supervisao-service-desk",
+        "organizationId": "ici",
+        "parentId": "coordenacao-central-servicos",
+        "name": "Supervisão de Service Desk",
+        "acronym": "SD",
+        "type": "SUPERVISION",
+        "active": true
+      }
+    ],
+    "teams": [
+      {
+        "id": "soc",
+        "orgUnitId": "coordenacao-seguranca-informacao",
+        "name": "Analistas de SOC",
+        "acronym": "SOC",
+        "scheduleProfileId": "profile-soc-6x1-turnos",
+        "active": true
+      },
+      {
+        "id": "n1-service-desk",
+        "orgUnitId": "supervisao-service-desk",
+        "name": "Técnicos de TI N1",
+        "acronym": "N1",
+        "scheduleProfileId": "profile-n1-matrix",
+        "active": true
+      }
+    ],
+    "members": [
+      {
+        "id": "lvergani",
+        "email": "leonardo.vergani@ici.curitiba.org.br",
+        "scaleName": "Leonardo",
+        "displayName": "Leonardo Vergani",
+        "teamId": "soc",
+        "role": "ANALYST",
+        "active": true
+      },
+      {
+        "id": "tecnico-n1",
+        "email": "tecnico.n1@ici.curitiba.org.br",
+        "scaleName": "João Técnico",
+        "displayName": "João Técnico",
+        "teamId": "n1-service-desk",
+        "role": "TECHNICIAN",
+        "active": true
+      }
+    ],
+    "roles": [
+      {
+        "id": "role-analista-soc",
+        "name": "Analista de SOC",
+        "acronym": "SOC-AN",
+        "teamId": "soc",
+        "scope": "TEAM",
+        "roleShortName": "Analista",
+        "roleDisplayName": "Analista de SOC",
+        "active": true
+      },
+      {
+        "id": "role-tecnico-ti",
+        "name": "Técnico de TI",
+        "acronym": "TEC-TI",
+        "teamId": "n1-service-desk",
+        "scope": "TEAM",
+        "roleShortName": "Técnico",
+        "roleDisplayName": "Técnico de TI",
+        "active": true
+      }
+    ],
+    "member_team_memberships": [
+      {
+        "id": "membership-lvergani-soc",
+        "memberId": "lvergani",
+        "teamId": "soc",
+        "roleId": "role-analista-soc",
+        "roleShortName": "Analista",
+        "roleDisplayName": "Analista de SOC",
+        "startDate": "2026-01-01",
+        "endDate": null,
+        "active": true,
+        "isPrimary": true
+      },
+      {
+        "id": "membership-tecnico-n1",
+        "memberId": "tecnico-n1",
+        "teamId": "n1-service-desk",
+        "roleId": "role-tecnico-ti",
+        "roleShortName": "Técnico",
+        "roleDisplayName": "Técnico de TI",
+        "startDate": "2026-01-01",
+        "endDate": null,
+        "active": true,
+        "isPrimary": true
+      }
+    ],
+    "schedule_profiles": [
+      {
+        "id": "profile-soc-6x1-turnos",
+        "teamId": "soc",
+        "name": "SOC 6x1 por turnos",
+        "type": "ROTATING_6X1",
+        "periodMode": "DAY_26_TO_25",
+        "uiConfig": {
+          "showActivityCodeCard": false,
+          "showRoleLabel": true,
+          "activityCardTitle": "Turno do dia"
+        },
+        "active": true
+      },
+      {
+        "id": "profile-n1-matrix",
+        "teamId": "n1-service-desk",
+        "name": "N1 6x1 por códigos",
+        "type": "MATRIX_6X1",
+        "periodMode": "MONTHLY",
+        "uiConfig": {
+          "showActivityCodeCard": true,
+          "showRoleLabel": true,
+          "activityCardTitle": "Atividade do dia"
+        },
+        "active": true
+      }
+    ],
+    "shift_templates": [
+      {
+        "id": "shift-soc-manha",
+        "teamId": "soc",
+        "scheduleProfileId": "profile-soc-6x1-turnos",
+        "name": "Manhã",
+        "shortLabel": "M",
+        "startTime": "07:00",
+        "endTime": "13:00",
+        "crossesMidnight": false,
+        "colorKey": "manha",
+        "active": true
+      }
+    ],
+    "activity_codes": [
+      {
+        "id": "n1-m1",
+        "teamId": "n1-service-desk",
+        "scheduleProfileId": "profile-n1-matrix",
+        "code": "M1",
+        "label": "Monitoramento M1",
+        "type": "MONITORING",
+        "countsAsWork": true,
+        "visibleInApp": true,
+        "cardTitle": "Atividade do dia",
+        "sortOrder": 10,
+        "active": true
+      }
+    ],
+    "schedule_periods": [
+      {
+        "id": "period-soc-2026-07-26-2026-08-25",
+        "teamId": "soc",
+        "scheduleProfileId": "profile-soc-6x1-turnos",
+        "name": "SOC - 26/07/2026 a 25/08/2026",
+        "startDate": "2026-07-26",
+        "endDate": "2026-08-25",
+        "sourceType": "FIREBASE_DASHBOARD",
+        "sourceFileId": "source-soc-julho-2026",
+        "active": true,
+        "publishedAt": "2026-07-25T18:00:00Z",
+        "publishedBy": "coordenador.cosi@ici.curitiba.org.br",
+        "createdAt": "2026-07-25T17:30:00Z",
+        "updatedAt": "2026-07-25T18:00:00Z"
+      },
+      {
+        "id": "period-n1-2026-08",
+        "teamId": "n1-service-desk",
+        "scheduleProfileId": "profile-n1-matrix",
+        "name": "N1 - Agosto 2026",
+        "startDate": "2026-08-01",
+        "endDate": "2026-08-31",
+        "sourceType": "MANUAL_IMPORT",
+        "sourceFileId": "source-n1-agosto-2026",
+        "active": true,
+        "publishedAt": "2026-07-31T20:15:00Z",
+        "publishedBy": "supervisor.sd@ici.curitiba.org.br",
+        "createdAt": "2026-07-31T20:00:00Z",
+        "updatedAt": "2026-07-31T20:15:00Z"
+      }
+    ],
+    "schedule_assignments": [
+      {
+        "id": "assignment-lvergani-2026-08-01",
+        "teamId": "soc",
+        "periodId": "period-soc-2026-07-26-2026-08-25",
+        "scheduleProfileId": "profile-soc-6x1-turnos",
+        "memberId": "lvergani",
+        "memberEmail": "leonardo.vergani@ici.curitiba.org.br",
+        "scaleName": "Leonardo",
+        "date": "2026-08-01",
+        "assignmentType": "WORK_SHIFT",
+        "shiftId": "shift-soc-manha",
+        "shiftName": "Manhã",
+        "activityCodeId": null,
+        "activityCode": null,
+        "startDateTime": "2026-08-01T07:00:00",
+        "endDateTime": "2026-08-01T13:00:00",
+        "locationMode": "NOT_APPLICABLE",
+        "dailyHours": 6.0,
+        "note": null,
+        "sourceFileId": "source-soc-julho-2026",
+        "createdAt": "2026-07-25T17:40:00Z",
+        "updatedAt": "2026-07-25T17:40:00Z"
+      },
+      {
+        "id": "assignment-tecnico-n1-2026-08-01",
+        "teamId": "n1-service-desk",
+        "periodId": "period-n1-2026-08",
+        "scheduleProfileId": "profile-n1-matrix",
+        "memberId": "tecnico-n1",
+        "memberEmail": "tecnico.n1@ici.curitiba.org.br",
+        "scaleName": "João Técnico",
+        "date": "2026-08-01",
+        "assignmentType": "WORK_SHIFT",
+        "shiftId": null,
+        "shiftName": null,
+        "activityCodeId": "n1-m1",
+        "activityCode": "M1",
+        "startDateTime": null,
+        "endDateTime": null,
+        "locationMode": "NOT_APPLICABLE",
+        "dailyHours": null,
+        "note": "Código importado da matriz mensal N1",
+        "sourceFileId": "source-n1-agosto-2026",
+        "createdAt": "2026-07-31T20:10:00Z",
+        "updatedAt": "2026-07-31T20:10:00Z"
+      }
+    ],
+    "oncall_periods": [
+      {
+        "id": "oncall-period-cosi-2026-08",
+        "teamId": "soc",
+        "name": "Plantão COSI - Agosto 2026",
+        "startDate": "2026-08-01",
+        "endDate": "2026-08-31",
+        "sourceType": "MANUAL_IMPORT",
+        "sourceFileId": "source-plantao-cosi-agosto-2026",
+        "active": true,
+        "publishedAt": "2026-07-31T18:00:00Z",
+        "publishedBy": "coordenador.cosi@ici.curitiba.org.br",
+        "createdAt": "2026-07-31T17:00:00Z",
+        "updatedAt": "2026-07-31T18:00:00Z"
+      }
+    ],
+    "oncall_assignments": [
+      {
+        "id": "oncall-lvergani-2026-08-03",
+        "teamId": "soc",
+        "periodId": "oncall-period-cosi-2026-08",
+        "memberId": "lvergani",
+        "memberEmail": "leonardo.vergani@ici.curitiba.org.br",
+        "scaleName": "Leonardo",
+        "startDateTime": "2026-08-03T18:00:00",
+        "endDateTime": "2026-08-04T08:00:00",
+        "label": "Plantão COSI",
+        "sourceFileId": "source-plantao-cosi-agosto-2026",
+        "active": true,
+        "notes": null,
+        "createdAt": "2026-07-31T17:10:00Z",
+        "updatedAt": "2026-07-31T17:10:00Z"
+      }
+    ],
+    "source_files": [
+      {
+        "id": "source-n1-agosto-2026",
+        "teamId": "n1-service-desk",
+        "fileName": "Escalas Equipe N1 - Agosto 2026.xls",
+        "fileType": "SCALE",
+        "storagePath": "imports/n1-service-desk/2026-08/escalas-equipe-n1.xls",
+        "importedAt": "2026-07-31T20:00:00Z",
+        "importedBy": "supervisor.sd@ici.curitiba.org.br",
+        "parserVersion": "n1-matrix-v1",
+        "checksum": "sha256:exemplo",
+        "status": "PUBLISHED",
+        "errors": [],
+        "warnings": [
+          "Código M4 confirmado como código da equipe N1"
+        ],
+        "createdAt": "2026-07-31T19:55:00Z",
+        "updatedAt": "2026-07-31T20:15:00Z"
+      }
+    ],
+    "import_jobs": [
+      {
+        "id": "import-n1-agosto-2026",
+        "teamId": "n1-service-desk",
+        "scheduleProfileId": "profile-n1-matrix",
+        "sourceFileId": "source-n1-agosto-2026",
+        "importType": "SCALE",
+        "layoutType": "N1_CODE_MATRIX",
+        "startedAt": "2026-07-31T20:00:00Z",
+        "finishedAt": "2026-07-31T20:12:00Z",
+        "status": "PUBLISHED",
+        "warnings": [
+          "Linhas em branco ignoradas entre subgrupos"
+        ],
+        "errors": [],
+        "createdAssignmentsCount": 620,
+        "createdBy": "supervisor.sd@ici.curitiba.org.br",
+        "createdAt": "2026-07-31T20:00:00Z",
+        "updatedAt": "2026-07-31T20:12:00Z"
+      }
+    ],
+    "schedule_change_events": [
+      {
+        "id": "event-assignment-tecnico-n1-2026-08-01",
+        "teamId": "n1-service-desk",
+        "scheduleProfileId": "profile-n1-matrix",
+        "periodId": "period-n1-2026-08",
+        "assignmentId": "assignment-tecnico-n1-2026-08-01",
+        "eventType": "UPDATED",
+        "before": {
+          "activityCodeId": "n1-m1",
+          "activityCode": "M1"
+        },
+        "after": {
+          "activityCodeId": "n1-m2",
+          "activityCode": "M2"
+        },
+        "actorEmail": "supervisor.sd@ici.curitiba.org.br",
+        "reason": "Correção manual no dashboard futuro",
+        "occurredAt": "2026-08-01T12:00:00Z"
+      }
+    ],
+    "dashboard_permissions": [
+      {
+        "id": "permission-supervisor-sd-n1",
+        "principalEmail": "supervisor.sd@ici.curitiba.org.br",
+        "principalMemberId": "supervisor-sd",
+        "scopeType": "TEAM",
+        "organizationId": "ici",
+        "orgUnitId": "supervisao-service-desk",
+        "teamId": "n1-service-desk",
+        "permissions": [
+          "READ",
+          "EDIT_MEMBERS",
+          "EDIT_PROFILES",
+          "IMPORT",
+          "PUBLISH"
+        ],
+        "active": true,
+        "grantedBy": "admin@ici.curitiba.org.br",
+        "validFrom": "2026-01-01",
+        "validUntil": null,
+        "createdAt": "2026-01-01T09:00:00Z",
+        "updatedAt": "2026-01-01T09:00:00Z"
+      }
+    ],
+    "app_user_preferences": [
+      {
+        "id": "preferences-lvergani",
+        "userEmail": "leonardo.vergani@ici.curitiba.org.br",
+        "memberId": "lvergani",
+        "preferredTeamId": "soc",
+        "theme": "SYSTEM",
+        "notificationsEnabled": true,
+        "notifyBeforeShiftMinutes": 60,
+        "notifyBeforeOnCallMinutes": 120,
+        "lastSelectedScheduleProfileId": "profile-soc-6x1-turnos",
+        "updatedAt": "2026-08-01T09:00:00Z"
+      }
+    ]
+  }
+}

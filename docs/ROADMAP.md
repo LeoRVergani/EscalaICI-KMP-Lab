@@ -12,6 +12,19 @@ generalizar o Escala ICI para múltiplos setores do ICI (não só COSI/SOC) e
 tipos de escala configuráveis por equipe — ver
 `EscalaSOC/docs/spec/34-ESCALAICI-UNIVERSAL-SETORES-E-TIPOS-DE-ESCALA.md`.
 
+## FASE 12c — Pacote de specs do Escala ICI
+
+- **Status:** DONE — specs
+- Criado no repositório irmão `EscalaSOC` o pacote completo de specs 35-45,
+  cobrindo Firestore universal, dashboard, importadores, leitura no app,
+  MSAL/Entra, PWA/iOS, release/update, migração, cards UI/UX, testes e
+  roadmap até o MVP oficial.
+- Índice local resumido neste repositório: `docs/SPECS-ESCALAICI.md`.
+  Conteúdo completo: `/home/lvergani/AndroidStudioProjects/EscalaSOC/docs/spec/`.
+- Esta fase é documental: ainda não implementa schema Firestore real,
+  dashboard universal, leitura universal no app, parsers novos, MSAL real ou
+  release.
+
 ## FASE 12a-2 — Corrige crash (OutOfMemoryError) no download de atualização
 
 - **Status:** DONE

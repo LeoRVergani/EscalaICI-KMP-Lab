@@ -1,0 +1,327 @@
+{
+  "_documentOnly": true,
+  "_sourceSpec": "/home/lvergani/AndroidStudioProjects/EscalaSOC/docs/spec/35-ESCALAICI-FIRESTORE-UNIVERSAL.md",
+  "_note": "Resumo documental do schema universal. Nao e seed de producao, nao e lido pelo app e nao autoriza escrita em Firestore.",
+  "collections": {
+    "organizations": {
+      "category": "nova",
+      "fields": {
+        "id": "string",
+        "name": "string",
+        "acronym": "string",
+        "active": "boolean",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "org_units": {
+      "category": "nova",
+      "fields": {
+        "id": "string",
+        "organizationId": "string",
+        "parentId": "string | null",
+        "name": "string",
+        "acronym": "string",
+        "type": "PRESIDENCY | DIRECTORATE | MANAGEMENT | COORDINATION | SUPERVISION | SECTOR | DEPARTMENT | TEAM_GROUP",
+        "active": "boolean",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "teams": {
+      "category": "estendida",
+      "fields": {
+        "id": "string",
+        "teamId": "string | legacy alternative",
+        "orgUnitId": "string",
+        "name": "string",
+        "teamName": "string | legacy alternative",
+        "displayName": "string | optional",
+        "acronym": "string",
+        "scheduleProfileId": "string",
+        "plantaoLabel": "string | optional",
+        "active": "boolean",
+        "approverEmails": "array<string> | optional",
+        "adminEmails": "array<string> | optional",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "members": {
+      "category": "estendida",
+      "fields": {
+        "id": "string",
+        "memberId": "string | legacy alternative",
+        "displayName": "string",
+        "scaleName": "string",
+        "email": "string | optional",
+        "teamId": "string | legacy shortcut",
+        "active": "boolean",
+        "roles": "array<string> | legacy optional",
+        "defaultWorkPatternId": "string | optional",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "member_team_memberships": {
+      "category": "nova",
+      "fields": {
+        "id": "string",
+        "memberId": "string",
+        "teamId": "string",
+        "roleId": "string | optional",
+        "roleShortName": "string | optional",
+        "roleDisplayName": "string | optional",
+        "startDate": "date string",
+        "endDate": "date string | null",
+        "active": "boolean",
+        "isPrimary": "boolean",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "roles": {
+      "category": "nova",
+      "fields": {
+        "id": "string",
+        "name": "string",
+        "acronym": "string",
+        "orgUnitId": "string | optional",
+        "teamId": "string | optional",
+        "scope": "GLOBAL | ORG_UNIT | TEAM",
+        "roleShortName": "string",
+        "roleDisplayName": "string",
+        "active": "boolean"
+      }
+    },
+    "schedule_profiles": {
+      "category": "nova",
+      "fields": {
+        "id": "string",
+        "teamId": "string",
+        "name": "string",
+        "type": "ROTATING_6X1 | MATRIX_6X1 | TWELVE_BY_THIRTY_SIX | BUSINESS_HOURS | ON_CALL_INTERVAL | CUSTOM",
+        "periodMode": "DAY_26_TO_25 | MONTHLY | WEEKLY | FIXED_RANGE | CONTINUOUS",
+        "description": "string | optional",
+        "uiConfig.showActivityCodeCard": "boolean",
+        "uiConfig.showRoleLabel": "boolean",
+        "uiConfig.activityCardTitle": "string",
+        "active": "boolean"
+      }
+    },
+    "shift_templates": {
+      "category": "preservada",
+      "mapsToCurrentCollection": "shift_definitions",
+      "fields": {
+        "id": "string",
+        "shiftId": "string | legacy alternative",
+        "teamId": "string",
+        "scheduleProfileId": "string | optional",
+        "name": "string",
+        "shortLabel": "string",
+        "startTime": "time string",
+        "endTime": "time string",
+        "crossesMidnight": "boolean",
+        "colorKey": "string",
+        "active": "boolean",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "activity_codes": {
+      "category": "nova",
+      "fields": {
+        "id": "string",
+        "teamId": "string",
+        "scheduleProfileId": "string",
+        "code": "string",
+        "label": "string",
+        "type": "WORK | REST | VACATION | ABSENCE | MONITORING | EMAIL | WARRANTY | MIXED | ON_CALL | CUSTOM",
+        "countsAsWork": "boolean",
+        "colorHex": "string | optional",
+        "visibleInApp": "boolean",
+        "cardTitle": "string | optional",
+        "sortOrder": "number",
+        "active": "boolean"
+      }
+    },
+    "schedule_periods": {
+      "category": "estendida",
+      "fields": {
+        "id": "string",
+        "periodId": "string | legacy alternative",
+        "teamId": "string",
+        "scheduleProfileId": "string | optional",
+        "name": "string",
+        "startDate": "date string",
+        "endDate": "date string",
+        "sourceType": "MANUAL_IMPORT | FIREBASE_DASHBOARD | DEMO | ONEDRIVE | DROPBOX",
+        "sourceFileId": "string | optional",
+        "active": "boolean",
+        "publishedAt": "timestamp | optional",
+        "publishedBy": "string | optional",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "schedule_assignments": {
+      "category": "estendida",
+      "fields": {
+        "id": "string",
+        "assignmentId": "string | legacy alternative",
+        "teamId": "string",
+        "periodId": "string",
+        "scheduleProfileId": "string | optional",
+        "memberId": "string | optional",
+        "memberEmail": "string | optional",
+        "scaleName": "string",
+        "date": "date string",
+        "assignmentType": "WORK_SHIFT | BUSINESS_DAY | ON_CALL | OFF | VACATION | ABSENCE | HOLIDAY | NOTE_ONLY",
+        "shiftId": "string | null",
+        "shiftName": "string | null",
+        "activityCodeId": "string | null",
+        "activityCode": "string | null",
+        "startDateTime": "datetime string | null",
+        "endDateTime": "datetime string | null",
+        "breakStartDateTime": "datetime string | optional",
+        "breakEndDateTime": "datetime string | optional",
+        "locationMode": "PRESENTIAL | REMOTE | HYBRID | NOT_APPLICABLE",
+        "dailyHours": "number | null",
+        "reason": "string | optional",
+        "note": "string | optional",
+        "sourceFileId": "string | optional",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "oncall_periods": {
+      "category": "preservada",
+      "fields": {
+        "id": "string",
+        "periodId": "string | legacy alternative",
+        "teamId": "string",
+        "name": "string",
+        "startDate": "date string",
+        "endDate": "date string",
+        "sourceType": "string",
+        "sourceFileId": "string | optional",
+        "active": "boolean",
+        "publishedAt": "timestamp | optional",
+        "publishedBy": "string | optional",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "oncall_assignments": {
+      "category": "preservada",
+      "fields": {
+        "id": "string",
+        "onCallId": "string | legacy alternative",
+        "teamId": "string",
+        "periodId": "string | optional",
+        "memberId": "string | optional",
+        "memberEmail": "string | optional",
+        "scaleName": "string",
+        "startDateTime": "datetime string",
+        "endDateTime": "datetime string",
+        "label": "string",
+        "sourceFileId": "string | optional",
+        "active": "boolean",
+        "notes": "string | null",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "source_files": {
+      "category": "preservada",
+      "fields": {
+        "id": "string",
+        "sourceFileId": "string | legacy alternative",
+        "teamId": "string",
+        "fileName": "string",
+        "fileType": "SCALE | ON_CALL | MEMBERS | OTHER",
+        "storagePath": "string | optional",
+        "importedAt": "timestamp | optional",
+        "importedBy": "string | optional",
+        "parserVersion": "string",
+        "checksum": "string",
+        "status": "PENDING | PREVIEW_READY | PUBLISHED | FAILED | CANCELLED",
+        "errors": "array<string>",
+        "warnings": "array<string>",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "import_jobs": {
+      "category": "estendida",
+      "fields": {
+        "id": "string",
+        "jobId": "string | legacy alternative",
+        "teamId": "string",
+        "scheduleProfileId": "string | optional",
+        "sourceFileId": "string | optional",
+        "importType": "SCALE | ON_CALL | MEMBERS | OTHER",
+        "layoutType": "SOC_SHIFT_6X1 | N1_CODE_MATRIX | COSI_ONCALL_INTERVAL | TWELVE_BY_THIRTY_SIX | BUSINESS_HOURS | optional",
+        "startedAt": "timestamp",
+        "finishedAt": "timestamp | optional",
+        "status": "PENDING | PREVIEW_READY | PUBLISHED | FAILED | CANCELLED",
+        "warnings": "array<string>",
+        "errors": "array<string>",
+        "createdAssignmentsCount": "number",
+        "createdBy": "string",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "schedule_change_events": {
+      "category": "futura",
+      "fields": {
+        "id": "string",
+        "teamId": "string",
+        "scheduleProfileId": "string | optional",
+        "periodId": "string | optional",
+        "assignmentId": "string | optional",
+        "eventType": "CREATED | UPDATED | SWAPPED | CANCELLED | PUBLISHED | REIMPORTED",
+        "before": "object | optional",
+        "after": "object | optional",
+        "actorEmail": "string",
+        "reason": "string | optional",
+        "occurredAt": "timestamp"
+      }
+    },
+    "dashboard_permissions": {
+      "category": "nova",
+      "fields": {
+        "id": "string",
+        "principalEmail": "string",
+        "principalMemberId": "string | optional",
+        "scopeType": "ORGANIZATION | ORG_UNIT | TEAM",
+        "organizationId": "string | optional",
+        "orgUnitId": "string | optional",
+        "teamId": "string | optional",
+        "permissions": "array<READ | EDIT_MEMBERS | EDIT_PROFILES | IMPORT | PUBLISH | ADMIN>",
+        "active": "boolean",
+        "grantedBy": "string",
+        "validFrom": "date string | optional",
+        "validUntil": "date string | null",
+        "createdAt": "timestamp | optional",
+        "updatedAt": "timestamp | optional"
+      }
+    },
+    "app_user_preferences": {
+      "category": "nova",
+      "fields": {
+        "id": "string",
+        "userEmail": "string",
+        "memberId": "string | optional",
+        "preferredTeamId": "string | optional",
+        "theme": "SYSTEM | LIGHT | DARK",
+        "notificationsEnabled": "boolean",
+        "notifyBeforeShiftMinutes": "number",
+        "notifyBeforeOnCallMinutes": "number",
+        "lastSelectedScheduleProfileId": "string | optional",
+        "updatedAt": "timestamp"
+      }
+    }
+  }
+}

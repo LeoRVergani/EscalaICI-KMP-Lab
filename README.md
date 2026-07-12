@@ -16,6 +16,12 @@ Ver também `docs/spec/34-ESCALAICI-UNIVERSAL-SETORES-E-TIPOS-DE-ESCALA.md`
 como generalizar o app para múltiplos setores do ICI além de COSI/SOC (ex.:
 N1 Service Desk) e tipos de escala configuráveis por equipe.
 
+O pacote completo de specs 35-45 do Escala ICI também vive no repositório
+`EscalaSOC` (`/home/lvergani/AndroidStudioProjects/EscalaSOC/docs/spec/`) e
+cobre Firestore universal, dashboard, importadores, app, MSAL, PWA/iOS,
+release, migração, UI, testes e roadmap até o MVP oficial. Ver o índice local
+resumido em `docs/SPECS-ESCALAICI.md`.
+
 ## Escopo
 
 - Target Android.
