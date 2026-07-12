@@ -187,6 +187,81 @@ composeApp/
 
 Este laboratorio foi criado fora do repositorio Android principal para reduzir risco. O app principal `EscalaSOC` nao deve ser alterado por fases deste laboratorio.
 
+## Validação da FASE 12a-2 — corrige crash (OutOfMemoryError) no download de atualização
+
+**Bug reportado pelo usuário**: ao testar a v0.6.1 no celular real, tocar
+"Atualizar aplicativo" detectava a atualização, mas o app **fechava
+sozinho** na hora de baixar — nunca chegava a instalar.
+
+**Causa raiz confirmada** (reproduzida no emulador com logcat, não só
+teoria): `AppUpdateChecker.android.kt#downloadApk()` chamava
+`downloadBytes()`, que usa `response.body(): ByteArray` do Ktor — isso
+carrega o **APK inteiro (66MB) de uma vez só na memória** antes de gravar
+em disco. Com o Compose Multiplatform/Skia já usando boa parte do heap do
+app, essa alocação única estourava o limite e lançava
+`OutOfMemoryError` — que **não era capturado** pelo `catch (error:
+Exception)` do `checkAndInstall()` (`OutOfMemoryError` é `Error`, não
+`Exception`), derrubando o processo inteiro sem nenhuma mensagem de erro.
+Stack trace confirmando (emulador, build de teste com o código antigo):
+
+```
+java.lang.OutOfMemoryError: Failed to allocate a 66299920 byte allocation
+  with 25165824 free bytes and 58MB until OOM ...
+  at kotlinx.io.SourcesKt.readByteArrayImpl(Sources.kt:268)
+  at io.ktor.client.call.SavedCallKt.save(SavedCall.kt:38)
+  at io.ktor.client.statement.HttpStatement.fetchResponse(HttpStatement.kt:166)
+```
+
+O app oficial (`EscalaSOC/AppUpdateManager.kt`, só leitura) nunca teve esse
+problema porque **grava em streaming direto no arquivo**
+(`input.copyTo(output)`, nunca monta um `ByteArray` do arquivo inteiro) e
+usa `catch (Throwable)`, não `catch (Exception)`.
+
+**Correção** (mesmo padrão do app oficial, agora também aqui):
+
+- `platform/RemoteBytesDownloader.android.kt`: nova função
+  `downloadToFile(url, destination)` — baixa via Ktor em streaming
+  (`response.bodyAsChannel().copyTo(outputStream)`), nunca guarda o
+  arquivo inteiro em memória. `downloadBytes()` (usado só para o
+  manifesto/planilha, arquivos pequenos) não muda. Timeout do cliente
+  compartilhado subiu de 15s para 60s (cobre também o download do APK).
+- `platform/AppUpdateChecker.android.kt`: `downloadApk()` passa a chamar
+  `downloadToFile()` em vez de `downloadBytes()` + `writeBytes()`; o
+  `catch (error: Exception)` virou `catch (error: Throwable)` (mantendo o
+  `catch (CancellationException)` antes, para não engolir cancelamento de
+  coroutine) — qualquer falha (incluindo um futuro `OutOfMemoryError` em
+  outro ponto) agora sempre mostra a mensagem de erro amigável em vez de
+  derrubar o app.
+- `model/AppVersion.kt`: **bug adicional encontrado nesta investigação** —
+  `CODE`/`LABEL` (mantidos manualmente, já que KMP não gera `BuildConfig`
+  em `commonMain`) tinham ficado em `10`/`0.6.0` desde a FASE 11.2d;
+  a FASE 12a-1 esqueceu de atualizar este arquivo ao subir o
+  `versionCode` do Gradle para `11`. Corrigido para `12`/`0.6.2` junto com
+  esta fase — o app já mostrava "Versão atual: 0.6.0" errado no Perfil
+  mesmo depois de instalada a v0.6.1.
+
+**Testado (reprodução real, não só build limpo):**
+
+- Emulador Android, logcat ao vivo: build de teste com o código **antigo**
+  (versionCode rebaixado só para o teste, revertido depois) reproduziu o
+  crash exato acima ao tocar "Atualizar aplicativo" contra o `version.json`
+  real de produção (que já apontava para `kmpVersionCode` mais novo).
+- Mesmo teste com o código **corrigido**: processo nunca morre, download
+  completa, e o diálogo real do Android "Update this app?" abre mostrando
+  o changelog correto — confirma o fluxo completo (download → FileProvider
+  → instalador) funcionando de ponta a ponta.
+- `testDebugUnitTest` (33 testes) e `compileKotlinWasmJs` seguem passando
+  — a mudança é só Android (`androidMain`), Web/Wasm nunca chama esse
+  caminho (`AppUpdateChecker.wasmJs.kt` retorna `NotSupported`).
+
+`versionCode`/`versionName`: `11`/`0.6.1` → `12`/`0.6.2` (PATCH — correção
+de crash real, sem mudança de funcionalidade). APK de release gerado,
+assinado com a mesma chave de sempre (confirmado via `apksigner verify`),
+copiado para `EscalaICI-latest.apk` via `gerar_update_escalaici_local.sh`.
+`version.json` local atualizado (`kmpVersionCode`/`kmpVersionName`/
+`kmpChangelog`) — falta só o usuário subir os dois arquivos manualmente
+pro Dropbox (ver `docs/PENDENCIAS-EXTERNAS.md`).
+
 ## Validação da FASE 12b — modelos universais de organização e escala
 
 Primeira fase de código da série `FASE 12.x` (generalizar o Escala ICI para

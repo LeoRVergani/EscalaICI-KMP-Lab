@@ -12,6 +12,22 @@ generalizar o Escala ICI para múltiplos setores do ICI (não só COSI/SOC) e
 tipos de escala configuráveis por equipe — ver
 `EscalaSOC/docs/spec/34-ESCALAICI-UNIVERSAL-SETORES-E-TIPOS-DE-ESCALA.md`.
 
+## FASE 12a-2 — Corrige crash (OutOfMemoryError) no download de atualização
+
+- **Status:** DONE
+- Bug real reportado pelo usuário: app fechava sozinho ao baixar a v0.6.1.
+  Causa confirmada por reprodução no emulador (logcat): download do APK
+  carregava os 66MB inteiros num `ByteArray` (Ktor `response.body()`),
+  estourando o heap (`OutOfMemoryError`, não capturado por
+  `catch (Exception)`). Corrigido para download em streaming direto ao
+  disco + `catch (Throwable)`, mesmo padrão do app oficial. Ver detalhe
+  completo no `README.md`, seção "Validação da FASE 12a-2".
+- Bug adicional encontrado e corrigido: `AppVersion.CODE`/`LABEL` não
+  tinham sido atualizados na FASE 12a-1 (ficaram em `10`/`0.6.0`).
+- `versionCode`/`versionName`: `11`/`0.6.1` → `12`/`0.6.2`. APK de release
+  gerado e copiado para `EscalaICI-latest.apk`; falta só o usuário subir
+  manualmente pro Dropbox.
+
 ## FASE 12b — Modelos universais de organização e escala no commonMain
 
 - **Status:** DONE

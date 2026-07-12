@@ -88,10 +88,12 @@ aviso no topo) nem chamando a API do Dropbox por conta própria.
 `./gerar_update_escalaici_local.sh` nessa pasta (ver seção "FASE 11.2e" do
 `README.md` deste projeto para o procedimento completo).
 
-- [ ] Suba `EscalaICI-latest.apk` (versionCode `11`, `0.6.1` — FASE 12a-1,
-      corrige o resumo da semana da aba Hoje) para o Dropbox, no mesmo
-      link já cadastrado (sobrescrever o conteúdo, sem apagar o arquivo —
-      senão o link muda).
+- [ ] Suba `EscalaICI-latest.apk` (versionCode `12`, `0.6.2` — FASE 12a-2,
+      corrige o crash/OutOfMemoryError ao baixar a atualização pelo
+      próprio app — **substitui a v0.6.1, que nunca deve ser distribuída**
+      porque o download dela quebra) para o Dropbox, no mesmo link já
+      cadastrado (sobrescrever o conteúdo, sem apagar o arquivo — senão o
+      link muda).
 - [ ] Suba `version.json` (mesma pasta) para o Dropbox, mesmo link.
 
 **Depois de feito**: peça pra eu testar (ou teste você mesmo: abra o app
@@ -99,6 +101,19 @@ KMP no celular → Perfil → "Atualizar aplicativo" → deve aparecer "Nova
 versão disponível: v0.6.0..." e abrir o instalador do Android — pode pedir
 pra permitir "instalar apps de fontes desconhecidas" na primeira vez, é
 normal, só acontece 1x).
+
+**⚠️ Atenção especial para esta rodada (v0.6.2, FASE 12a-2)**: o app que
+já está instalado no celular (versão anterior à 0.6.2) tem o bug do
+download em memória — **o botão "Atualizar aplicativo" dele vai continuar
+travando/fechando sozinho**, porque o código que baixa o APK é o da versão
+**já instalada**, não o da versão nova sendo baixada. Ou seja, o próprio
+mecanismo de atualização automática não consegue se auto-curar desta vez.
+Depois de subir os dois arquivos pro Dropbox, a v0.6.2 precisa ser
+instalada **manualmente** uma última vez (ex.: `adb install -r
+EscalaICI-latest.apk` com o celular em depuração USB, ou baixando o link
+do Dropbox direto no navegador do celular e abrindo o instalador). A
+partir da v0.6.2 em diante, o botão "Atualizar aplicativo" volta a
+funcionar normalmente para as próximas versões.
 
 **Mantendo isso pra sempre**: a cada nova versão real do KMP lab, o
 procedimento é sempre: build release → `gerar_update_escalaici_local.sh`

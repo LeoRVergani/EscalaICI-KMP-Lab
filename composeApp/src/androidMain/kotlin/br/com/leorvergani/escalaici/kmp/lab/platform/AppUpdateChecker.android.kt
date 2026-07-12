@@ -53,17 +53,23 @@ private class AndroidAppUpdateChecker(private val context: Context) : AppUpdateC
             AppUpdateResult.InstallStarted(versionName, changelog)
         } catch (error: CancellationException) {
             throw error
-        } catch (error: Exception) {
+        } catch (error: Throwable) {
+            // Throwable (não só Exception): um APK de atualização pode ter
+            // 60-100MB — se o download ainda assim estourar memória em um
+            // aparelho mais fraco, um OutOfMemoryError não seria capturado
+            // por `catch (Exception)`, derrubando o app inteiro sem
+            // nenhuma mensagem (o que se via como "o app fecha sozinho").
+            // Mesmo padrão do app oficial (`AppUpdateManager`, também
+            // `catch (Throwable)`).
             AppUpdateResult.Failure("Não foi possível verificar ou baixar a atualização.")
         }
     }
 
     private suspend fun downloadApk(apkUrl: String): File {
-        val bytes = downloadBytes(apkUrl)
         val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
         val apkFile = File(updatesDir, "EscalaICI-KMP-latest.apk")
         if (apkFile.exists()) apkFile.delete()
-        apkFile.writeBytes(bytes)
+        downloadToFile(apkUrl, apkFile)
         if (!apkFile.exists() || apkFile.length() <= 0L) {
             apkFile.delete()
             error("APK inválido.")
