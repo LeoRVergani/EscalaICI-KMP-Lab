@@ -405,18 +405,8 @@ private fun CloudFileCard(
             TextButton(onClick = onChooseFile, enabled = !isFetchingFromCloud) {
                 Text("Escolher arquivo", color = LabColors.primary, fontWeight = FontWeight.Bold)
             }
-            TextButton(onClick = onFetchFromDropbox, enabled = !isFetchingFromCloud) {
-                if (isFetchingFromCloud) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = LabColors.primary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Buscando no Dropbox…", color = LabColors.onSurfaceMuted)
-                } else {
-                    Text("Procurar escalas (Dropbox)", color = LabColors.primary, fontWeight = FontWeight.Bold)
-                }
+            TextButton(onClick = onFetchFromDropbox, enabled = false) {
+                Text("Dropbox — próxima etapa")
             }
         }
     }
