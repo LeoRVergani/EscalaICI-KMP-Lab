@@ -48,6 +48,10 @@ import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
 import br.com.leorvergani.escalaici.kmp.lab.model.LabYearMonth
 import br.com.leorvergani.escalaici.kmp.lab.model.OnCallAssignment
 import br.com.leorvergani.escalaici.kmp.lab.model.OnCallStatus
+import br.com.leorvergani.escalaici.kmp.lab.model.LabDateTime
+import br.com.leorvergani.escalaici.kmp.lab.model.TemporalState
+import br.com.leorvergani.escalaici.kmp.lab.model.onCallDates
+import br.com.leorvergani.escalaici.kmp.lab.model.relevantOnCall
 import br.com.leorvergani.escalaici.kmp.lab.model.PlantaoWorkbookParser
 import br.com.leorvergani.escalaici.kmp.lab.model.WorkbookImportResult
 import br.com.leorvergani.escalaici.kmp.lab.model.mockOnCallAssignments
@@ -70,7 +74,7 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
  * (FASE 9c) de `MockSchedule.kt`.
  */
 @Composable
-internal fun PlantaoScreen(onBack: () -> Unit, today: LabDate, localDataCache: LocalDataCache) {
+internal fun PlantaoScreen(onBack: () -> Unit, today: LabDate, now: LabDateTime, localDataCache: LocalDataCache) {
     var assignments by remember { mutableStateOf(mockOnCallAssignments()) }
     var isImported by remember { mutableStateOf(false) }
     var importedFileName by remember { mutableStateOf<String?>(null) }
@@ -121,19 +125,15 @@ internal fun PlantaoScreen(onBack: () -> Unit, today: LabDate, localDataCache: L
         }
     }
 
-    val sortedAssignments = remember(assignments) { assignments.sortedBy { it.date } }
-    val activeAssignments = remember(assignments) { assignments.filter { it.status == OnCallStatus.ACTIVE } }
-    val nextAssignment = remember(sortedAssignments) { sortedAssignments.firstOrNull { it.status == OnCallStatus.SCHEDULED } }
-    val heroShifts = if (activeAssignments.isNotEmpty()) activeAssignments else listOfNotNull(nextAssignment)
-    val heroTitle = when {
-        activeAssignments.isNotEmpty() -> "Plantão agora"
-        nextAssignment != null -> "Próximo plantão"
-        else -> "Nenhum plantão encontrado"
+    val sortedAssignments = remember(assignments) { assignments.sortedBy { "${it.startDate}T${it.startTime}" } }
+    val relevant = remember(assignments, now) { relevantOnCall(assignments, now) }
+    val heroShifts = listOfNotNull(relevant?.assignment)
+    val heroTitle = when (relevant?.state) {
+        TemporalState.CURRENT -> "Plantão atual"
+        TemporalState.UPCOMING -> "Próximo plantão"
+        else -> "Nenhum próximo plantão neste período"
     }
-    val referenceDate = remember(sortedAssignments) {
-        (activeAssignments.firstOrNull() ?: nextAssignment ?: sortedAssignments.firstOrNull())
-            ?.date?.let { LabDate.parseIso(it) }
-    }
+    val referenceDate = relevant?.start?.date
 
     val periodStart = sortedAssignments.firstOrNull()?.startDate?.let(LabDate::parseIso)
     val periodEnd = sortedAssignments.maxOfOrNull { it.endDate }?.let(LabDate::parseIso)
@@ -142,7 +142,7 @@ internal fun PlantaoScreen(onBack: () -> Unit, today: LabDate, localDataCache: L
     var visibleMonth by remember(assignments) { mutableStateOf(selectedDate.yearMonth()) }
 
     val selectedDayAssignments = remember(selectedDate, assignments) {
-        assignments.filter { LabDate.parseIso(it.date) == selectedDate }
+        assignments.filter { selectedDate in onCallDates(it) }
     }
 
     LazyColumn(
@@ -162,7 +162,7 @@ internal fun PlantaoScreen(onBack: () -> Unit, today: LabDate, localDataCache: L
         item {
             PlantaoHeroCard(
                 title = heroTitle,
-                active = activeAssignments.isNotEmpty(),
+                active = relevant?.state == TemporalState.CURRENT,
                 heroShifts = heroShifts,
                 isImported = isImported,
                 importedFileName = importedFileName,
@@ -247,7 +247,7 @@ private fun PlantaoHeroCard(
                         .padding(12.dp)
                 ) {
                     Text(shift.memberName, style = MaterialTheme.typography.titleSmall, color = LabColors.onSurface, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${shift.startTime} → ${shift.endTime}", style = MaterialTheme.typography.bodySmall, color = accent, fontWeight = FontWeight.SemiBold)
+                    Text(formatOnCallInterval(shift), style = MaterialTheme.typography.bodySmall, color = accent, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -329,7 +329,7 @@ private fun PlantaoCalendarGrid(
                     if (date == null) {
                         Spacer(Modifier.weight(1f).aspectRatio(1f))
                     } else {
-                        val hasPlantao = assignments.any { LabDate.parseIso(it.date) == date }
+                        val hasPlantao = assignments.any { date in onCallDates(it) }
                         PlantaoDayCell(
                             date = date,
                             selected = date == selectedDate,
@@ -408,13 +408,23 @@ private fun PlantaoDayDetailCard(selectedDate: LabDate, assignments: List<OnCall
                         .padding(10.dp)
                 ) {
                     Text(shift.memberName, style = MaterialTheme.typography.titleSmall, color = LabColors.onSurface, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${shift.startTime} → ${shift.endTime}", style = MaterialTheme.typography.bodySmall, color = LabColors.onSurfaceMuted)
+                    Text(formatOnCallInterval(shift), style = MaterialTheme.typography.bodySmall, color = LabColors.onSurfaceMuted)
                     Text("${shift.durationLabel()} de plantão", style = MaterialTheme.typography.labelSmall, color = LabColors.primary, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
     }
 }
+
+private fun formatOnCallInterval(shift: OnCallAssignment): String = if (shift.startDate == shift.endDate) {
+    "${formatIsoDate(shift.startDate)} · ${shift.startTime}–${shift.endTime}"
+} else {
+    "${formatIsoDate(shift.startDate)} ${shift.startTime} até ${formatIsoDate(shift.endDate)} ${shift.endTime}"
+}
+
+private fun formatIsoDate(value: String): String = LabDate.parseIso(value)?.let {
+    "${it.day.toString().padStart(2, '0')}/${it.month.toString().padStart(2, '0')}/${it.year}"
+} ?: value
 
 /** Duração do plantão a partir de "HH:mm" → "HH:mm", cruzando meia-noite se preciso. */
 private fun OnCallAssignment.durationLabel(): String {

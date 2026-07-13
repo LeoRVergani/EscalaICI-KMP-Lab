@@ -96,7 +96,7 @@ internal fun ProfileTab(
         item {
             LabCard(title = "Identidade da escala", icon = Icons.Default.Security, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
                 Text("Colaborador identificado: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("A associação Microsoft -> member -> teamId já está representada visualmente aqui.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Associação corporativa ainda não configurada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
         item {
@@ -107,34 +107,6 @@ internal fun ProfileTab(
                     ProfileMetric("Horas", "${summary.totalHours}h", Modifier.weight(1f))
                 }
                 Text("Alertas críticos: $criticalAlerts", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        item {
-            LabCard(title = "Administração da escala", icon = Icons.Default.AdminPanelSettings, borderColor = LabColors.primary.copy(alpha = 0.22f)) {
-                StatusLine("Modo ADM", "ainda não implementado")
-                StatusLine("OneDrive ADM", "não conectado")
-                StatusLine("Dropbox ADM", "não conectado")
-                StatusLine("Mês atual", if (summary.isImported) "arquivo carregado" else "aguardando importação")
-                DisabledAction("Importação Firebase")
-                DisabledAction("Buscar escala no OneDrive ADM")
-                DisabledAction("Conectar Dropbox ADM")
-                DisabledAction("Publicar escala no Dropbox")
-            }
-        }
-        item {
-            LabCard(title = "Conta corporativa", icon = Icons.Default.Security, borderColor = LabColors.tertiary.copy(alpha = 0.25f)) {
-                StatusLine("Conta", "login Microsoft ainda não conectado")
-                Text("Entre com sua conta Microsoft para identificar seu usuário. Login MSAL real está na FASE 11.3.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                DisabledAction("Entrar com conta corporativa")
-            }
-        }
-        item {
-            LabCard(title = "Login de teste", icon = Icons.Default.Person, borderColor = LabColors.outline.copy(alpha = 0.32f)) {
-                Text("Colaboradores de teste, sem dados reais.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                DisabledAction("Entrar como Teste SOC A")
-                DisabledAction("Entrar como Teste SOC B")
-                DisabledAction("Entrar como Aprovador SOC")
-                DisabledAction("Criar/atualizar time de teste")
             }
         }
         item {
