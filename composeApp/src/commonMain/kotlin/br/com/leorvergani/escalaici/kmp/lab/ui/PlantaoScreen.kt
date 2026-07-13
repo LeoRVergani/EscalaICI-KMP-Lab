@@ -164,6 +164,7 @@ internal fun PlantaoScreen(onBack: () -> Unit, today: LabDate, now: LabDateTime,
                 title = heroTitle,
                 active = relevant?.state == TemporalState.CURRENT,
                 heroShifts = heroShifts,
+                assignmentCount = assignments.size,
                 isImported = isImported,
                 importedFileName = importedFileName,
                 importMessage = importMessage,
@@ -201,6 +202,7 @@ private fun PlantaoHeroCard(
     title: String,
     active: Boolean,
     heroShifts: List<OnCallAssignment>,
+    assignmentCount: Int,
     isImported: Boolean,
     importedFileName: String?,
     importMessage: String?,
@@ -223,7 +225,7 @@ private fun PlantaoHeroCard(
                 )
                 Text(title, style = MaterialTheme.typography.titleLarge, color = LabColors.onSurface, fontWeight = FontWeight.Black)
                 Text(
-                    if (heroShifts.isNotEmpty()) "${heroShifts.size} plantão(ões) no período" else "Nenhum plantão carregado para o período atual.",
+                    if (assignmentCount > 0) "$assignmentCount plantão(ões) no período" else "Nenhum plantão carregado para o período atual.",
                     style = MaterialTheme.typography.bodySmall,
                     color = LabColors.onSurfaceMuted
                 )
@@ -388,7 +390,7 @@ private fun PlantaoDayCell(
 
 @Composable
 private fun PlantaoDayDetailCard(selectedDate: LabDate, assignments: List<OnCallAssignment>) {
-    LabCard(borderColor = LabColors.primary.copy(alpha = 0.25f)) {
+    LabCard(title = "Detalhe do dia", borderColor = LabColors.primary.copy(alpha = 0.25f)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Groups, contentDescription = null, tint = LabColors.primary, modifier = Modifier.size(20.dp))
             Column {
