@@ -30,10 +30,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleImportPreview
+import br.com.leorvergani.escalaici.kmp.lab.model.YearResolution
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
@@ -66,6 +72,8 @@ internal fun ImportTab(
     isFetchingFromCloud: Boolean,
     onUseImported: () -> Unit,
     onSelectCollaborator: (String) -> Unit,
+    onConfirmYear: (Int) -> Unit,
+    onCancelYearConfirmation: () -> Unit,
     onResetMock: () -> Unit,
     onOpenPlantao: () -> Unit
 ) {
@@ -87,6 +95,15 @@ internal fun ImportTab(
             LocalFileCard(preview = preview, onClick = onSelectXls)
         }
         preview?.let { p ->
+            if (p.yearResolution is YearResolution.Ambiguous) {
+                item {
+                    YearConfirmationCard(
+                        preview = p,
+                        onConfirmYear = onConfirmYear,
+                        onCancel = onCancelYearConfirmation
+                    )
+                }
+            }
             item { ScaleSummaryCard(preview = p) }
             if (p.collaborators.isNotEmpty()) {
                 item { CollaboratorPreviewCard(preview = p, onSelectCollaborator = onSelectCollaborator) }
@@ -119,6 +136,43 @@ internal fun ImportTab(
                     Text("Remover escala importada")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun YearConfirmationCard(
+    preview: ScheduleImportPreview,
+    onConfirmYear: (Int) -> Unit,
+    onCancel: () -> Unit
+) {
+    var yearText by remember(preview.fileName) { mutableStateOf("") }
+    val year = yearText.toIntOrNull()
+    LabCard(title = "Confirmar ano da escala", borderColor = Color(0xFFF59E0B).copy(alpha = 0.55f)) {
+        Text(
+            "A planilha possui dias e meses, mas não informa o ano de forma confiável.",
+            color = LabColors.onSurface,
+            style = MaterialTheme.typography.bodyMedium
+        )
+        SectionLine("Arquivo", preview.fileName)
+        SectionLine("Primeiro dia detectado", preview.detectedPeriodStart ?: "Não identificado")
+        SectionLine("Último dia detectado", preview.detectedPeriodEnd ?: "Não identificado")
+        OutlinedTextField(
+            value = yearText,
+            onValueChange = { value -> yearText = value.filter(Char::isDigit).take(4) },
+            label = { Text("Ano de início do período") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Button(
+            onClick = { year?.let(onConfirmYear) },
+            enabled = year in 2000..2100,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Confirmar ano")
+        }
+        TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
+            Text("Cancelar importação")
         }
     }
 }

@@ -197,6 +197,19 @@ fun EscalaIciLabApp() {
                                                 importPreview = LabWorkbookParser.parse(workbook, collaborator)
                                             }
                                         },
+                                        onConfirmYear = { startYear ->
+                                            importedWorkbook?.let { workbook ->
+                                                importPreview = LabWorkbookParser.parse(
+                                                    workbook = workbook,
+                                                    requestedCollaborator = importPreview?.selectedCollaborator,
+                                                    confirmedStartYear = startYear
+                                                )
+                                            }
+                                        },
+                                        onCancelYearConfirmation = {
+                                            importPreview = null
+                                            importedWorkbook = null
+                                        },
                                         onResetMock = ::resetMock,
                                         onOpenPlantao = onOpenPlantao
                                     )

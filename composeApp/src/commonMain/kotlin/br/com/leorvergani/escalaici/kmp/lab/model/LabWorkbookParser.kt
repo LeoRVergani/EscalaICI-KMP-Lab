@@ -17,7 +17,11 @@ package br.com.leorvergani.escalaici.kmp.lab.model
  * confirmado na FASE 11.1/11.1b) — documentado para retomada futura.
  */
 object LabWorkbookParser {
-    fun parse(workbook: ImportedWorkbook, requestedCollaborator: String? = DefaultCollaborator): ScheduleImportPreview {
+    fun parse(
+        workbook: ImportedWorkbook,
+        requestedCollaborator: String? = DefaultCollaborator,
+        confirmedStartYear: Int? = null
+    ): ScheduleImportPreview {
         val warnings = mutableListOf<String>()
         val errors = mutableListOf<String>()
 
@@ -26,6 +30,31 @@ object LabWorkbookParser {
 
         if (escalaSheet == null) errors += "Aba Escala não encontrada."
         if (escalistasSheet == null) errors += "Aba Escalistas não encontrada."
+
+        val dateTokens = escalaSheet?.scaleDateTokens().orEmpty()
+        val yearAnalysis = resolveYear(workbook, dateTokens, confirmedStartYear)
+        if (yearAnalysis is YearResolution.Invalid) errors += yearAnalysis.reason
+
+        if (yearAnalysis is YearResolution.Ambiguous) {
+            val partialDates = dateTokens.mapNotNull { it.partialDateToken() }
+            return ScheduleImportPreview(
+                fileName = workbook.fileName,
+                sheetNames = workbook.sheetNames,
+                collaborators = escalistasSheet?.readCollaborators().orEmpty(),
+                selectedCollaborator = requestedCollaborator,
+                daysRead = partialDates.size,
+                warnings = listOf("A planilha possui dias e meses, mas não informa o ano de forma confiável."),
+                errors = errors,
+                summary = null,
+                yearResolution = yearAnalysis,
+                detectedPeriodStart = partialDates.firstOrNull()?.label,
+                detectedPeriodEnd = partialDates.lastOrNull()?.label
+            )
+        }
+
+        val resolvedYear = yearAnalysis as? YearResolution.Resolved
+        val fullDateReferences = workbook.fullDateReferences()
+        val startYear = resolvedYear?.startYear
 
         val collaborators = escalistasSheet?.readCollaborators().orEmpty()
         if (collaborators.isEmpty()) warnings += "Nenhum colaborador encontrado na aba Escalistas."
@@ -36,13 +65,13 @@ object LabWorkbookParser {
             ?: collaborators.firstOrNull()
 
         val statusByDate = if (escalistasSheet != null && selected != null) {
-            escalistasSheet.readStatusesByDate(selected, warnings)
+            escalistasSheet.readStatusesByDate(selected, warnings, startYear, fullDateReferences)
         } else {
             emptyMap()
         }
 
         val days = if (escalaSheet != null && selected != null) {
-            escalaSheet.readScaleDays(selected, statusByDate, warnings)
+            escalaSheet.readScaleDays(selected, statusByDate, warnings, startYear, fullDateReferences)
         } else {
             emptyList()
         }
@@ -63,7 +92,10 @@ object LabWorkbookParser {
             daysRead = days.size,
             warnings = warnings,
             errors = errors,
-            summary = summary
+            summary = summary,
+            yearResolution = yearAnalysis,
+            detectedPeriodStart = days.firstNotNullOfOrNull { it.date }?.fullDateLabel(),
+            detectedPeriodEnd = days.mapNotNull { it.date }.lastOrNull()?.fullDateLabel()
         )
     }
 
@@ -81,11 +113,14 @@ object LabWorkbookParser {
      */
     private fun ImportedSheet.readStatusesByDate(
         collaborator: String,
-        warnings: MutableList<String>
+        warnings: MutableList<String>,
+        startYear: Int?,
+        fullDateReferences: Map<Pair<Int, Int>, LabDate>
     ): Map<LabDate, String> {
         val dateRow = rows.getOrNull(EscalistasDateRowIndex) ?: return emptyMap()
+        val resolver = DateSequenceResolver(startYear, fullDateReferences)
         val dateColumns = EscalistasStatusColumns.mapNotNull { column ->
-            dateRow.cell(column).parseDateToken()?.let { column to it }
+            resolver.parse(dateRow.cell(column))?.let { column to it }
         }
         val collaboratorRow = rows.drop(EscalistasHeaderRows)
             .firstOrNull { it.cell(EscalistasNameColumn).sameToken(collaborator) }
@@ -109,11 +144,14 @@ object LabWorkbookParser {
     private fun ImportedSheet.readScaleDays(
         collaborator: String,
         statusByDate: Map<LabDate, String>,
-        warnings: MutableList<String>
+        warnings: MutableList<String>,
+        startYear: Int?,
+        fullDateReferences: Map<Pair<Int, Int>, LabDate>
     ): List<ShiftDay> {
+        val resolver = DateSequenceResolver(startYear, fullDateReferences)
         val days = EscalaDayRows.mapNotNull { rowIndex ->
             val row = rows.getOrNull(rowIndex) ?: return@mapNotNull null
-            val date = row.cell(EscalaDateColumn).parseDateToken() ?: return@mapNotNull null
+            val date = resolver.parse(row.cell(EscalaDateColumn)) ?: return@mapNotNull null
             val note = row.cell(EscalaNoteColumn).trim().takeIf { it.isNotBlank() }
             val membersByShift = ShiftColumns
                 .mapNotNull { (column, type) ->
@@ -327,16 +365,111 @@ object LabWorkbookParser {
             .distinctBy { it.normalizedKey() }
     }
 
-    private fun String.parseDateToken(): LabDate? {
+    private fun String.parseFullDateToken(): LabDate? {
         val token = trim().split(Regex("""\s+""")).firstOrNull().orEmpty()
         val parts = token.split('/')
-        if (parts.size !in 2..3) return null
+        if (parts.size != 3) return null
         val day = parts.getOrNull(0)?.toIntOrNull() ?: return null
         val month = parts.getOrNull(1)?.toIntOrNull() ?: return null
-        val year = parts.getOrNull(2)?.toIntOrNull() ?: YearFallback
+        val year = parts.getOrNull(2)?.toIntOrNull() ?: return null
         if (month !in 1..12 || year !in 2000..2100) return null
         if (day !in 1..LabDate.monthLength(year, month)) return null
         return LabDate(year, month, day)
+    }
+
+    private data class PartialDate(val day: Int, val month: Int) {
+        val label: String get() = "${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}"
+    }
+
+    private fun String.partialDateToken(): PartialDate? {
+        val token = trim().split(Regex("""\s+""")).firstOrNull().orEmpty()
+        val parts = token.split('/')
+        if (parts.size !in 2..3) return null
+        val day = parts[0].toIntOrNull() ?: return null
+        val month = parts[1].toIntOrNull() ?: return null
+        if (month !in 1..12 || day !in 1..31) return null
+        return PartialDate(day, month)
+    }
+
+    private fun ImportedSheet.scaleDateTokens(): List<String> = EscalaDayRows.mapNotNull { rowIndex ->
+        rows.getOrNull(rowIndex)?.cell(EscalaDateColumn)?.takeIf { it.partialDateToken() != null }
+    }
+
+    private fun resolveYear(
+        workbook: ImportedWorkbook,
+        orderedScaleTokens: List<String>,
+        confirmedStartYear: Int?
+    ): YearResolution {
+        if (confirmedStartYear != null) {
+            return if (confirmedStartYear in 2000..2100) {
+                YearResolution.Resolved(confirmedStartYear, YearResolutionSource.USER_CONFIRMED)
+            } else {
+                YearResolution.Invalid("O ano confirmado deve estar entre 2000 e 2100.")
+            }
+        }
+
+        val fullDates = workbook.sheets.flatMap { sheet -> sheet.rows.flatten().mapNotNull { it.parseFullDateToken() } }
+        if (fullDates.isNotEmpty()) {
+            val firstPartialMonth = orderedScaleTokens.firstOrNull()?.partialDateToken()?.month
+            val firstFull = fullDates.first()
+            val startYear = if (firstPartialMonth != null && firstPartialMonth > firstFull.month) firstFull.year - 1 else firstFull.year
+            return YearResolution.Resolved(startYear, YearResolutionSource.FULL_DATE_IN_WORKBOOK)
+        }
+
+        if (orderedScaleTokens.any { it.hasExplicitYearToken() }) {
+            return YearResolution.Invalid("A aba Escala contém uma data completa inválida.")
+        }
+
+        val fileYear = ExplicitYearRegex.find(workbook.fileName)?.value?.toIntOrNull()
+        if (fileYear != null) return YearResolution.Resolved(fileYear, YearResolutionSource.FILE_NAME)
+
+        return if (orderedScaleTokens.isNotEmpty()) {
+            YearResolution.Ambiguous(
+                evidence = listOf("Datas encontradas somente no formato dia/mês.")
+            )
+        } else {
+            YearResolution.Invalid("Nenhuma data válida foi encontrada na aba Escala.")
+        }
+    }
+
+    private fun String.hasExplicitYearToken(): Boolean {
+        val token = trim().split(Regex("""\s+""")).firstOrNull().orEmpty()
+        val parts = token.split('/')
+        return parts.size == 3 && parts[2].toIntOrNull() != null
+    }
+
+    private fun ImportedWorkbook.fullDateReferences(): Map<Pair<Int, Int>, LabDate> = sheets
+        .flatMap { sheet -> sheet.rows.flatten().mapNotNull { it.parseFullDateToken() } }
+        .groupBy { it.day to it.month }
+        .mapNotNull { (key, dates) -> dates.distinct().singleOrNull()?.let { key to it } }
+        .toMap()
+
+    private class DateSequenceResolver(
+        private val initialYear: Int?,
+        private val fullDateReferences: Map<Pair<Int, Int>, LabDate>
+    ) {
+        private var currentYear = initialYear
+        private var previousMonth: Int? = null
+
+        fun parse(value: String): LabDate? {
+            value.parseFullDateToken()?.let { full ->
+                currentYear = full.year
+                previousMonth = full.month
+                return full
+            }
+            val partial = value.partialDateToken() ?: return null
+            fullDateReferences[partial.day to partial.month]?.let { reference ->
+                currentYear = reference.year
+                previousMonth = reference.month
+                return reference
+            }
+            var year = currentYear ?: return null
+            if (previousMonth == 12 && partial.month == 1) year += 1
+            if (partial.day !in 1..LabDate.monthLength(year, partial.month)) return null
+            currentYear = year
+            previousMonth = partial.month
+            return LabDate(year, partial.month, partial.day)
+        }
     }
 
     private fun String.isValidCollaboratorName(): Boolean {
@@ -344,7 +477,7 @@ object LabWorkbookParser {
         if (clean.isBlank()) return false
         if (clean.contains('/')) return false
         if (clean.any { it.isDigit() }) return false
-        if (clean.parseDateToken() != null) return false
+        if (clean.partialDateToken() != null) return false
         val blocked = setOf(
             "diames", "diasemana", "data", "colaborador", "colaboradores", "escalista", "escalistas",
             "tecnico", "tecnica", "analista", "nome", "turno", "escala"
@@ -369,7 +502,7 @@ object LabWorkbookParser {
     }
 
     private const val DefaultCollaborator = "lvergani"
-    private const val YearFallback = 2026
+    private val ExplicitYearRegex = Regex("(?<!\\d)(20\\d{2})(?!\\d)")
 
     // Layout fixo da aba Escalistas (igual ao parser oficial): header nas
     // linhas 0-1, dados a partir da linha 2; a propria linha 2 tambem

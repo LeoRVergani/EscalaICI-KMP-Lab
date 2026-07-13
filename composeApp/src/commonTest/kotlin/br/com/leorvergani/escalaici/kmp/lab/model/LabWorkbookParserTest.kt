@@ -194,4 +194,53 @@ class LabWorkbookParserTest {
         assertEquals("Trabalho sem turno localizado", day.label)
         assertEquals("Status origem: 3. Colaborador não encontrado nos turnos da aba Escala.", day.note)
     }
+
+    @Test
+    fun yearResolution_requiresConfirmationForDayAndMonthOnly() {
+        val escalistas = listOf(row(5), row(5), row(5, 2 to "Colaborador"), row(5, 2 to "usuario.teste"))
+        val escala = listOf(row(7), row(7), row(7, 0 to "26/06", 3 to "usuario.teste"), row(7, 0 to "25/07"))
+
+        val preview = LabWorkbookParser.parse(workbook(escalistas, escala), "usuario.teste")
+
+        assertTrue(preview.yearResolution is YearResolution.Ambiguous)
+        assertNull(preview.summary)
+        assertTrue(!preview.canUseImportedData)
+        assertEquals("26/06", preview.detectedPeriodStart)
+        assertEquals("25/07", preview.detectedPeriodEnd)
+    }
+
+    @Test
+    fun yearResolution_userConfirmationBuildsCrossMonthPeriod() {
+        val escalistas = listOf(row(5), row(5), row(5, 2 to "Colaborador"), row(5, 2 to "usuario.teste"))
+        val escala = listOf(row(7), row(7), row(7, 0 to "26/06", 3 to "usuario.teste"), row(7, 0 to "25/07"))
+
+        val preview = LabWorkbookParser.parse(workbook(escalistas, escala), "usuario.teste", confirmedStartYear = 2025)
+        val dates = requireNotNull(preview.summary).days.mapNotNull { it.date }
+
+        assertEquals(listOf(LabDate(2025, 6, 26), LabDate(2025, 7, 25)), dates)
+        assertEquals(YearResolution.Resolved(2025, YearResolutionSource.USER_CONFIRMED), preview.yearResolution)
+    }
+
+    @Test
+    fun yearResolution_userConfirmationHandlesDecemberToJanuary() {
+        val escalistas = listOf(row(5), row(5), row(5, 2 to "Colaborador"), row(5, 2 to "usuario.teste"))
+        val escala = listOf(row(7), row(7), row(7, 0 to "26/12", 3 to "usuario.teste"), row(7, 0 to "25/01"))
+
+        val preview = LabWorkbookParser.parse(workbook(escalistas, escala), "usuario.teste", confirmedStartYear = 2025)
+        val dates = requireNotNull(preview.summary).days.mapNotNull { it.date }
+
+        assertEquals(listOf(LabDate(2025, 12, 26), LabDate(2026, 1, 25)), dates)
+    }
+
+    @Test
+    fun yearResolution_usesExplicitYearInFileName() {
+        val base = workbook(
+            listOf(row(5), row(5), row(5, 2 to "Colaborador"), row(5, 2 to "usuario.teste")),
+            listOf(row(7), row(7), row(7, 0 to "26/06", 3 to "usuario.teste"), row(7, 0 to "25/07"))
+        )
+        val preview = LabWorkbookParser.parse(base.copy(fileName = "Escala-Equipe-2024.xlsx"), "usuario.teste")
+
+        assertEquals(YearResolution.Resolved(2024, YearResolutionSource.FILE_NAME), preview.yearResolution)
+        assertEquals(LabDate(2024, 6, 26), requireNotNull(preview.summary).days.first().date)
+    }
 }
