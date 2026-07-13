@@ -229,7 +229,9 @@ object LabWorkbookParser {
             sourceFileName = workbook.fileName,
             sheetNames = workbook.sheetNames,
             collaborators = collaborators,
-            warnings = (warnings + days.validationWarnings(selected)).distinct()
+            warnings = (warnings + days.validationWarnings(selected)).distinct(),
+            periodStart = start,
+            periodEnd = end
         )
     }
 

@@ -51,7 +51,6 @@ import androidx.compose.ui.unit.sp
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftDay
-import br.com.leorvergani.escalaici.kmp.lab.platform.todayLabDate
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.HeroCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
@@ -59,8 +58,8 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.shiftColor
 
 @Composable
-internal fun TodayTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit, onImportClick: () -> Unit) {
-    val next = summary.nextShift
+internal fun TodayTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao: () -> Unit, onImportClick: () -> Unit) {
+    val next = summary.nextShift(today)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 18.dp),
@@ -70,13 +69,13 @@ internal fun TodayTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit, onImp
             LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
         }
         item {
-            NextTurnHero(summary = summary, onImportClick = onImportClick)
+            NextTurnHero(summary = summary, today = today, onImportClick = onImportClick)
         }
         item {
-            WeekSummaryCard(summary = summary)
+            WeekSummaryCard(summary = summary, today = today)
         }
         item {
-            EventsCard(summary = summary)
+            EventsCard(summary = summary, today = today)
         }
         item {
             PauseCard(summary = summary)
@@ -95,8 +94,8 @@ internal fun TodayTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit, onImp
 }
 
 @Composable
-private fun NextTurnHero(summary: ScheduleSummary, onImportClick: () -> Unit) {
-    val day = summary.nextShift
+private fun NextTurnHero(summary: ScheduleSummary, today: LabDate, onImportClick: () -> Unit) {
+    val day = summary.nextShift(today)
     HeroCard {
         if (day == null) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -181,9 +180,9 @@ private fun WeatherChip() {
 }
 
 @Composable
-private fun WeekSummaryCard(summary: ScheduleSummary) {
-    val selectedDate = summary.nextShift?.date ?: summary.days.firstOrNull()?.date
-    val week = currentWeekWindow(summary.days)
+private fun WeekSummaryCard(summary: ScheduleSummary, today: LabDate) {
+    val selectedDate = summary.nextShift(today)?.date
+    val week = currentWeekWindow(summary.days, today)
     LabCard(
         title = "Resumo da semana",
         badge = if (!summary.isImported) "não importada" else null,
@@ -210,10 +209,9 @@ private fun WeekSummaryCard(summary: ScheduleSummary) {
  * 26 de um mês, então `days.take(7)` mostrava sempre o início do ciclo
  * importado em vez da semana que contém a data atual do dispositivo.
  */
-private fun currentWeekWindow(days: List<ShiftDay>): List<ShiftDay> {
+private fun currentWeekWindow(days: List<ShiftDay>, today: LabDate): List<ShiftDay> {
     val sorted = days.filter { it.date != null }.sortedBy { it.date }
     if (sorted.isEmpty()) return days.take(7)
-    val today: LabDate = todayLabDate()
     val maxStart = (sorted.size - 7).coerceAtLeast(0)
     val todayIndex = sorted.indexOfFirst { it.date!! >= today }
     val startIndex = if (todayIndex < 0) maxStart else todayIndex.coerceAtMost(maxStart)
@@ -271,15 +269,15 @@ private fun WeekDayPill(day: ShiftDay, selected: Boolean, modifier: Modifier = M
 }
 
 @Composable
-private fun EventsCard(summary: ScheduleSummary) {
+private fun EventsCard(summary: ScheduleSummary, today: LabDate) {
     LabCard(
         title = "Eventos da escala",
         icon = Icons.Default.Checklist,
         gradient = listOf(Color(0xFF0B1B2C), Color(0xFF0D1A2D)),
         borderColor = LabColors.primary.copy(alpha = 0.42f)
     ) {
-        EventLine(Icons.Default.CalendarMonth, summary.nextShift.eventLabel(), Color(0xFF22D3EE))
-        EventLine(Icons.Default.CalendarMonth, summary.nextRest.eventLabel(), Color(0xFF22C55E))
+        EventLine(Icons.Default.CalendarMonth, summary.nextShift(today).eventLabel(), Color(0xFF22D3EE))
+        EventLine(Icons.Default.CalendarMonth, summary.nextRest(today).eventLabel(), Color(0xFF22C55E))
         EventLine(Icons.Default.Bolt, "Dias seguidos: ${summary.workedDays.coerceAtMost(5)}", Color(0xFF22D3EE))
     }
 }

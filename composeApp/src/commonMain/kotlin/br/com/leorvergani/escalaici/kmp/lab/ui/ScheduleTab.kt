@@ -45,11 +45,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
-import br.com.leorvergani.escalaici.kmp.lab.platform.todayLabDate
 import br.com.leorvergani.escalaici.kmp.lab.model.LabYearMonth
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftDay
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftType
+import br.com.leorvergani.escalaici.kmp.lab.model.initialScheduleDate
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
@@ -58,17 +58,11 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.shiftColor
 
 @Composable
-internal fun ScheduleTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
+internal fun ScheduleTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao: () -> Unit) {
     val sortedDays = summary.days.sortedBy { it.date }
-    val today = remember(summary) { todayLabDate() }
-    val initialDay = remember(summary) {
-        sortedDays.firstOrNull { it.date == today }
-            ?: sortedDays.firstOrNull { it.type.isWorkShift && it.date != null && it.date!! >= today }
-            ?: sortedDays.firstOrNull { it.type.isWorkShift }
-            ?: sortedDays.firstOrNull()
-    }
-    var selectedDate by remember(summary) { mutableStateOf(initialDay?.date) }
-    var visibleMonth by remember(summary) { mutableStateOf((selectedDate ?: sortedDays.firstNotNullOfOrNull { it.date } ?: LabDate(2026, 7, 1)).yearMonth()) }
+    val initialDate = remember(summary, today) { initialScheduleDate(summary, today) }
+    var selectedDate by remember(summary, today) { mutableStateOf(initialDate) }
+    var visibleMonth by remember(summary, today) { mutableStateOf((initialDate ?: today).yearMonth()) }
     var showLegend by remember { mutableStateOf(false) }
     val daysByDate = remember(summary) {
         sortedDays.mapNotNull { day -> day.date?.let { it to day } }.toMap()
@@ -103,6 +97,19 @@ internal fun ScheduleTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
                 onPrevious = { moveMonth(-1) },
                 onNext = { moveMonth(1) }
             )
+        }
+        item {
+            val todayAvailable = summary.contains(today)
+            TextButton(
+                enabled = todayAvailable,
+                onClick = {
+                    selectedDate = today
+                    visibleMonth = today.yearMonth()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (todayAvailable) "Ir para hoje" else "Hoje está fora do período carregado")
+            }
         }
         item {
             PeriodCalendarView(

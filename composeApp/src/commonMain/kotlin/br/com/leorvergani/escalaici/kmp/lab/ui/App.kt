@@ -49,6 +49,8 @@ import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleImportPreview
 import br.com.leorvergani.escalaici.kmp.lab.model.WorkbookImportResult
 import br.com.leorvergani.escalaici.kmp.lab.model.mockScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.platform.rememberWorkbookImportLauncher
+import br.com.leorvergani.escalaici.kmp.lab.platform.SystemTodayProvider
+import br.com.leorvergani.escalaici.kmp.lab.platform.TodayProvider
 import br.com.leorvergani.escalaici.kmp.lab.repository.DropboxScaleRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.InMemoryAuthSessionRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.MockMemberRepository
@@ -78,7 +80,7 @@ private enum class StackedScreen(val title: String) {
 }
 
 @Composable
-fun EscalaIciLabApp() {
+fun EscalaIciLabApp(todayProvider: TodayProvider = SystemTodayProvider) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
         val memberRepository = remember { MockMemberRepository() }
@@ -97,6 +99,7 @@ fun EscalaIciLabApp() {
         var importPreview by remember { mutableStateOf<ScheduleImportPreview?>(null) }
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
         var isFetchingFromCloud by remember { mutableStateOf(false) }
+        val today = remember(todayProvider) { todayProvider.today() }
 
         fun handleWorkbookImportResult(result: WorkbookImportResult) {
             when (result) {
@@ -176,10 +179,11 @@ fun EscalaIciLabApp() {
                                 when (activeTab) {
                                     LabTab.Hoje -> TodayTab(
                                         summary = summary,
+                                        today = today,
                                         onOpenPlantao = onOpenPlantao,
                                         onImportClick = { activeTab = LabTab.Importar }
                                     )
-                                    LabTab.Escala -> ScheduleTab(summary = summary, onOpenPlantao = onOpenPlantao)
+                                    LabTab.Escala -> ScheduleTab(summary = summary, today = today, onOpenPlantao = onOpenPlantao)
                                     LabTab.Importar -> ImportTab(
                                         preview = importPreview,
                                         selectedCollaborator = summary.member.scaleName,

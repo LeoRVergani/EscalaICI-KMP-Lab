@@ -8,3 +8,11 @@ import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
  * assumir que "hoje" é o primeiro dia da lista importada.
  */
 expect fun todayLabDate(): LabDate
+
+fun interface TodayProvider {
+    fun today(): LabDate
+}
+
+object SystemTodayProvider : TodayProvider {
+    override fun today(): LabDate = todayLabDate()
+}
