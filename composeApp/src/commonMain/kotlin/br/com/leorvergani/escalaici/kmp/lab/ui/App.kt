@@ -66,6 +66,7 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabTypography
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 private enum class LabTab(
     val label: String,
@@ -111,7 +112,13 @@ fun EscalaIciLabApp(
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
         var isFetchingFromCloud by remember { mutableStateOf(false) }
         val today = remember(todayProvider) { todayProvider.today() }
-        val now = remember(currentTimeProvider) { currentTimeProvider.now() }
+        var now by remember(currentTimeProvider) { mutableStateOf(currentTimeProvider.now()) }
+        LaunchedEffect(currentTimeProvider) {
+            while (true) {
+                delay(30_000)
+                now = currentTimeProvider.now()
+            }
+        }
 
         LaunchedEffect(localDataCache) {
             when (val cached = localDataCache.loadSchedule()) {
