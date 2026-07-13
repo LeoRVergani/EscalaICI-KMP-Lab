@@ -49,6 +49,8 @@ import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDateTime
 import br.com.leorvergani.escalaici.kmp.lab.model.pauseFor
 import br.com.leorvergani.escalaici.kmp.lab.model.relevantShift
+import br.com.leorvergani.escalaici.kmp.lab.platform.WebNotificationService
+import br.com.leorvergani.escalaici.kmp.lab.platform.NotificationPermissionState
 import br.com.leorvergani.escalaici.kmp.lab.platform.rememberAppUpdateChecker
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCollaboratorAvatar
@@ -64,11 +66,15 @@ internal fun ProfileTab(
     summary: ScheduleSummary,
     now: LabDateTime,
     supportsAppUpdate: Boolean,
+    notificationService: WebNotificationService,
     onLogout: () -> Unit,
     onOpenPlantao: () -> Unit,
     onOpenSwap: () -> Unit
 ) {
     val criticalAlerts = remember(summary) { GenerateLabAlerts(summary).count { it.severity == LabAlert.Severity.CRITICO } }
+    var notificationPermission by remember(notificationService) { mutableStateOf(notificationService.capability().permissionState) }
+    var requestingNotification by remember { mutableStateOf(false) }
+    var notificationFeedback by remember { mutableStateOf<String?>(null) }
     PageList {
         item {
             LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
@@ -130,26 +136,35 @@ internal fun ProfileTab(
         }
         item {
             LabCard(title = "Notificações", icon = Icons.Default.Notifications, borderColor = LabColors.primary.copy(alpha = 0.30f), gradient = listOf(LabColors.surfaceElevated.copy(alpha = 0.88f), LabColors.surface.copy(alpha = 0.96f))) {
-                StatusLine("Status", "ativas visualmente")
-                Text("Alertas são problemas detectados na escala. Notificações são lembretes enviados pelo celular.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                VisualToggle("Plantão amanhã", true)
-                VisualToggle("Folga amanhã", true)
-                VisualToggle("Saída do turno", false)
-                HorizontalDivider(color = LabColors.outline.copy(alpha = 0.22f))
-                Text("Entrada do turno", color = LabColors.onSurface, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                Text("Receba um aviso antes do seu turno começar.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    ProfileChip("No horário", false, Modifier.weight(1f))
-                    ProfileChip("5 min antes", false, Modifier.weight(1f))
-                    ProfileChip("10 min antes", false, Modifier.weight(1f))
+                val status = when {
+                    requestingNotification -> "Solicitando permissão..."
+                    notificationPermission == NotificationPermissionState.GRANTED -> "Notificações Web ativadas"
+                    notificationPermission == NotificationPermissionState.DENIED -> "Notificações bloqueadas no navegador"
+                    notificationPermission == NotificationPermissionState.UNSUPPORTED -> "Este navegador não oferece notificações compatíveis"
+                    else -> "Notificações Web desativadas"
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    ProfileChip("15 min antes", true, Modifier.weight(1f))
-                    ProfileChip("30 min antes", false, Modifier.weight(1f))
-                    ProfileChip("1h antes", false, Modifier.weight(1f))
+                StatusLine("Status", status)
+                when (notificationPermission) {
+                    NotificationPermissionState.DEFAULT -> TextButton(enabled = !requestingNotification, onClick = {
+                        requestingNotification = true
+                        notificationService.requestPermission { result ->
+                            notificationPermission = result
+                            requestingNotification = false
+                        }
+                    }) { Text("Ativar notificações Web") }
+                    NotificationPermissionState.GRANTED -> TextButton(onClick = {
+                        notificationService.showNotification(
+                            title = "Pausa do turno",
+                            body = "Notificações do Escala ICI estão funcionando.",
+                            tag = "escala-ici-notification-test"
+                        ) { ok -> notificationFeedback = if (ok) "Notificação de teste enviada." else "Não foi possível exibir a notificação." }
+                    }) { Text("Testar notificação Web") }
+                    NotificationPermissionState.DENIED -> Text("Altere a permissão nas configurações do site.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    NotificationPermissionState.UNSUPPORTED -> Unit
                 }
-                Text("Analista: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                DisabledAction("Reprogramar notificações")
+                notificationFeedback?.let { Text(it, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall) }
+                Text("As notificações Web funcionam enquanto o site ou PWA estiver ativo. Avisos com o aplicativo totalmente fechado exigirão uma integração futura de Push.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Selecione uma pausa válida antes de programar um lembrete.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
         item {
@@ -235,16 +250,19 @@ private fun StatusLine(label: String, value: String) {
 
 @Composable
 private fun DisabledAction(label: String) {
-    TextButton(onClick = {}) {
-        Text(label, color = LabColors.primary.copy(alpha = 0.82f))
+    TextButton(onClick = ::unavailableAction, enabled = false) {
+        Text(label)
     }
+    Text("Disponível em uma próxima etapa.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall)
 }
+
+private fun unavailableAction() = Unit
 
 @Composable
 private fun VisualToggle(label: String, checked: Boolean) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = LabColors.onSurface, style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = checked, onCheckedChange = {})
+        Switch(checked = checked, onCheckedChange = null, enabled = false)
     }
 }
 

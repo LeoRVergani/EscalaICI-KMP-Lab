@@ -53,6 +53,8 @@ import br.com.leorvergani.escalaici.kmp.lab.platform.SystemTodayProvider
 import br.com.leorvergani.escalaici.kmp.lab.platform.TodayProvider
 import br.com.leorvergani.escalaici.kmp.lab.platform.CurrentTimeProvider
 import br.com.leorvergani.escalaici.kmp.lab.platform.PlatformCapabilities
+import br.com.leorvergani.escalaici.kmp.lab.platform.WebNotificationService
+import br.com.leorvergani.escalaici.kmp.lab.platform.UnsupportedWebNotificationService
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDateTime
 import br.com.leorvergani.escalaici.kmp.lab.repository.DropboxScaleRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.InMemoryAuthSessionRepository
@@ -92,7 +94,8 @@ fun EscalaIciLabApp(
     todayProvider: TodayProvider = SystemTodayProvider,
     localDataCache: LocalDataCache = UnavailableLocalDataCache,
     currentTimeProvider: CurrentTimeProvider = CurrentTimeProvider { LabDateTime(todayProvider.today(), 0) },
-    platformCapabilities: PlatformCapabilities = PlatformCapabilities()
+    platformCapabilities: PlatformCapabilities = PlatformCapabilities(),
+    notificationService: WebNotificationService = UnsupportedWebNotificationService
 ) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
@@ -272,6 +275,7 @@ fun EscalaIciLabApp(
                                         summary = summary,
                                         now = now,
                                         supportsAppUpdate = platformCapabilities.supportsAppUpdate,
+                                        notificationService = notificationService,
                                         onLogout = {
                                             scope.launch { authRepository.signOut() }
                                             sessionMemberId = null
