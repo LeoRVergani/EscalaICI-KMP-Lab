@@ -331,12 +331,14 @@ private fun PlantaoCalendarGrid(
                     if (date == null) {
                         Spacer(Modifier.weight(1f).aspectRatio(1f))
                     } else {
-                        val hasPlantao = assignments.any { date in onCallDates(it) }
+                        val startsPlantao = assignments.any { LabDate.parseIso(it.startDate) == date }
+                        val continuesPlantao = !startsPlantao && assignments.any { date in onCallDates(it) }
                         PlantaoDayCell(
                             date = date,
                             selected = date == selectedDate,
                             isReference = date == referenceDate,
-                            hasPlantao = hasPlantao,
+                            hasPlantao = startsPlantao || continuesPlantao,
+                            isContinuation = continuesPlantao,
                             modifier = Modifier.weight(1f),
                             onClick = { onDateClick(date) }
                         )
@@ -353,6 +355,7 @@ private fun PlantaoDayCell(
     selected: Boolean,
     isReference: Boolean,
     hasPlantao: Boolean,
+    isContinuation: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -381,7 +384,7 @@ private fun PlantaoDayCell(
                         .padding(top = 2.dp)
                         .size(5.dp)
                         .clip(CircleShape)
-                        .background(if (selected) Color.White else LabColors.purple)
+                        .background(if (selected) Color.White else if (isContinuation) LabColors.tertiary else LabColors.purple)
                 )
             }
         }
