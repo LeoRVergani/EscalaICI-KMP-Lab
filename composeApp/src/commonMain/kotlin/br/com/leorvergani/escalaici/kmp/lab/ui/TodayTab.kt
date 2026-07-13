@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -167,19 +166,6 @@ private fun ImportVisualButton(onClick: () -> Unit) {
             Spacer(Modifier.width(6.dp))
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
         }
-    }
-}
-
-@Composable
-private fun WeatherChip() {
-    Column(
-        modifier = Modifier.width(58.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(1.dp)
-    ) {
-        Icon(Icons.Default.WbSunny, contentDescription = null, tint = Color(0xFFFACC15), modifier = Modifier.size(28.dp))
-        Text("Clima", color = Color.White.copy(alpha = 0.82f), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
-        Text("17°", color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
     }
 }
 
