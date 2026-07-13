@@ -98,7 +98,23 @@ data class OnCallAssignment(
     val endTime: String,
     val status: OnCallStatus,
     val notes: String? = null
-)
+) {
+    fun durationMinutes(): Long? {
+        fun timeMinutes(value: String): Int? {
+            val parts = value.split(":")
+            if (parts.size != 2) return null
+            val hour = parts[0].toIntOrNull() ?: return null
+            val minute = parts[1].toIntOrNull() ?: return null
+            if (hour !in 0..23 || minute !in 0..59) return null
+            return hour * 60 + minute
+        }
+        val startDay = LabDate.parseIso(startDate)?.epochDay()?.toLong() ?: return null
+        val endDay = LabDate.parseIso(endDate)?.epochDay()?.toLong() ?: return null
+        val startMinute = timeMinutes(startTime) ?: return null
+        val endMinute = timeMinutes(endTime) ?: return null
+        return ((endDay - startDay) * 24L * 60L + endMinute - startMinute).takeIf { it > 0 }
+    }
+}
 
 data class ShiftSwapRequest(
     val id: String,

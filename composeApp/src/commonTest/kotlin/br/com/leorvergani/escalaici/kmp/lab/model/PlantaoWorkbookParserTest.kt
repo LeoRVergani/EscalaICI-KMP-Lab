@@ -12,6 +12,21 @@ import kotlin.test.assertTrue
  * encontrado, ordenação por início e depois por nome.
  */
 class PlantaoWorkbookParserTest {
+    @Test
+    fun preservesCompleteIntervalAcrossYearAndCalculatesDuration() {
+        val wb = ImportedWorkbook(
+            fileName = "plantao-sanitizado.xlsx",
+            sheets = listOf(ImportedSheet("Plantao", listOf(
+                listOf("Plantonista", "Data Inicio", "Data Fim"),
+                listOf("Pessoa Teste", "31/12/2025 - 22:30", "01/01/2026 - 02:00")
+            )))
+        )
+
+        val assignment = PlantaoWorkbookParser.parse(wb).assignments.single()
+        assertEquals("2025-12-31", assignment.startDate)
+        assertEquals("2026-01-01", assignment.endDate)
+        assertEquals(210L, assignment.durationMinutes())
+    }
 
     private fun workbook(rows: List<List<String>>, sheetName: String = "Plantão"): ImportedWorkbook {
         return ImportedWorkbook(fileName = "plantao.xls", sheets = listOf(ImportedSheet(name = sheetName, rows = rows)))

@@ -77,6 +77,8 @@ object PlantaoWorkbookParser {
                 memberId = shift.plantonista,
                 memberName = shift.plantonista,
                 date = shift.start.isoDate,
+                startDate = shift.start.isoDate,
+                endDate = shift.end.isoDate,
                 startTime = shift.start.time,
                 endTime = shift.end.time,
                 status = OnCallStatus.SCHEDULED

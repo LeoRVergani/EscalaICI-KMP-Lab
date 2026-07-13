@@ -418,18 +418,8 @@ private fun PlantaoDayDetailCard(selectedDate: LabDate, assignments: List<OnCall
 
 /** Duração do plantão a partir de "HH:mm" → "HH:mm", cruzando meia-noite se preciso. */
 private fun OnCallAssignment.durationLabel(): String {
-    fun minutesOf(time: String): Int? {
-        val parts = time.split(":")
-        if (parts.size != 2) return null
-        val hours = parts[0].toIntOrNull() ?: return null
-        val minutes = parts[1].toIntOrNull() ?: return null
-        return hours * 60 + minutes
-    }
-
-    val start = minutesOf(startTime) ?: return "-"
-    val end = minutesOf(endTime) ?: return "-"
-    val totalMinutes = if (end > start) end - start else (24 * 60 - start) + end
+    val totalMinutes = durationMinutes() ?: return "-"
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
-    return if (minutes == 0) "${hours}h" else "${hours}h${minutes.toString().padStart(2, '0')}"
+    return if (minutes == 0L) "${hours}h" else "${hours}h${minutes.toString().padStart(2, '0')}"
 }
