@@ -66,6 +66,7 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 @Composable
 internal fun ImportTab(
     preview: ScheduleImportPreview?,
+    activeFileName: String?,
     selectedCollaborator: String,
     onSelectXls: () -> Unit,
     onFetchFromDropbox: () -> Unit,
@@ -92,7 +93,7 @@ internal fun ImportTab(
             }
         }
         item {
-            LocalFileCard(preview = preview, onClick = onSelectXls)
+            LocalFileCard(preview = preview, activeFileName = activeFileName, onClick = onSelectXls)
         }
         preview?.let { p ->
             if (p.yearResolution is YearResolution.Ambiguous) {
@@ -178,7 +179,7 @@ private fun YearConfirmationCard(
 }
 
 @Composable
-private fun LocalFileCard(preview: ScheduleImportPreview?, onClick: () -> Unit) {
+private fun LocalFileCard(preview: ScheduleImportPreview?, activeFileName: String?, onClick: () -> Unit) {
     val hasError = preview != null && preview.errors.isNotEmpty()
     val accent = when {
         hasError -> LabColors.red
@@ -214,6 +215,12 @@ private fun LocalFileCard(preview: ScheduleImportPreview?, onClick: () -> Unit) 
                     Text("Arquivo local", color = LabColors.onSurface, style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(6.dp))
                     when {
+                        preview == null && activeFileName != null -> {
+                            SuccessStatusPill(text = "Escala importada e ativa neste dispositivo", color = LabColors.tertiary)
+                            Spacer(Modifier.height(8.dp))
+                            Text(activeFileName, color = LabColors.onSurface, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("Toque para importar outro arquivo.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                        }
                         preview == null -> {
                             Text("Selecionar arquivo XLS/XLSX", color = LabColors.onSurface, style = MaterialTheme.typography.titleSmall)
                             Text("O arquivo será validado antes de importar.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
@@ -223,11 +230,11 @@ private fun LocalFileCard(preview: ScheduleImportPreview?, onClick: () -> Unit) 
                             Text("Toque para tentar novamente.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                         }
                         else -> {
-                            SuccessStatusPill(text = "Escala analisada e salva com sucesso", color = LabColors.tertiary)
+                            SuccessStatusPill(text = "Arquivo analisado", color = LabColors.tertiary)
                             Spacer(Modifier.height(8.dp))
                             Text(preview.fileName, color = LabColors.onSurface, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text("Dias processados: ${preview.daysRead}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                            Text("Status: salva apenas neste dispositivo (sem sincronização)", color = LabColors.primary, style = MaterialTheme.typography.bodySmall)
+                            Text("Revise os dados antes de usar esta escala.", color = LabColors.primary, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -256,7 +263,7 @@ private fun ScaleSummaryCard(preview: ScheduleImportPreview) {
     val hasEscalistas = preview.sheetNames.any { it.equals("Escalistas", ignoreCase = true) }
     val hasEscala = preview.sheetNames.any { it.equals("Escala", ignoreCase = true) }
     LabCard(
-        title = "Escala analisada e salva",
+        title = "Escala analisada",
         borderColor = if (preview.errors.isEmpty()) LabColors.tertiary.copy(alpha = 0.40f) else LabColors.red.copy(alpha = 0.45f)
     ) {
         Text(preview.fileName, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
@@ -268,7 +275,7 @@ private fun ScaleSummaryCard(preview: ScheduleImportPreview) {
         SectionLine("Abas encontradas", preview.sheetNames.joinToString(", ").ifBlank { "Nenhuma" })
         SectionLine("Colaborador selecionado", preview.selectedCollaborator ?: "Nenhum", valueColor = LabColors.primary)
         SectionLine("Dias processados", "${preview.daysRead} dias")
-        SectionLine("Status", "Salva apenas neste dispositivo (sem sincronização)", valueColor = LabColors.tertiary)
+        SectionLine("Status", "Pronta para confirmação", valueColor = LabColors.tertiary)
 
         if (preview.collaborators.isNotEmpty()) {
             SectionLine("Colaboradores encontrados", preview.collaborators.joinToString(", "))

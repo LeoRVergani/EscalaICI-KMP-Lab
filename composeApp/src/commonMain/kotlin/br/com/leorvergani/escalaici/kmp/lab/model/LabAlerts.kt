@@ -36,7 +36,10 @@ object GenerateLabAlerts {
                 severity = LabAlert.Severity.CRITICO
             )
         }
-        summary.warnings.forEach { warning ->
+        val hasSixByOneAlert = alerts.any { it.title == "Regra 6x1 excedida" }
+        summary.warnings
+            .filterNot { hasSixByOneAlert && (it.contains("7 dias trabalhados", ignoreCase = true) || it.contains("6x1", ignoreCase = true)) }
+            .forEach { warning ->
             val critical = warning.contains("6x1", ignoreCase = true) ||
                 warning.contains("divergência", ignoreCase = true) ||
                 warning.contains("divergencia", ignoreCase = true)
