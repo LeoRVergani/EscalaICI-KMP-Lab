@@ -35,7 +35,7 @@ internal fun LabPremiumHeader(
     selectedCollaborator: String?,
     showNotificationIcon: Boolean = true,
     compact: Boolean = true,
-    onNotificationClick: () -> Unit = {},
+    onNotificationClick: (() -> Unit)? = null,
     onOpenPlantao: (() -> Unit)? = null
 ) {
     Row(
@@ -48,7 +48,7 @@ internal fun LabPremiumHeader(
         LabAppTitle(compact = compact)
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (showNotificationIcon) {
+            if (showNotificationIcon && onNotificationClick != null) {
                 IconButton(onClick = onNotificationClick, modifier = Modifier.size(38.dp)) {
                     Icon(
                         Icons.Outlined.Notifications,

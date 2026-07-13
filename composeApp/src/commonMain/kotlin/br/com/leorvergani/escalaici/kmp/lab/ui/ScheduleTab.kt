@@ -411,14 +411,16 @@ private fun CalendarDayDetailCard(day: ShiftDay) {
         day.note?.takeIf { it.isNotBlank() }?.let { note ->
             Text("Observação: $note", color = Color(0xFFFDE68A), style = MaterialTheme.typography.bodySmall)
         }
-        WeatherMiniCard()
         if (day.type.isWorkShift) {
-            TextButton(onClick = {}) {
-                Text("Solicitar troca", color = LabColors.primary)
+            TextButton(onClick = ::unavailableScheduleAction, enabled = false) {
+                Text("Solicitar troca")
             }
+            Text("Disponível em uma próxima etapa.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
+
+private fun unavailableScheduleAction() = Unit
 
 @Composable
 private fun WeatherMiniCard() {
