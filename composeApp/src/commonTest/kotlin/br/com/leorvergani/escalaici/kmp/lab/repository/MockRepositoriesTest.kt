@@ -2,7 +2,7 @@ package br.com.leorvergani.escalaici.kmp.lab.repository
 
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleAssignment
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftType
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 class MockRepositoriesTest {
 
     @Test
-    fun scheduleRepository_filtersAssignmentsByPeriod() = runBlocking {
+    fun scheduleRepository_filtersAssignmentsByPeriod() = runTest {
         val repository = MockScheduleRepository()
         val period = repository.getSchedulePeriod("soc")
 
@@ -22,7 +22,7 @@ class MockRepositoriesTest {
     }
 
     @Test
-    fun memberRepository_findsMemberByIdAndTeam() = runBlocking {
+    fun memberRepository_findsMemberByIdAndTeam() = runTest {
         val repository = MockMemberRepository()
 
         val member = repository.getMember("lvergani@ici.tec.br")
@@ -34,7 +34,7 @@ class MockRepositoriesTest {
     }
 
     @Test
-    fun teamRepository_returnsKnownTeam() = runBlocking {
+    fun teamRepository_returnsKnownTeam() = runTest {
         val repository = MockTeamRepository()
 
         val team = repository.getTeam("soc")
@@ -43,7 +43,7 @@ class MockRepositoriesTest {
     }
 
     @Test
-    fun onCallRepository_filtersAssignmentsByPeriod() = runBlocking {
+    fun onCallRepository_filtersAssignmentsByPeriod() = runTest {
         val repository = MockOnCallRepository()
 
         val period = repository.getOnCallPeriod("soc")
@@ -53,7 +53,7 @@ class MockRepositoriesTest {
     }
 
     @Test
-    fun shiftSwapRepository_persistsNewRequests() = runBlocking {
+    fun shiftSwapRepository_persistsNewRequests() = runTest {
         val repository = MockShiftSwapRepository(initialRequests = emptyList())
         val request = repository.requestSwap(
             br.com.leorvergani.escalaici.kmp.lab.model.ShiftSwapRequest(
@@ -73,13 +73,13 @@ class MockRepositoriesTest {
     }
 
     @Test
-    fun authSessionRepository_returnsConfiguredMemberId() = runBlocking {
+    fun authSessionRepository_returnsConfiguredMemberId() = runTest {
         assertEquals("lvergani@ici.tec.br", MockAuthSessionRepository().currentMemberId())
         assertNull(MockAuthSessionRepository(memberId = null).currentMemberId())
     }
 
     @Test
-    fun localCacheRepository_roundTripsSavedAssignments() = runBlocking {
+    fun localCacheRepository_roundTripsSavedAssignments() = runTest {
         val repository = MockLocalCacheRepository()
         assertNull(repository.loadScheduleAssignments("period-x"))
 
