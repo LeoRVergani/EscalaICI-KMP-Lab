@@ -53,7 +53,11 @@ import br.com.leorvergani.escalaici.kmp.lab.platform.SystemTodayProvider
 import br.com.leorvergani.escalaici.kmp.lab.platform.TodayProvider
 import br.com.leorvergani.escalaici.kmp.lab.repository.DropboxScaleRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.InMemoryAuthSessionRepository
+import br.com.leorvergani.escalaici.kmp.lab.repository.CacheRead
+import br.com.leorvergani.escalaici.kmp.lab.repository.CachedSchedule
+import br.com.leorvergani.escalaici.kmp.lab.repository.LocalDataCache
 import br.com.leorvergani.escalaici.kmp.lab.repository.MockMemberRepository
+import br.com.leorvergani.escalaici.kmp.lab.repository.UnavailableLocalDataCache
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumBackground
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColorScheme
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
@@ -80,7 +84,10 @@ private enum class StackedScreen(val title: String) {
 }
 
 @Composable
-fun EscalaIciLabApp(todayProvider: TodayProvider = SystemTodayProvider) {
+fun EscalaIciLabApp(
+    todayProvider: TodayProvider = SystemTodayProvider,
+    localDataCache: LocalDataCache = UnavailableLocalDataCache
+) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
         val memberRepository = remember { MockMemberRepository() }
@@ -96,10 +103,19 @@ fun EscalaIciLabApp(todayProvider: TodayProvider = SystemTodayProvider) {
         var activeTab by remember { mutableStateOf(LabTab.Hoje) }
         var stackedScreen by remember { mutableStateOf<StackedScreen?>(null) }
         var summary by remember { mutableStateOf(mockScheduleSummary()) }
+        var cacheWarning by remember { mutableStateOf<String?>(null) }
         var importPreview by remember { mutableStateOf<ScheduleImportPreview?>(null) }
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
         var isFetchingFromCloud by remember { mutableStateOf(false) }
         val today = remember(todayProvider) { todayProvider.today() }
+
+        LaunchedEffect(localDataCache) {
+            when (val cached = localDataCache.loadSchedule()) {
+                is CacheRead.Valid -> summary = cached.value.summary
+                is CacheRead.Invalid -> cacheWarning = cached.safeMessage
+                CacheRead.Missing -> Unit
+            }
+        }
 
         fun handleWorkbookImportResult(result: WorkbookImportResult) {
             when (result) {
@@ -129,6 +145,7 @@ fun EscalaIciLabApp(todayProvider: TodayProvider = SystemTodayProvider) {
         }
 
         fun resetMock() {
+            localDataCache.clearSchedule()
             summary = mockScheduleSummary()
             importPreview = null
             importedWorkbook = null
@@ -170,7 +187,11 @@ fun EscalaIciLabApp(todayProvider: TodayProvider = SystemTodayProvider) {
                                 .fillMaxWidth()
                         ) {
                             when (stackedScreen) {
-                                StackedScreen.PLANTAO -> PlantaoScreen(onBack = { stackedScreen = null })
+                                StackedScreen.PLANTAO -> PlantaoScreen(
+                                    onBack = { stackedScreen = null },
+                                    today = today,
+                                    localDataCache = localDataCache
+                                )
                                 StackedScreen.SWAP -> ShiftSwapScreen(
                                     currentMemberId = summary.member.id,
                                     onBack = { stackedScreen = null }
@@ -193,6 +214,17 @@ fun EscalaIciLabApp(todayProvider: TodayProvider = SystemTodayProvider) {
                                         onUseImported = {
                                             importPreview?.summary?.let { imported ->
                                                 summary = imported
+                                                val resolution = importPreview?.yearResolution as? br.com.leorvergani.escalaici.kmp.lab.model.YearResolution.Resolved
+                                                val start = imported.periodStart
+                                                if (resolution != null && start != null) {
+                                                    localDataCache.saveSchedule(CachedSchedule(
+                                                        originalFileName = importPreview?.fileName ?: "arquivo",
+                                                        importedAt = "${today.year.toString().padStart(4, '0')}-${today.month.toString().padStart(2, '0')}-${today.day.toString().padStart(2, '0')}",
+                                                        resolvedYear = resolution.startYear,
+                                                        yearResolutionSource = resolution.source,
+                                                        summary = imported
+                                                    ))
+                                                }
                                                 activeTab = LabTab.Hoje
                                             }
                                         },

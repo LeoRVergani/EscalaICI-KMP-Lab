@@ -31,6 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,7 +52,10 @@ import br.com.leorvergani.escalaici.kmp.lab.model.PlantaoWorkbookParser
 import br.com.leorvergani.escalaici.kmp.lab.model.WorkbookImportResult
 import br.com.leorvergani.escalaici.kmp.lab.model.mockOnCallAssignments
 import br.com.leorvergani.escalaici.kmp.lab.platform.rememberWorkbookImportLauncher
-import br.com.leorvergani.escalaici.kmp.lab.platform.todayLabDate
+import br.com.leorvergani.escalaici.kmp.lab.repository.CacheRead
+import br.com.leorvergani.escalaici.kmp.lab.repository.CachedOnCall
+import br.com.leorvergani.escalaici.kmp.lab.repository.LocalDataCache
+import br.com.leorvergani.escalaici.kmp.lab.model.YearResolutionSource
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
@@ -66,12 +70,24 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
  * (FASE 9c) de `MockSchedule.kt`.
  */
 @Composable
-internal fun PlantaoScreen(onBack: () -> Unit) {
+internal fun PlantaoScreen(onBack: () -> Unit, today: LabDate, localDataCache: LocalDataCache) {
     var assignments by remember { mutableStateOf(mockOnCallAssignments()) }
     var isImported by remember { mutableStateOf(false) }
     var importedFileName by remember { mutableStateOf<String?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
     var importError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(localDataCache) {
+        when (val cached = localDataCache.loadOnCall()) {
+            is CacheRead.Valid -> {
+                assignments = cached.value.assignments
+                isImported = true
+                importedFileName = cached.value.originalFileName
+            }
+            is CacheRead.Invalid -> importError = cached.safeMessage
+            CacheRead.Missing -> Unit
+        }
+    }
 
     val importLauncher = rememberWorkbookImportLauncher { result ->
         when (result) {
@@ -85,6 +101,18 @@ internal fun PlantaoScreen(onBack: () -> Unit) {
                     importedFileName = parsed.fileName
                     importMessage = parsed.warnings.firstOrNull()
                     importError = null
+                    val firstDate = parsed.assignments.minOfOrNull { it.startDate }?.let(LabDate::parseIso)
+                    if (firstDate != null) {
+                        localDataCache.saveOnCall(CachedOnCall(
+                            originalFileName = parsed.fileName,
+                            importedAt = "${today.year.toString().padStart(4, '0')}-${today.month.toString().padStart(2, '0')}-${today.day.toString().padStart(2, '0')}",
+                            resolvedYear = firstDate.year,
+                            yearResolutionSource = YearResolutionSource.FULL_DATE_IN_WORKBOOK,
+                            teamId = "soc",
+                            assignments = parsed.assignments,
+                            warnings = parsed.warnings
+                        ))
+                    }
                 }
             }
             is WorkbookImportResult.Failure -> {
@@ -107,7 +135,10 @@ internal fun PlantaoScreen(onBack: () -> Unit) {
             ?.date?.let { LabDate.parseIso(it) }
     }
 
-    var selectedDate by remember(assignments) { mutableStateOf(referenceDate ?: todayLabDate()) }
+    val periodStart = sortedAssignments.firstOrNull()?.startDate?.let(LabDate::parseIso)
+    val periodEnd = sortedAssignments.maxOfOrNull { it.endDate }?.let(LabDate::parseIso)
+    val initialDate = if (periodStart != null && periodEnd != null && today in periodStart..periodEnd) today else periodStart ?: today
+    var selectedDate by remember(assignments) { mutableStateOf(initialDate) }
     var visibleMonth by remember(assignments) { mutableStateOf(selectedDate.yearMonth()) }
 
     val selectedDayAssignments = remember(selectedDate, assignments) {

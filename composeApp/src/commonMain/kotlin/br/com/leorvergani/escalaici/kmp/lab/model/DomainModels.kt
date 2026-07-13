@@ -92,6 +92,8 @@ data class OnCallAssignment(
     val memberId: String,
     val memberName: String,
     val date: String,
+    val startDate: String = date,
+    val endDate: String = date,
     val startTime: String,
     val endTime: String,
     val status: OnCallStatus,
