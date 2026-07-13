@@ -1,6 +1,7 @@
 package br.com.leorvergani.escalaici.kmp.lab.platform
 
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
+import br.com.leorvergani.escalaici.kmp.lab.model.LabDateTime
 
 /**
  * Data atual real do dispositivo/navegador — usada como âncora única de
@@ -16,3 +17,5 @@ fun interface TodayProvider {
 object SystemTodayProvider : TodayProvider {
     override fun today(): LabDate = todayLabDate()
 }
+
+fun interface CurrentTimeProvider { fun now(): LabDateTime }

@@ -51,6 +51,8 @@ import br.com.leorvergani.escalaici.kmp.lab.model.mockScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.platform.rememberWorkbookImportLauncher
 import br.com.leorvergani.escalaici.kmp.lab.platform.SystemTodayProvider
 import br.com.leorvergani.escalaici.kmp.lab.platform.TodayProvider
+import br.com.leorvergani.escalaici.kmp.lab.platform.CurrentTimeProvider
+import br.com.leorvergani.escalaici.kmp.lab.model.LabDateTime
 import br.com.leorvergani.escalaici.kmp.lab.repository.DropboxScaleRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.InMemoryAuthSessionRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.CacheRead
@@ -86,7 +88,8 @@ private enum class StackedScreen(val title: String) {
 @Composable
 fun EscalaIciLabApp(
     todayProvider: TodayProvider = SystemTodayProvider,
-    localDataCache: LocalDataCache = UnavailableLocalDataCache
+    localDataCache: LocalDataCache = UnavailableLocalDataCache,
+    currentTimeProvider: CurrentTimeProvider = CurrentTimeProvider { LabDateTime(todayProvider.today(), 0) }
 ) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
@@ -108,6 +111,7 @@ fun EscalaIciLabApp(
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
         var isFetchingFromCloud by remember { mutableStateOf(false) }
         val today = remember(todayProvider) { todayProvider.today() }
+        val now = remember(currentTimeProvider) { currentTimeProvider.now() }
 
         LaunchedEffect(localDataCache) {
             when (val cached = localDataCache.loadSchedule()) {
@@ -190,6 +194,7 @@ fun EscalaIciLabApp(
                                 StackedScreen.PLANTAO -> PlantaoScreen(
                                     onBack = { stackedScreen = null },
                                     today = today,
+                                    now = now,
                                     localDataCache = localDataCache
                                 )
                                 StackedScreen.SWAP -> ShiftSwapScreen(
@@ -201,6 +206,7 @@ fun EscalaIciLabApp(
                                     LabTab.Hoje -> TodayTab(
                                         summary = summary,
                                         today = today,
+                                        now = now,
                                         onOpenPlantao = onOpenPlantao,
                                         onImportClick = { activeTab = LabTab.Importar }
                                     )

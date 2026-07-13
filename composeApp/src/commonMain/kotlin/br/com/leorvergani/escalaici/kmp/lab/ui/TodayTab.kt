@@ -49,6 +49,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
+import br.com.leorvergani.escalaici.kmp.lab.model.LabDateTime
+import br.com.leorvergani.escalaici.kmp.lab.model.TemporalState
+import br.com.leorvergani.escalaici.kmp.lab.model.pauseFor
+import br.com.leorvergani.escalaici.kmp.lab.model.relevantShift
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftDay
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.HeroCard
@@ -58,7 +62,7 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.shiftColor
 
 @Composable
-internal fun TodayTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao: () -> Unit, onImportClick: () -> Unit) {
+internal fun TodayTab(summary: ScheduleSummary, today: LabDate, now: LabDateTime, onOpenPlantao: () -> Unit, onImportClick: () -> Unit) {
     val next = summary.nextShift(today)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -69,7 +73,7 @@ internal fun TodayTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao: (
             LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
         }
         item {
-            NextTurnHero(summary = summary, today = today, onImportClick = onImportClick)
+            NextTurnHero(summary = summary, now = now, onImportClick = onImportClick)
         }
         item {
             WeekSummaryCard(summary = summary, today = today)
@@ -78,7 +82,7 @@ internal fun TodayTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao: (
             EventsCard(summary = summary, today = today)
         }
         item {
-            PauseCard(summary = summary)
+            PauseCard(summary = summary, now = now)
         }
         item {
             PeriodSummary(summary = summary)
@@ -94,13 +98,14 @@ internal fun TodayTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao: (
 }
 
 @Composable
-private fun NextTurnHero(summary: ScheduleSummary, today: LabDate, onImportClick: () -> Unit) {
-    val day = summary.nextShift(today)
+private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportClick: () -> Unit) {
+    val occurrence = summary.relevantShift(now)
+    val day = occurrence?.day
     HeroCard {
         if (day == null) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("PRÓXIMO TURNO", color = Color(0xFF93C5FD), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
-                Text("Importe uma escala", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                Text("NENHUM PRÓXIMO TURNO", color = Color(0xFF93C5FD), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
+                Text(if (summary.isImported) "Sem turnos futuros neste período" else "Importe uma escala", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                 Text(
                     "A análise local mantém os dados salvos no dispositivo.",
                     color = Color.White.copy(alpha = 0.76f),
@@ -115,7 +120,7 @@ private fun NextTurnHero(summary: ScheduleSummary, today: LabDate, onImportClick
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("PRÓXIMO TURNO", color = Color(0xFF93C5FD), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
+                    Text(if (occurrence?.state == TemporalState.CURRENT) "TURNO ATUAL" else "PRÓXIMO TURNO", color = Color(0xFF93C5FD), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
                     Text(day.type.label, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(day.type.timeRange, color = day.type.shiftColor(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                     Text(day.fullDateLabel, color = Color.White.copy(alpha = 0.76f), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -293,7 +298,8 @@ private fun EventLine(icon: ImageVector, text: String, color: Color) {
 }
 
 @Composable
-private fun PauseCard(summary: ScheduleSummary) {
+private fun PauseCard(summary: ScheduleSummary, now: LabDateTime) {
+    val pause = pauseFor(summary.relevantShift(now))
     LabCard(
         title = "Pausa",
         icon = Icons.Default.Schedule,
@@ -301,8 +307,8 @@ private fun PauseCard(summary: ScheduleSummary) {
         borderColor = Color(0xFF14B8A6).copy(alpha = 0.46f),
         gradient = listOf(Color(0xFF0D2832), Color(0xFF092A28), Color(0xFF0D1730))
     ) {
-        Text(summary.pauseLabel, color = Color(0xFF30F188), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-        Text(summary.pauseOffsetLabel, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+        Text(pause?.label ?: "Pausa não configurada", color = Color(0xFF30F188), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+        pause?.let { Text(it.offsetLabel, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) }
     }
 }
 
