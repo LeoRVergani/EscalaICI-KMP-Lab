@@ -52,6 +52,7 @@ import br.com.leorvergani.escalaici.kmp.lab.platform.rememberWorkbookImportLaunc
 import br.com.leorvergani.escalaici.kmp.lab.platform.SystemTodayProvider
 import br.com.leorvergani.escalaici.kmp.lab.platform.TodayProvider
 import br.com.leorvergani.escalaici.kmp.lab.platform.CurrentTimeProvider
+import br.com.leorvergani.escalaici.kmp.lab.platform.PlatformCapabilities
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDateTime
 import br.com.leorvergani.escalaici.kmp.lab.repository.DropboxScaleRepository
 import br.com.leorvergani.escalaici.kmp.lab.repository.InMemoryAuthSessionRepository
@@ -90,7 +91,8 @@ private enum class StackedScreen(val title: String) {
 fun EscalaIciLabApp(
     todayProvider: TodayProvider = SystemTodayProvider,
     localDataCache: LocalDataCache = UnavailableLocalDataCache,
-    currentTimeProvider: CurrentTimeProvider = CurrentTimeProvider { LabDateTime(todayProvider.today(), 0) }
+    currentTimeProvider: CurrentTimeProvider = CurrentTimeProvider { LabDateTime(todayProvider.today(), 0) },
+    platformCapabilities: PlatformCapabilities = PlatformCapabilities()
 ) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
@@ -220,6 +222,7 @@ fun EscalaIciLabApp(
                                     LabTab.Escala -> ScheduleTab(summary = summary, today = today, onOpenPlantao = onOpenPlantao)
                                     LabTab.Importar -> ImportTab(
                                         preview = importPreview,
+                                        activeFileName = summary.sourceFileName,
                                         selectedCollaborator = summary.member.scaleName,
                                         onSelectXls = { importLauncher.launch() },
                                         onFetchFromDropbox = ::fetchFromDropbox,
@@ -238,6 +241,8 @@ fun EscalaIciLabApp(
                                                         summary = imported
                                                     ))
                                                 }
+                                                importPreview = null
+                                                importedWorkbook = null
                                                 activeTab = LabTab.Hoje
                                             }
                                         },
@@ -265,6 +270,8 @@ fun EscalaIciLabApp(
                                     LabTab.Alertas -> AlertsTab(summary = summary, onOpenPlantao = onOpenPlantao)
                                     LabTab.Perfil -> ProfileTab(
                                         summary = summary,
+                                        now = now,
+                                        supportsAppUpdate = platformCapabilities.supportsAppUpdate,
                                         onLogout = {
                                             scope.launch { authRepository.signOut() }
                                             sessionMemberId = null

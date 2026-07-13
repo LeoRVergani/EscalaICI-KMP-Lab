@@ -28,20 +28,19 @@ fun ScheduleSummary.relevantShift(now: LabDateTime): ShiftOccurrence? = days
     .sortedBy { it.start }
     .let { occurrences -> occurrences.firstOrNull { it.state == TemporalState.CURRENT } ?: occurrences.firstOrNull { it.state == TemporalState.UPCOMING } }
 
-data class PausePresentation(val label: String, val offsetLabel: String, val windowStart: String, val windowEnd: String)
+data class PausePresentation(val scheduledLabel: String?, val windowStart: String, val windowEnd: String) {
+    val displayTitle: String get() = if (scheduledLabel != null) "Pausa programada" else "Janela de pausa"
+    val displayValue: String get() = scheduledLabel ?: "$windowStart–$windowEnd"
+}
 
 fun pauseFor(shift: ShiftOccurrence?): PausePresentation? {
     val start = shift?.day?.type?.startMinute ?: return null
     val end = shift.end
-    val suggestedStart = shift.start.plusMinutes(60)
-    val suggestedEnd = suggestedStart.plusMinutes(15)
-    if (suggestedStart < shift.start || suggestedEnd > end) return null
     val windowStart = shift.start.plusMinutes(120)
     val windowEnd = shift.start.plusMinutes(285)
     if (windowStart > end) return null
     return PausePresentation(
-        label = "${suggestedStart.timeLabel()}–${suggestedEnd.timeLabel()}",
-        offsetLabel = "1h após o início",
+        scheduledLabel = null,
         windowStart = windowStart.timeLabel(),
         windowEnd = minOf(windowEnd, end).timeLabel()
     )

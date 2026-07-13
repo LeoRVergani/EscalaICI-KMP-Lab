@@ -46,6 +46,9 @@ import br.com.leorvergani.escalaici.kmp.lab.model.AppVersion
 import br.com.leorvergani.escalaici.kmp.lab.model.GenerateLabAlerts
 import br.com.leorvergani.escalaici.kmp.lab.model.LabAlert
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
+import br.com.leorvergani.escalaici.kmp.lab.model.LabDateTime
+import br.com.leorvergani.escalaici.kmp.lab.model.pauseFor
+import br.com.leorvergani.escalaici.kmp.lab.model.relevantShift
 import br.com.leorvergani.escalaici.kmp.lab.platform.rememberAppUpdateChecker
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCollaboratorAvatar
@@ -59,6 +62,8 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun ProfileTab(
     summary: ScheduleSummary,
+    now: LabDateTime,
+    supportsAppUpdate: Boolean,
     onLogout: () -> Unit,
     onOpenPlantao: () -> Unit,
     onOpenSwap: () -> Unit
@@ -148,28 +153,23 @@ internal fun ProfileTab(
             }
         }
         item {
+            val pause = pauseFor(summary.relevantShift(now))
             LabCard(title = "Pausa de 15 minutos", icon = Icons.Default.Schedule, iconTint = LabColors.tertiary, borderColor = LabColors.tertiary.copy(alpha = 0.30f), gradient = listOf(Color(0xFF0D2832), Color(0xFF092A28), Color(0xFF0D1730))) {
-                Text("Horário calculado a partir do próximo turno do analista selecionado.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text(if (pause != null) "${pause.displayTitle}: ${pause.displayValue}" else "Pausa não configurada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 VisualToggle("Lembrete de pausa", true)
-                Text("Permitido entre ${summary.pauseWindowStart} e ${summary.pauseWindowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                summary.pauseSuggestions.chunked(3).forEach { rowTimes ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        rowTimes.forEach { time ->
-                            ProfileChip(time, time == summary.pauseSuggestions.firstOrNull(), Modifier.weight(1f))
-                        }
-                    }
-                }
+                pause?.let { Text("Permitido entre ${it.windowStart} e ${it.windowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall) }
                 Text("Analista: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         item {
+            val pause = pauseFor(summary.relevantShift(now))
             LabCard(title = "Resumo", icon = Icons.Default.Checklist, borderColor = LabColors.primary.copy(alpha = 0.22f)) {
                 Text("Entrada do turno: 15 min antes", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Pausa: ${summary.pauseLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Janela permitida: ${summary.pauseWindowStart}–${summary.pauseWindowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Pausa: ${pause?.displayValue ?: "não configurada"}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                pause?.let { Text("Janela permitida: ${it.windowStart}–${it.windowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall) }
             }
         }
-        item {
+        if (supportsAppUpdate) item {
             LabCard(title = "Armazenamento local", icon = Icons.Default.Storage, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
                 Text("Arquivo salvo: ${summary.sourceFileName ?: "nenhuma escala importada"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("Status: ${if (summary.isImported) "Escala lida na sessão Web/Android" else "Sem XLS aplicado"}", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)

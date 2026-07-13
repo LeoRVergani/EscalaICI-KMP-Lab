@@ -133,7 +133,6 @@ private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportCli
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                WeatherChip()
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
             Text(
@@ -307,8 +306,8 @@ private fun PauseCard(summary: ScheduleSummary, now: LabDateTime) {
         borderColor = Color(0xFF14B8A6).copy(alpha = 0.46f),
         gradient = listOf(Color(0xFF0D2832), Color(0xFF092A28), Color(0xFF0D1730))
     ) {
-        Text(pause?.label ?: "Pausa não configurada", color = Color(0xFF30F188), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-        pause?.let { Text(it.offsetLabel, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) }
+        Text(pause?.displayValue ?: "Pausa não configurada", color = Color(0xFF30F188), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+        pause?.let { Text(it.displayTitle, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) }
     }
 }
 
