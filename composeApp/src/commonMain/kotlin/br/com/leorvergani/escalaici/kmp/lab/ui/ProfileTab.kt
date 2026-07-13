@@ -86,7 +86,13 @@ internal fun ProfileTab(
                     }
                 }
                 Text("Período: ${summary.periodLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Fonte: ${summary.sourceFileName ?: "nenhuma escala importada"}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    if (summary.isImported) "Arquivo importado: ${summary.sourceFileName}" else "Fonte: dados de demonstração",
+                    color = LabColors.onSurfaceMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(summary.member.email, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = onLogout) {
                     Text("Sair (login de teste)", color = LabColors.primary)
