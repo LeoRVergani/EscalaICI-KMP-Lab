@@ -2,16 +2,15 @@
 
 ## Decisão da auditoria
 
-A integração real está **bloqueada antes da inclusão de SDK**. O schema legado
-usado pelo EscalaSOC pode ser identificado no código, mas as regras atualmente
-publicadas no projeto Firebase não estão versionadas nos repositórios
-inspecionados. Além disso, o Escala ICI KMP não possui uma sessão Firebase Auth
-compatível com as regras restritivas documentadas para o estado futuro.
+A integração real continua **bloqueada antes da inclusão de SDK**, mas o motivo
+foi corrigido após verificação direta no Firebase Console. As regras publicadas
+no projeto `escalaici`, banco `(default)`, estão em modo de teste: qualquer
+cliente pode ler e escrever até 4 de agosto de 2026, sem Firebase Auth.
 
 Consequentemente, esta fase documental não adiciona dependências, não consulta
 o Firestore, não cria gateways concretos, não altera regras e não escreve dados.
-Prosseguir sem confirmar regras e autenticação violaria os critérios de parada
-da KMP-MVP-1B.
+Conectar o KMP nesse estado ampliaria a dependência de uma configuração
+insegura e temporária. A integração deve ser desenvolvida primeiro no Emulator.
 
 ## Evidências auditadas
 
@@ -21,14 +20,41 @@ da KMP-MVP-1B.
 - O Android legado usa diretamente o SDK `firebase-firestore`, sem Firebase
   Auth. A decisão técnica registrada no EscalaSOC confirma que suas requisições
   atuais chegam com `request.auth == null`.
-- O Dashboard possui autenticação Firebase/Microsoft, mas isso não cria sessão
-  no KMP nem no Android legado.
+- O Dashboard possui Firebase Auth/Microsoft e chega ao Firestore autenticado,
+  mas as regras publicadas não usam essa identidade para autorizar operações.
 - O arquivo `firestore.rules` encontrado no repositório do Dashboard cobre
   apenas `/escalas/{anoMes}` para usuários com claim `coordenador`; o restante
   é negado. O próprio arquivo avisa que precisaria ser mesclado às regras do
   Android. Portanto, ele não comprova as regras publicadas do projeto principal.
-- As specs de segurança mantêm as regras restritivas pausadas até existir
-  `request.auth` funcional no cliente leitor.
+- O snapshot literal confirmado pelo Console está em
+  `firebase/firestore.production.snapshot.rules`. Ele é evidência, não arquivo
+  de deploy.
+
+## Classificação das regras
+
+### Publicadas e confirmadas
+
+As regras reais permitem `read` e `write` recursivamente enquanto
+`request.time < timestamp.date(2026, 8, 4)`. Não exigem autenticação, claims,
+equipe ou papel. Após a expiração, todas as chamadas de clientes serão negadas.
+
+### Encontradas no código
+
+O Dashboard contém uma regra local para `/escalas/{anoMes}` e `dias`, exigindo
+claim `coordenador`, seguida de negação global. O próprio comentário manda
+mesclá-la às regras do Android. Ela não representa a publicação atual.
+
+O arquivo `firebase/firestore.rules` deste repositório é uma nova proposta para
+o Emulator: exige Firebase Auth para leitura e restringe escrita a
+administradores de sistema/equipe. Também não representa produção.
+
+### Desejadas para produção
+
+As regras finais devem usar identidade Firebase verificável, permitir somente
+as coleções e operações necessárias, restringir escrita por papel/equipe e
+manter fallback negado. Só podem ser publicadas após testes conjuntos do
+Dashboard e dos aplicativos, inventário de todas as operações e plano de
+rollback. Não se deve trocar o modo de teste por `deny-all` sem essa validação.
 
 ## Coleções confirmadas pelo código legado
 
@@ -139,14 +165,14 @@ dado e não está autorizado. O mesmo cuidado vale para converter
 
 ## Autenticação e regras
 
-Não é possível afirmar quais regras estão publicadas hoje. Há dois estados
-documentados, ambos inadequados para ligar o KMP agora:
+Firebase Auth não é obrigatório pelas regras publicadas. O Dashboard, contudo,
+usa Firebase Auth com o provedor Microsoft/Entra e verifica permissões em
+`system_admins`, `teams` e `members` antes de mostrar a aplicação. Essa barreira
+é apenas de UI/aplicação enquanto o banco permanece aberto: outro cliente pode
+ignorar o Dashboard e acessar diretamente todas as coleções.
 
-1. o Android legado funciona sem Firebase Auth, o que implica regras atuais
-   permissivas ou exceções ainda não versionadas; não se deve reproduzir nem
-   ampliar esse acesso;
-2. as regras-alvo do Dashboard exigem `request.auth` e claims, sessão que o KMP
-   não possui.
+O Android legado e o KMP não possuem Firebase Auth. A retirada segura do modo
+de teste precisa considerar essa diferença para não interromper o Android.
 
 Cloudflare Access protege a entrada do site, mas não produz uma identidade
 Firebase para o Web/Wasm. Copiar a configuração pública do cliente também não
@@ -161,14 +187,13 @@ implementações específicas por plataforma. Android poderia usar o SDK Android
 Web/Wasm precisaria de integração JavaScript ou biblioteca comprovadamente
 compatível. Nenhuma dependência foi escolhida porque isso seria prematuro sem:
 
-- confirmar as regras publicadas e a identidade exigida;
+- definir e validar a identidade exigida pelas futuras regras;
 - definir `schemaVersion` remoto compatível;
 - resolver `memberId` ausente e o mapeamento de turnos sem inferência;
-- disponibilizar ambiente de desenvolvimento/emulador com dados sanitizados.
+- validar no Emulator isolado já preparado em `firebase/`.
 
 ## Campos e fatos ainda desconhecidos
 
-- regras efetivamente publicadas no projeto `escalaici`;
 - índices compostos efetivamente implantados;
 - existência e conteúdo real das coleções universais propostas;
 - `organizationId` dos dados publicados;
@@ -181,19 +206,41 @@ compatível. Nenhuma dependência foi escolhida porque isso seria prematuro sem:
 
 ## Riscos e condição para retomada
 
-Conectar agora poderia expor dados por acesso anônimo, bloquear todos os reads
-sob regras autenticadas, aceitar documento incompatível, inventar identidade de
-membro ou misturar schema proposto com produção legada.
+O banco já está exposto a leitura, criação, alteração e exclusão anônimas até a
+data limite. Conectar mais um cliente agora consolidaria essa dependência. Uma
+troca apressada por regras fechadas, por outro lado, pode interromper Dashboard
+e Android. Também permanecem os riscos de documento incompatível, identidade de
+membro inventada e mistura entre schema proposto e produção legada.
 
 A KMP-MVP-1B pode ser retomada quando houver, simultaneamente:
 
-1. exportação ou confirmação das regras realmente publicadas;
-2. decisão de autenticação Firebase para Android e Web/Wasm, validada em
+1. decisão de autenticação Firebase para Android e Web/Wasm, validada em
    ambiente não produtivo;
-3. amostra sanitizada do schema efetivamente publicado ou Firestore Emulator;
-4. definição explícita de `schemaVersion`, tipos de assignment e política para
+2. amostra sanitizada do schema efetivamente publicado no Firestore Emulator;
+3. definição explícita de `schemaVersion`, tipos de assignment e política para
    documentos legados sem `memberId`;
-5. autorização do ambiente de desenvolvimento somente leitura.
+4. testes de regras cobrindo Dashboard e leitores antes da retirada do modo de
+   teste;
+5. plano de migração e rollback anterior a 4 de agosto de 2026.
 
 Até lá, arquivo local, cache local e demonstração permanecem inalterados e são
 as únicas fontes operacionais do KMP.
+
+## Emulator isolado e validação
+
+A estrutura em `firebase/` usa o project ID reservado
+`demo-escalaici-kmp`, Firestore em `127.0.0.1:8085` e UI em
+`127.0.0.1:4005`. O prefixo `demo-` faz o Firebase Emulator rejeitar tentativas
+de alcançar serviços não emulados.
+
+Comando executado em 14 de julho de 2026:
+
+```text
+cd firebase
+npm run test:rules
+```
+
+Resultado: 7 testes aprovados, nenhum reprovado. Foram cobertos acesso anônimo,
+leitura autenticada, leitor sem escrita, administrador de equipe, proteção de
+`teamId`/`adminEmails`, administrador do sistema e coleção desconhecida. Esses
+testes não validam ainda todos os fluxos do Dashboard nem autorizam deploy.

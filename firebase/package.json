@@ -1,0 +1,14 @@
+{
+  "name": "escalaici-firestore-emulator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "emulator": "firebase emulators:start --config firebase.json --project demo-escalaici-kmp --only firestore",
+    "test:rules": "firebase emulators:exec --config firebase.json --project demo-escalaici-kmp --only firestore \"node --test test/firestore.rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "firebase": "^12.6.0",
+    "firebase-tools": "^14.20.0"
+  }
+}

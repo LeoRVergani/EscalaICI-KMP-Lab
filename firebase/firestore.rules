@@ -1,0 +1,109 @@
+rules_version = '2';
+
+// PROPOSTA PARA EMULATOR. NAO PUBLICAR SEM VALIDAR DASHBOARD E APPS.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email is string;
+    }
+
+    function email() {
+      return request.auth.token.email.lower();
+    }
+
+    function isSystemAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/system_admins/$(email()))
+        && get(/databases/$(database)/documents/system_admins/$(email())).data.active != false;
+    }
+
+    function isTeamAdmin(teamId) {
+      return signedIn()
+        && teamId is string
+        && exists(/databases/$(database)/documents/teams/$(teamId))
+        && email() in get(/databases/$(database)/documents/teams/$(teamId)).data.adminEmails;
+    }
+
+    function validTeamCreate(teamId) {
+      return request.resource.data.teamId is string
+        && request.resource.data.teamId == teamId;
+    }
+
+    function validTeamScopedCreate() {
+      return request.resource.data.teamId is string;
+    }
+
+    function teamIdUnchanged() {
+      return request.resource.data.teamId == resource.data.teamId;
+    }
+
+    // O Dashboard precisa destas leituras depois que o Firebase Auth conclui.
+    match /system_admins/{adminId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isSystemAdmin();
+    }
+
+    match /teams/{teamId} {
+      allow read: if signedIn();
+      allow create: if isSystemAdmin() && validTeamCreate(teamId);
+      allow update: if isSystemAdmin()
+        || (isTeamAdmin(teamId)
+          && request.resource.data.teamId == resource.data.teamId
+          && request.resource.data.adminEmails == resource.data.adminEmails);
+      allow delete: if isSystemAdmin();
+    }
+
+    match /{collectionName}/{documentId} {
+      allow read: if signedIn();
+      allow create: if collectionName in [
+          'members', 'work_patterns', 'shift_definitions',
+          'schedule_periods', 'schedule_assignments',
+          'oncall_periods', 'oncall_assignments', 'source_files',
+          'import_jobs', 'shift_swap_requests'
+        ]
+        && validTeamScopedCreate()
+        && (isSystemAdmin() || isTeamAdmin(request.resource.data.teamId));
+      allow update: if collectionName in [
+          'members', 'work_patterns', 'shift_definitions',
+          'schedule_periods', 'schedule_assignments',
+          'oncall_periods', 'oncall_assignments', 'source_files',
+          'import_jobs', 'shift_swap_requests'
+        ]
+        && teamIdUnchanged()
+        && (isSystemAdmin() || isTeamAdmin(resource.data.teamId));
+      allow delete: if collectionName in [
+          'members', 'work_patterns', 'shift_definitions',
+          'schedule_periods', 'schedule_assignments',
+          'oncall_periods', 'oncall_assignments', 'source_files',
+          'import_jobs', 'shift_swap_requests'
+        ]
+        && (isSystemAdmin() || isTeamAdmin(resource.data.teamId));
+    }
+
+    // Cadastros globais/universais ainda exigem administrador do sistema.
+    match /{collectionName}/{documentId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isSystemAdmin()
+        && collectionName in [
+          'organizations', 'org_units', 'member_team_memberships', 'roles',
+          'schedule_profiles', 'activity_codes', 'dashboard_permissions',
+          'app_user_preferences'
+        ];
+    }
+
+    // Colecao historica do prototipo de Dashboard.
+    match /escalas/{periodId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isSystemAdmin();
+
+      match /dias/{dateId} {
+        allow read: if signedIn();
+        allow create, update, delete: if isSystemAdmin();
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
