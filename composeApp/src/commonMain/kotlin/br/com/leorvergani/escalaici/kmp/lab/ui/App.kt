@@ -275,6 +275,7 @@ fun EscalaIciLabApp(
                                         summary = summary,
                                         now = now,
                                         supportsAppUpdate = platformCapabilities.supportsAppUpdate,
+                                        supportsWebNotifications = platformCapabilities.supportsWebNotifications,
                                         notificationService = notificationService,
                                         onLogout = {
                                             scope.launch { authRepository.signOut() }

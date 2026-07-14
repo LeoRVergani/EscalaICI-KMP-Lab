@@ -66,6 +66,7 @@ internal fun ProfileTab(
     summary: ScheduleSummary,
     now: LabDateTime,
     supportsAppUpdate: Boolean,
+    supportsWebNotifications: Boolean,
     notificationService: WebNotificationService,
     onLogout: () -> Unit,
     onOpenPlantao: () -> Unit,
@@ -134,7 +135,7 @@ internal fun ProfileTab(
                 }
             }
         }
-        item {
+        if (supportsWebNotifications) item {
             LabCard(title = "Notificações", icon = Icons.Default.Notifications, borderColor = LabColors.primary.copy(alpha = 0.30f), gradient = listOf(LabColors.surfaceElevated.copy(alpha = 0.88f), LabColors.surface.copy(alpha = 0.96f))) {
                 val status = when {
                     requestingNotification -> "Solicitando permissão..."
@@ -184,14 +185,14 @@ internal fun ProfileTab(
                 pause?.let { Text("Janela permitida: ${it.windowStart}–${it.windowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall) }
             }
         }
-        if (supportsAppUpdate) item {
+        item {
             LabCard(title = "Armazenamento local", icon = Icons.Default.Storage, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
                 Text("Arquivo salvo: ${summary.sourceFileName ?: "nenhuma escala importada"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("Status: ${if (summary.isImported) "Escala lida na sessão Web/Android" else "Sem XLS aplicado"}", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
                 DisabledAction("Remover escala local")
             }
         }
-        item {
+        if (supportsAppUpdate) item {
             val updateChecker = rememberAppUpdateChecker()
             val scope = rememberCoroutineScope()
             var updateMessage by remember { mutableStateOf("") }

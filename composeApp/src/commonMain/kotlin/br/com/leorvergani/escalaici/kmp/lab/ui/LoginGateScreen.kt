@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -68,10 +69,10 @@ internal fun LoginGateScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
+                .widthIn(max = 500.dp)
                 .fillMaxWidth()
-                .widthIn(max = 400.dp)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 32.dp, vertical = 32.dp),
+                .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -87,7 +88,9 @@ internal fun LoginGateScreen(
             Button(
                 onClick = ::onLoginClick,
                 enabled = !isLoggingIn,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp),
                 shape = LabShapes.button,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = LabColors.primary,
