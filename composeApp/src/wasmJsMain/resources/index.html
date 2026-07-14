@@ -17,11 +17,6 @@
       --app-viewport-height: 100vh;
       --app-safe-area-bottom: env(safe-area-inset-bottom, 0px);
     }
-    @supports (height: 100dvh) {
-      :root {
-        --app-viewport-height: 100dvh;
-      }
-    }
     html, body {
       margin: 0;
       width: 100%;
@@ -31,6 +26,13 @@
       overscroll-behavior: none;
       overflow: hidden;
     }
+    @supports (height: 100dvh) {
+      html, body {
+        height: 100dvh;
+        min-height: 100dvh;
+        max-height: 100dvh;
+      }
+    }
     #webApp {
       box-sizing: border-box;
       display: block;
@@ -39,6 +41,13 @@
       max-height: var(--app-viewport-height);
       padding-bottom: var(--app-safe-area-bottom);
       overflow: hidden;
+    }
+    @supports (height: 100dvh) {
+      #webApp {
+        height: 100dvh;
+        min-height: 100dvh;
+        max-height: 100dvh;
+      }
     }
     #webApp > canvas {
       display: block;
@@ -52,27 +61,46 @@
   <div id="webApp"></div>
   <script>
     (() => {
+      if (CSS.supports("height", "100dvh")) return;
+
       let viewportUpdateFrame = 0;
 
       const updateViewportHeight = () => {
         viewportUpdateFrame = 0;
-        const viewportHeight = window.visualViewport?.height || window.innerHeight;
+        const visualViewportHeight = window.visualViewport?.height;
+        const validCandidates = [visualViewportHeight, window.innerHeight]
+          .filter((height) => Number.isFinite(height) && height > 0);
+        const viewportWidth = window.visualViewport?.width || window.innerWidth;
+        const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+        const viewportHeight = validCandidates.find((height) =>
+          isPortrait ? height >= viewportWidth : height <= viewportWidth
+        ) || validCandidates[0];
+        if (viewportHeight === undefined) return;
+
         document.documentElement.style.setProperty("--app-viewport-height", `${viewportHeight}px`);
       };
 
-      const scheduleViewportUpdate = () => {
+      const scheduleViewportUpdate = (waitForNextFrame = false) => {
         if (viewportUpdateFrame) return;
-        viewportUpdateFrame = window.requestAnimationFrame(updateViewportHeight);
+        viewportUpdateFrame = window.requestAnimationFrame(() => {
+          if (waitForNextFrame) {
+            viewportUpdateFrame = window.requestAnimationFrame(updateViewportHeight);
+          } else {
+            updateViewportHeight();
+          }
+        });
       };
 
       scheduleViewportUpdate();
-      window.addEventListener("load", scheduleViewportUpdate);
-      window.addEventListener("resize", scheduleViewportUpdate);
-      window.addEventListener("orientationchange", scheduleViewportUpdate);
-      window.addEventListener("pageshow", scheduleViewportUpdate);
-      document.addEventListener("visibilitychange", scheduleViewportUpdate);
-      window.visualViewport?.addEventListener("resize", scheduleViewportUpdate);
-      window.visualViewport?.addEventListener("scroll", scheduleViewportUpdate);
+      window.addEventListener("load", () => scheduleViewportUpdate());
+      window.addEventListener("resize", () => scheduleViewportUpdate());
+      window.addEventListener("orientationchange", () => {
+        document.documentElement.style.removeProperty("--app-viewport-height");
+        scheduleViewportUpdate(true);
+      });
+      window.addEventListener("pageshow", () => scheduleViewportUpdate());
+      document.addEventListener("visibilitychange", () => scheduleViewportUpdate());
+      window.visualViewport?.addEventListener("resize", () => scheduleViewportUpdate());
     })();
   </script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
