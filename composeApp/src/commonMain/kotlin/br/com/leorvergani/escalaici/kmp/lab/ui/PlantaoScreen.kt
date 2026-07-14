@@ -63,6 +63,7 @@ import br.com.leorvergani.escalaici.kmp.lab.model.YearResolutionSource
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
+import br.com.leorvergani.escalaici.kmp.lab.source.OnCallSourceData
 
 /**
  * Porte de `ui/plantao/PlantaoScreen.kt` (app real). Importação real do
@@ -74,7 +75,14 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
  * (FASE 9c) de `MockSchedule.kt`.
  */
 @Composable
-internal fun PlantaoScreen(onBack: () -> Unit, today: LabDate, now: LabDateTime, localDataCache: LocalDataCache) {
+internal fun PlantaoScreen(
+    onBack: () -> Unit,
+    today: LabDate,
+    now: LabDateTime,
+    localDataCache: LocalDataCache,
+    firebaseData: OnCallSourceData? = null,
+    onRetryFirebase: () -> Unit = {}
+) {
     var assignments by remember { mutableStateOf(mockOnCallAssignments()) }
     var isImported by remember { mutableStateOf(false) }
     var importedFileName by remember { mutableStateOf<String?>(null) }
@@ -90,6 +98,16 @@ internal fun PlantaoScreen(onBack: () -> Unit, today: LabDate, now: LabDateTime,
             }
             is CacheRead.Invalid -> importError = cached.safeMessage
             CacheRead.Missing -> Unit
+        }
+    }
+
+    LaunchedEffect(firebaseData) {
+        firebaseData?.let {
+            assignments = it.assignments
+            isImported = true
+            importedFileName = "Firebase"
+            importMessage = if (it.metadata.fromCache) "Dados disponíveis offline." else "Fonte: Firebase"
+            importError = null
         }
     }
 
@@ -172,7 +190,8 @@ internal fun PlantaoScreen(onBack: () -> Unit, today: LabDate, now: LabDateTime,
                 onImportClick = {
                     importError = null
                     importLauncher.launch()
-                }
+                },
+                onRetryFirebase = onRetryFirebase
             )
         }
         item {
@@ -207,7 +226,8 @@ private fun PlantaoHeroCard(
     importedFileName: String?,
     importMessage: String?,
     importError: String?,
-    onImportClick: () -> Unit
+    onImportClick: () -> Unit,
+    onRetryFirebase: () -> Unit
 ) {
     val accent = when {
         active -> LabColors.primary
@@ -273,6 +293,9 @@ private fun PlantaoHeroCard(
             colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White)
         ) {
             Text(if (isImported) "Importar outro relatório" else "Importar relatório")
+        }
+        if (importedFileName == "Firebase") {
+            Button(onClick = onRetryFirebase, modifier = Modifier.fillMaxWidth()) { Text("Tentar novamente") }
         }
     }
 }

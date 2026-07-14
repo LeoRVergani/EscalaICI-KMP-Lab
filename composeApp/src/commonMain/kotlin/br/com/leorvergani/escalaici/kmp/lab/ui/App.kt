@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +31,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -70,6 +73,16 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabTypography
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import br.com.leorvergani.escalaici.kmp.lab.source.DataLoadResult
+import br.com.leorvergani.escalaici.kmp.lab.source.FirebaseOnCallSource
+import br.com.leorvergani.escalaici.kmp.lab.source.FirebaseScheduleGateway
+import br.com.leorvergani.escalaici.kmp.lab.source.FirebaseScheduleSource
+import br.com.leorvergani.escalaici.kmp.lab.source.FirebaseSourceCache
+import br.com.leorvergani.escalaici.kmp.lab.source.OnCallSourceData
+import br.com.leorvergani.escalaici.kmp.lab.source.ScheduleSourceData
+import br.com.leorvergani.escalaici.kmp.lab.source.SourceMetadata
+import br.com.leorvergani.escalaici.kmp.lab.source.SourceQuery
+import br.com.leorvergani.escalaici.kmp.lab.source.toMember
 
 private enum class LabTab(
     val label: String,
@@ -95,7 +108,9 @@ fun EscalaIciLabApp(
     localDataCache: LocalDataCache = UnavailableLocalDataCache,
     currentTimeProvider: CurrentTimeProvider = CurrentTimeProvider { LabDateTime(todayProvider.today(), 0) },
     platformCapabilities: PlatformCapabilities = PlatformCapabilities(),
-    notificationService: WebNotificationService = UnsupportedWebNotificationService
+    notificationService: WebNotificationService = UnsupportedWebNotificationService,
+    firebaseGateway: FirebaseScheduleGateway? = null,
+    firebaseCache: FirebaseSourceCache? = null
 ) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
@@ -106,13 +121,19 @@ fun EscalaIciLabApp(
 
         LaunchedEffect(Unit) {
             sessionMemberId = authRepository.currentMemberId()
-            demoMembers = memberRepository.getMembersByTeam("soc")
+            demoMembers = runCatching { firebaseGateway?.loadMembers("soc")?.map { it.toMember() } }.getOrNull()
+                ?.takeIf { it.isNotEmpty() }
+                ?: memberRepository.getMembersByTeam("soc")
         }
 
         var activeTab by remember { mutableStateOf(LabTab.Hoje) }
         var stackedScreen by remember { mutableStateOf<StackedScreen?>(null) }
         var summary by remember { mutableStateOf(mockScheduleSummary()) }
         var cacheWarning by remember { mutableStateOf<String?>(null) }
+        var firebaseMetadata by remember { mutableStateOf<SourceMetadata?>(null) }
+        var firebaseError by remember { mutableStateOf<String?>(null) }
+        var firebaseLoading by remember { mutableStateOf(false) }
+        var firebaseOnCall by remember { mutableStateOf<OnCallSourceData?>(null) }
         var importPreview by remember { mutableStateOf<ScheduleImportPreview?>(null) }
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
         var isFetchingFromCloud by remember { mutableStateOf(false) }
@@ -131,6 +152,36 @@ fun EscalaIciLabApp(
                 is CacheRead.Invalid -> cacheWarning = cached.safeMessage
                 CacheRead.Missing -> Unit
             }
+        }
+
+        fun refreshFirebase() {
+            val memberId = sessionMemberId ?: return
+            val gateway = firebaseGateway ?: return
+            val cache = firebaseCache ?: return
+            if (firebaseLoading) return
+            scope.launch {
+                firebaseLoading = true
+                firebaseError = null
+                val timestamp = "${todayProvider.today().year.toString().padStart(4, '0')}-${todayProvider.today().month.toString().padStart(2, '0')}-${todayProvider.today().day.toString().padStart(2, '0')}"
+                val query = SourceQuery(memberId = memberId, teamId = "soc")
+                when (val result = FirebaseScheduleSource(gateway, cache) { timestamp }.loadActive(query)) {
+                    is DataLoadResult.Success -> { summary = result.data.summary; firebaseMetadata = result.metadata }
+                    is DataLoadResult.OfflineCache -> { summary = result.data.summary; firebaseMetadata = result.metadata }
+                    is DataLoadResult.RecoverableError -> firebaseError = result.message
+                    is DataLoadResult.Empty -> firebaseError = result.metadata.userMessage
+                    is DataLoadResult.FatalError -> firebaseError = result.message
+                }
+                when (val result = FirebaseOnCallSource(gateway, cache) { timestamp }.loadActive(query)) {
+                    is DataLoadResult.Success -> firebaseOnCall = result.data
+                    is DataLoadResult.OfflineCache -> firebaseOnCall = result.data
+                    else -> Unit
+                }
+                firebaseLoading = false
+            }
+        }
+
+        LaunchedEffect(sessionMemberId, firebaseGateway, firebaseCache) {
+            if (sessionMemberId != null) refreshFirebase()
         }
 
         fun handleWorkbookImportResult(result: WorkbookImportResult) {
@@ -207,13 +258,20 @@ fun EscalaIciLabApp(
                                     onBack = { stackedScreen = null },
                                     today = today,
                                     now = now,
-                                    localDataCache = localDataCache
+                                    localDataCache = localDataCache,
+                                    firebaseData = firebaseOnCall,
+                                    onRetryFirebase = ::refreshFirebase
                                 )
                                 StackedScreen.SWAP -> ShiftSwapScreen(
                                     currentMemberId = summary.member.id,
                                     onBack = { stackedScreen = null }
                                 )
                                 null -> {
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                if (firebaseGateway != null) {
+                                    FirebaseStatusBar(firebaseMetadata, firebaseError, firebaseLoading, ::refreshFirebase)
+                                }
+                                Box(modifier = Modifier.weight(1f)) {
                                 when (activeTab) {
                                     LabTab.Hoje -> TodayTab(
                                         summary = summary,
@@ -286,12 +344,37 @@ fun EscalaIciLabApp(
                                     )
                                 }
                                 }
+                                }
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun FirebaseStatusBar(
+    metadata: SourceMetadata?,
+    error: String?,
+    loading: Boolean,
+    onRetry: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().background(LabColors.surfaceElevated.copy(alpha = 0.92f)).padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val text = when {
+            loading -> "Atualizando Firebase..."
+            error != null -> error
+            metadata?.fromCache == true -> "Fonte: Firebase · disponível offline · ${metadata.periodId.orEmpty()}"
+            metadata != null -> "Fonte: Firebase · ${metadata.periodId.orEmpty()} · sincronizado em ${metadata.localSyncedAt.orEmpty()}"
+            else -> "Fonte Firebase ainda não carregada"
+        }
+        Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = if (error != null) LabColors.red else LabColors.onSurfaceMuted)
+        if (!loading) TextButton(onClick = onRetry) { Text("Tentar novamente") }
     }
 }
 

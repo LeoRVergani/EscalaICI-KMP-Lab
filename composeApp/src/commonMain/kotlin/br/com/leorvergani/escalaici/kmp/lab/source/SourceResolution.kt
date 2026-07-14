@@ -2,6 +2,8 @@ package br.com.leorvergani.escalaici.kmp.lab.source
 
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSourceType
 
+enum class PreferredSourceMode { AUTO, LOCAL, FIREBASE, ONEDRIVE, DROPBOX }
+
 class SourcePriorityPolicy(
     private val remoteOrder: List<ScheduleSourceType> = listOf(
         ScheduleSourceType.FIREBASE,
@@ -24,18 +26,26 @@ class SourcePriorityPolicy(
 }
 
 class ResolvePreferredSource(
-    private val policy: SourcePriorityPolicy = SourcePriorityPolicy()
+    private val policy: SourcePriorityPolicy = SourcePriorityPolicy(),
+    private val mode: PreferredSourceMode = PreferredSourceMode.AUTO
 ) {
     fun <T> resolve(results: List<DataLoadResult<T>>): DataLoadResult<T> {
         require(results.isNotEmpty()) { "Ao menos um resultado de fonte é obrigatório." }
-        return results
+        val eligible = when (mode) {
+            PreferredSourceMode.AUTO -> results
+            PreferredSourceMode.LOCAL -> results.filter { it.metadata?.sourceType in setOf(ScheduleSourceType.LOCAL_FILE, ScheduleSourceType.LOCAL_CACHE, ScheduleSourceType.DEMO) }
+            PreferredSourceMode.FIREBASE -> results.filter { it.metadata?.sourceType == ScheduleSourceType.FIREBASE }
+            PreferredSourceMode.ONEDRIVE -> results.filter { it.metadata?.sourceType == ScheduleSourceType.ONEDRIVE }
+            PreferredSourceMode.DROPBOX -> results.filter { it.metadata?.sourceType == ScheduleSourceType.DROPBOX }
+        }.ifEmpty { results }
+        return eligible
             .withIndex()
             .filter { (_, result) -> result.hasUsableData() }
             .minWithOrNull(compareBy<IndexedValue<DataLoadResult<T>>> { policy.priorityOf(it.value) }.thenBy { it.index })
             ?.value
-            ?: results.firstOrNull { it is DataLoadResult.RecoverableError }
-            ?: results.firstOrNull { it is DataLoadResult.Empty }
-            ?: results.first()
+            ?: eligible.firstOrNull { it is DataLoadResult.RecoverableError }
+            ?: eligible.firstOrNull { it is DataLoadResult.Empty }
+            ?: eligible.first()
     }
 }
 
