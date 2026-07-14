@@ -5,6 +5,7 @@ import java.util.Properties
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
     id("org.jetbrains.compose")
     id("com.android.application")
 }
@@ -33,6 +34,7 @@ kotlin {
             implementation(compose.components.resources)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.cio)
+            implementation(libs.kotlinx.serialization.json)
         }
 
         androidMain.dependencies {
