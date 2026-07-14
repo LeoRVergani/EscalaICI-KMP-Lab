@@ -49,9 +49,12 @@ enum class SwapStatus {
 }
 
 enum class ScheduleSourceType {
-    MOCK,
-    IMPORTED_XLS,
-    FIREBASE
+    LOCAL_FILE,
+    LOCAL_CACHE,
+    FIREBASE,
+    ONEDRIVE,
+    DROPBOX,
+    DEMO
 }
 
 data class SchedulePeriod(

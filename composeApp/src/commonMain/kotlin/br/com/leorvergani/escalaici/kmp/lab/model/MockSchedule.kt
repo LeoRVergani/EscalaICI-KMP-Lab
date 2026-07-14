@@ -100,7 +100,7 @@ fun mockSchedulePeriod(): SchedulePeriod = SchedulePeriod(
     teamId = "soc",
     startDate = "2026-06-26",
     endDate = "2026-07-25",
-    source = ScheduleSourceType.MOCK,
+    source = ScheduleSourceType.DEMO,
     updatedAt = "2026-07-09T08:00:00"
 )
 
@@ -241,7 +241,7 @@ fun mockImportJob(): ImportJob = ImportJob(
 fun mockSourceFileRecord(): SourceFileRecord = SourceFileRecord(
     id = "source-1",
     fileName = "Escala-SOC-Controle-Julho.xls",
-    sourceType = ScheduleSourceType.IMPORTED_XLS,
+    sourceType = ScheduleSourceType.LOCAL_FILE,
     createdAt = "2026-07-09T07:54:00",
     updatedAt = "2026-07-09T07:55:04",
     hash = null
