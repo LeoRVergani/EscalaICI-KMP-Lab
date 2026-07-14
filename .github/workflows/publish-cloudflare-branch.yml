@@ -43,8 +43,10 @@ jobs:
         env:
           SOURCE_COMMIT: ${{ github.sha }}
         run: |
+          set -euo pipefail
+
           publish_dir="$(mktemp -d)"
-          cp -R cloudflare-dist/. "$publish_dir/"
+          cp -a cloudflare-dist/. "$publish_dir/"
           {
             echo "Source commit: $SOURCE_COMMIT"
             echo "Build date UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
@@ -54,8 +56,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch --orphan cloudflare-pages
-          git rm -rf .
-          cp -R "$publish_dir"/. .
-          git add --all
+
+          find . \
+            -mindepth 1 \
+            -maxdepth 1 \
+            ! -name '.git' \
+            -exec rm -rf {} +
+
+          cp -a "$publish_dir/." .
+          touch .nojekyll
+
+          git add -A
           git commit -m "Publish Web from $SOURCE_COMMIT"
-          git push --force origin cloudflare-pages
+          git push --force origin HEAD:cloudflare-pages
