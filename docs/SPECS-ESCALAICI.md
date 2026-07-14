@@ -40,6 +40,7 @@ funcional — são o resultado da auditoria e do desenho arquitetural da FASE
 | [48 — Sincronização de escala e cache offline](spec/48-ESCALAICI-SINCRONIZACAO-ESCALA-CACHE-OFFLINE.md) | Substitui a leitura "busca-tudo-e-filtra" por queries reais, define 9 estados tipados de erro e formaliza a política de preservar cache em falha. |
 | [49 — Pausa de 15 minutos e notificações](spec/49-ESCALAICI-PAUSA-15-MINUTOS-E-NOTIFICACOES.md) | Torna funcional o controle hoje decorativo, corrigindo as lacunas conhecidas do app legado (boot receiver, mudança de fuso, alarme inexato). |
 | [50 — Migração final e paridade](spec/50-ESCALAICI-MIGRACAO-FINAL-E-PARIDADE.md) | Matriz completa EscalaSOC × Escala ICI por funcionalidade, com bloqueadores centrais ordenados por urgência. |
+| [51 — Endurecimento transitório do Firestore](spec/51-ESCALAICI-FIRESTORE-HARDENING-TRANSITORIO.md) | Regra emergencial (FASE 14a.1) que elimina toda escrita anônima, testada com 22 casos no Emulator, mantendo a leitura anônima mínima do KMP no nível atual até a FASE 14d. |
 
 **Achado que motivou a urgência desta fase**: as regras Firestore hoje em
 produção (`firebase/firestore.production.snapshot.rules`) liberam leitura e
@@ -102,6 +103,7 @@ pelo app e não autorizam deploy, importação, Rules ou escrita em Firestore.
 | 13e | Testes com usuários reais, feedback, correções e validação operacional. | não iniciada |
 | 13f | MVP oficial com Firestore, dashboard, MSAL, permissões, beta estável e rollback. | não iniciada |
 | 14a | Auditoria e specs finais de autenticação, sincronização, pausa e migração (specs 46-50, este pacote). | concluída — documentação apenas |
+| 14a.1 | Endurecimento emergencial das Firestore Rules: elimina escrita anônima, mantém leitura mínima atual do KMP (spec 51). | concluída — regras/testes prontos, deploy pendente de ação humana |
 | 14b | MSAL e identidade real no Escala ICI (Android primeiro, spec 46). | não iniciada |
 | 14c | Vínculo de usuário: coleção `user_links`, fluxo de vínculo administrativo (spec 47). | não iniciada |
 | 14d | Firebase Auth real + substituição das Firestore Rules abertas (spec 46/48, antes de 2026-08-04). | não iniciada |

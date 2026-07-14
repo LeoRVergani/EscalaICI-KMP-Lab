@@ -78,6 +78,20 @@ autenticada pode ser publicada com segurança antes de existir uma sessão
 Firebase Auth real nos clientes que hoje leem sem token (Android legado e
 KMP) — ver `docs/ADR-FIREBASE-AUTH.md` e a spec 46.
 
+## FASE 14a.1 — Endurecimento emergencial das regras do Firestore
+
+Correção emergencial, entre a FASE 14a e a FASE 14d: `firebase/firestore.rules`
+foi endurecida para **eliminar toda escrita anônima**, testada com 22 casos no
+Firestore Emulator (`cd firebase && npm run test:rules`). A leitura anônima
+mínima que o KMP já usa hoje (`teams`, `members`, `schedule_periods`,
+`schedule_assignments`, `oncall_periods`, `oncall_assignments`) foi mantida no
+nível atual — não ampliada — porque a listagem sem filtro que o app faz hoje
+não pode ser restringida por regra sem quebrar (ver
+`docs/spec/51-ESCALAICI-FIRESTORE-HARDENING-TRANSITORIO.md` para os riscos
+residuais documentados e a troca explicitamente aprovada). **Esta regra não
+foi implantada em produção** — o comando de deploy e o checklist de validação
+ficam registrados na spec 51 para execução humana.
+
 ## Estrutura resumida
 
 ```text
