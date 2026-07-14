@@ -36,6 +36,8 @@ Pendência de portabilidade `WEB-BUILD-0`: gerar oficialmente `gradlew.bat` em a
 
 O site inclui manifest, service worker e ícones. O nome público e o nome curto são `Escala ICI`; `start_url` e `scope` são relativos e compatíveis com Pages. O service worker usa cache versionado, remove caches anteriores na ativação e oferece fallback de navegação para `index.html`.
 
+No navegador móvel, o host Web dimensiona `#webApp` e o canvas do Compose pela altura do `visualViewport`, atualizada em mudanças da barra do navegador e de orientação. A regra mantém `100vh` como fallback e usa `100dvh` quando disponível; `env(safe-area-inset-bottom)` reserva a área de gestos sem padding fixo. Assim, o navegador normal acompanha a área visual disponível, enquanto a PWA standalone continua ocupando toda a tela sem espaço inferior artificial. Valide em celular real com a barra de endereço visível e recolhida, além dos modos responsivos 360 × 740, 393 × 873 e 412 × 915.
+
 `web/cloudflare/_redirects` contém o fallback SPA:
 
 ```text
