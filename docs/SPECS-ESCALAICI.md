@@ -24,6 +24,31 @@ abruptamente e sem transformar documentação em mudança real de produção.
 | 44 — Testes, qualidade e validação | Registra os 39 testes atuais, lacunas de parser/Firestore/dashboard/cache e checklists Android, Web/PWA e manuais. | `/home/lvergani/AndroidStudioProjects/EscalaSOC/docs/spec/44-ESCALAICI-TESTES-QUALIDADE-VALIDACAO.md` |
 | 45 — Roadmap MVP oficial | Organiza as fases 12c a 13f até o MVP oficial, com objetivo, escopo permitido, validações e pontos de parada humana. | `/home/lvergani/AndroidStudioProjects/EscalaSOC/docs/spec/45-ESCALAICI-ROADMAP-MVP-OFICIAL.md` |
 
+## Specs locais — FASE 14a (autenticação, vínculo, sincronização, pausa, migração)
+
+Diferente das specs 35-45 (que vivem no repositório `EscalaSOC`), as specs
+46-50 abaixo vivem **neste repositório**, em `docs/spec/`, porque tratam
+especificamente da implementação do Escala ICI KMP (Android + Web/PWA) e do
+ponto de integração com o Dashboard/Firestore. Nenhuma delas implementa código
+funcional — são o resultado da auditoria e do desenho arquitetural da FASE
+14a.
+
+| Spec | Resumo |
+|---|---|
+| [46 — Autenticação corporativa MSAL + Firebase](spec/46-ESCALAICI-AUTENTICACAO-CORPORATIVA-MSAL-FIREBASE.md) | Arquitetura MSAL Android/Web, ponte segura (Cloud Function) entre id_token Microsoft e Firebase custom token, nunca tratando um como o outro diretamente. |
+| [47 — Vínculo usuário, membro e time](spec/47-ESCALAICI-VINCULO-USUARIO-MEMBRO-E-TIME.md) | Define `CorporateIdentity` e a coleção `user_links/{firebaseUid}`, indexada por `tenantId`+`objectId`, nunca por e-mail. |
+| [48 — Sincronização de escala e cache offline](spec/48-ESCALAICI-SINCRONIZACAO-ESCALA-CACHE-OFFLINE.md) | Substitui a leitura "busca-tudo-e-filtra" por queries reais, define 9 estados tipados de erro e formaliza a política de preservar cache em falha. |
+| [49 — Pausa de 15 minutos e notificações](spec/49-ESCALAICI-PAUSA-15-MINUTOS-E-NOTIFICACOES.md) | Torna funcional o controle hoje decorativo, corrigindo as lacunas conhecidas do app legado (boot receiver, mudança de fuso, alarme inexato). |
+| [50 — Migração final e paridade](spec/50-ESCALAICI-MIGRACAO-FINAL-E-PARIDADE.md) | Matriz completa EscalaSOC × Escala ICI por funcionalidade, com bloqueadores centrais ordenados por urgência. |
+
+**Achado que motivou a urgência desta fase**: as regras Firestore hoje em
+produção (`firebase/firestore.production.snapshot.rules`) liberam leitura e
+escrita totalmente livres até **4 de agosto de 2026** — nenhum cliente tem
+ainda uma sessão Firebase Auth real (ver spec 46), então essa janela de ~3
+semanas é o prazo prático para decidir e ao menos iniciar a implementação da
+ponte de autenticação antes de qualquer regra autenticada poder ser publicada
+com segurança.
+
 ## Relação com o código atual
 
 O app neste repositório já implementou parte da direção do spec 35 como
@@ -76,6 +101,14 @@ pelo app e não autorizam deploy, importação, Rules ou escrita em Firestore.
 | 13d | Release beta interno para grupo pequeno, com versionamento, APK assinado e rollback. | não iniciada |
 | 13e | Testes com usuários reais, feedback, correções e validação operacional. | não iniciada |
 | 13f | MVP oficial com Firestore, dashboard, MSAL, permissões, beta estável e rollback. | não iniciada |
+| 14a | Auditoria e specs finais de autenticação, sincronização, pausa e migração (specs 46-50, este pacote). | concluída — documentação apenas |
+| 14b | MSAL e identidade real no Escala ICI (Android primeiro, spec 46). | não iniciada |
+| 14c | Vínculo de usuário: coleção `user_links`, fluxo de vínculo administrativo (spec 47). | não iniciada |
+| 14d | Firebase Auth real + substituição das Firestore Rules abertas (spec 46/48, antes de 2026-08-04). | não iniciada |
+| 14e | Sincronização real de escala/plantão por query, cache e estados tipados (spec 48). | não iniciada |
+| 14f | Pausa de 15 minutos e notificações reais, corrigindo lacunas do legado (spec 49). | não iniciada |
+| 14g | Paridade funcional completa EscalaSOC × Escala ICI (spec 50). | não iniciada |
+| 14h | Release candidato para o MVP oficial. | não iniciada |
 
 ## Identidade técnica e release
 

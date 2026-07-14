@@ -7,6 +7,41 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14a — Auditoria e specs finais de autenticação, sincronização, pausa e migração
+
+- **Status:** DONE — documentação/auditoria apenas, nenhum código funcional
+  alterado.
+- Auditoria de leitura (três frentes paralelas, somente leitura, nenhuma
+  alteração) deste repositório, do `EscalaSOC` (referência) e do Dashboard
+  (referência), consolidada em relatório interno não versionado
+  (`.ai-runs/fase14a-diagnostico/DIAGNOSTICO-FASE14A.md`).
+- Achados centrais confirmados por leitura direta de código: (1) o texto
+  "Associação corporativa ainda não configurada" em `ProfileTab.kt` é
+  estático, sempre exibido, sem nenhuma condição real; (2) o login atual é
+  inteiramente mockado (`LoginGateScreen.kt`), com `"lvergani"` como membro
+  padrão de mock; (3) o botão/toggle de pausa é `enabled = false` fixo no
+  código-fonte, sem nenhuma lógica de habilitação; (4) a leitura Firestore
+  atual busca coleções inteiras e filtra no cliente, sem query real; (5) as
+  regras Firestore hoje publicadas em produção liberam leitura e escrita
+  totalmente livres até **4 de agosto de 2026**, sem que nenhum cliente
+  (Android legado ou KMP) tenha ainda uma sessão Firebase Auth real.
+- Cinco specs novas criadas em `docs/spec/`: `46-ESCALAICI-AUTENTICACAO-CORPORATIVA-MSAL-FIREBASE.md`,
+  `47-ESCALAICI-VINCULO-USUARIO-MEMBRO-E-TIME.md`,
+  `48-ESCALAICI-SINCRONIZACAO-ESCALA-CACHE-OFFLINE.md`,
+  `49-ESCALAICI-PAUSA-15-MINUTOS-E-NOTIFICACOES.md`,
+  `50-ESCALAICI-MIGRACAO-FINAL-E-PARIDADE.md` — decisões arquiteturais,
+  estados tipados, matriz de paridade e critérios de aceite para as fases
+  seguintes. Índice atualizado em `docs/SPECS-ESCALAICI.md`.
+- Revisão independente (subagente sem memória desta sessão) das 5 specs
+  quanto a contradições internas, completude e coerência com o código
+  auditado — ver seção correspondente no relatório final da fase.
+- Não implementa MSAL, vínculo de usuário, sincronização real, pausa
+  funcional ou qualquer alteração em Kotlin, Gradle, manifest, Firebase
+  Rules/Functions, Dashboard ou EscalaSOC. Sequência de implementação:
+  FASE 14b (MSAL/identidade) → 14c (`user_links`) → 14d (Firebase Auth +
+  Rules, antes de 2026-08-04) → 14e (sincronização) → 14f (pausa/notificações)
+  → 14g (paridade) → 14h (release candidato).
+
 ## KMP-MVP-1A — Contrato universal de fontes
 
 - **Status:** DONE

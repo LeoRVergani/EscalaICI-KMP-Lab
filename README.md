@@ -57,6 +57,27 @@ No Linux e no GitHub Actions:
 
 Cloudflare Access protegerá externamente a entrada do site. Ele não autentica o usuário dentro do código do Escala ICI e não fornece automaticamente nome, e-mail ou token Microsoft ao aplicativo.
 
+## FASE 14a — Specs de autenticação, sincronização, pausa e migração
+
+A tabela acima ("Login corporativo", "Sincronização corporativa") continua
+refletindo o estado real: nenhuma dessas linhas mudou nesta fase, que é
+exclusivamente documentação e auditoria. As cinco specs que fecham o desenho
+necessário para implementar essas linhas ficam em `docs/spec/`:
+`46-ESCALAICI-AUTENTICACAO-CORPORATIVA-MSAL-FIREBASE.md`,
+`47-ESCALAICI-VINCULO-USUARIO-MEMBRO-E-TIME.md`,
+`48-ESCALAICI-SINCRONIZACAO-ESCALA-CACHE-OFFLINE.md`,
+`49-ESCALAICI-PAUSA-15-MINUTOS-E-NOTIFICACOES.md` e
+`50-ESCALAICI-MIGRACAO-FINAL-E-PARIDADE.md`. Índice completo em
+`docs/SPECS-ESCALAICI.md`, roadmap de fases em `docs/ROADMAP.md` (FASE
+14a-14h).
+
+**Risco de calendário conhecido**: as Firestore Rules hoje publicadas em
+produção liberam leitura e escrita totalmente livres até **4 de agosto de
+2026** (`firebase/firestore.production.snapshot.rules`). Nenhuma regra
+autenticada pode ser publicada com segurança antes de existir uma sessão
+Firebase Auth real nos clientes que hoje leem sem token (Android legado e
+KMP) — ver `docs/ADR-FIREBASE-AUTH.md` e a spec 46.
+
 ## Estrutura resumida
 
 ```text
