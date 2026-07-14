@@ -16,13 +16,15 @@ a referência factual em `firebase/firestore.production.snapshot.rules`.
 
 ## Decisão provisória
 
-1. Não conectar o KMP ao Firestore de produção durante o modo de teste.
-2. Não alterar nem publicar regras nesta etapa.
-3. Desenvolver e testar regras exclusivamente no Emulator com project ID
+1. Permitir na KMP-MVP-1B-SIMPLES somente leitura anônima temporária dos dados
+   já públicos, sem apresentar essa solução como autorização de produção.
+2. Não implementar escrita nem Firebase Auth no KMP nesta etapa.
+3. Não alterar nem publicar regras nesta etapa.
+4. Desenvolver e testar regras exclusivamente no Emulator com project ID
    `demo-escalaici-kmp`.
-4. Tratar Firebase Auth do Dashboard como identidade disponível, mas não como
+5. Tratar Firebase Auth do Dashboard como identidade disponível, mas não como
    proteção efetiva enquanto as regras publicadas ignorarem `request.auth`.
-5. Não publicar `deny-all` nem regras autenticadas antes de mapear e testar o
+6. Não publicar `deny-all` nem regras autenticadas antes de mapear e testar o
    impacto no Android legado.
 
 ## Alternativas
@@ -41,4 +43,7 @@ a referência factual em `firebase/firestore.production.snapshot.rules`.
 O prazo de 4 de agosto de 2026 é operacional e de segurança. Antes dele devem
 existir inventário final, testes no Emulator, decisão de autenticação para cada
 cliente, projeto de desenvolvimento, plano de implantação gradual e rollback.
-Até essa decisão, o KMP mantém somente arquivo local, cache e demonstração.
+Até essa decisão, a leitura Firebase do KMP é provisória e pode deixar de
+funcionar quando as regras expirarem. Arquivo local, cache local, cache Firebase
+e demonstração preservam o fallback operacional, mas não substituem uma
+política segura de acesso.

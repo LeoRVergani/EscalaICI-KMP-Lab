@@ -2,15 +2,16 @@
 
 ## Decisão da auditoria
 
-A integração real continua **bloqueada antes da inclusão de SDK**, mas o motivo
-foi corrigido após verificação direta no Firebase Console. As regras publicadas
-no projeto `escalaici`, banco `(default)`, estão em modo de teste: qualquer
-cliente pode ler e escrever até 4 de agosto de 2026, sem Firebase Auth.
+A KMP-MVP-1B-SIMPLES autorizou uma leitura anônima e temporária da escala real,
+sem escrita e sem Firebase Auth no KMP. As regras publicadas no projeto
+`escalaici`, banco `(default)`, continuam em modo de teste: qualquer cliente
+pode ler e escrever até 4 de agosto de 2026, sem Firebase Auth.
 
-Consequentemente, esta fase documental não adiciona dependências, não consulta
-o Firestore, não cria gateways concretos, não altera regras e não escreve dados.
-Conectar o KMP nesse estado ampliaria a dependência de uma configuração
-insegura e temporária. A integração deve ser desenvolvida primeiro no Emulator.
+O KMP usa somente requisições REST `GET` às coleções existentes. Nenhum SDK
+Firebase foi incluído, nenhum segredo foi adicionado e as regras locais ou
+publicadas não foram alteradas. Essa integração não torna o banco seguro: ela
+depende provisoriamente da leitura pública e deverá ser substituída ou protegida
+antes da expiração das regras.
 
 ## Evidências auditadas
 
@@ -56,7 +57,7 @@ manter fallback negado. Só podem ser publicadas após testes conjuntos do
 Dashboard e dos aplicativos, inventário de todas as operações e plano de
 rollback. Não se deve trocar o modo de teste por `deny-all` sem essa validação.
 
-## Coleções confirmadas pelo código legado
+## Coleções confirmadas pelo código legado e pela auditoria pública
 
 As coleções abaixo são nomes efetivamente usados pelos repositórios Android e
 Dashboard, não nomes inferidos:
@@ -117,6 +118,13 @@ Obrigatórios: `memberId`, `teamId`, `displayName`, `scaleName`, `active`,
 `createdAt`, `updatedAt`.
 
 Opcionais: `email`, `roles`, `defaultWorkPatternId`.
+
+Em 14 de julho de 2026 foi feita auditoria somente de nomes de campos, sem
+registrar valores pessoais. Os dez documentos então existentes também
+apresentavam `role`, `title` e `status` conforme o documento. Não foram
+encontrados campos de telefone, endereço, documento pessoal, token, credencial
+ou dado médico. O campo `email` existe, mas não é transportado para o modelo de
+UI nem exibido pelo KMP.
 
 ## Identificadores e relações
 
@@ -179,18 +187,19 @@ Firebase para o Web/Wasm. Copiar a configuração pública do cliente também n�
 resolve autorização. Não serão usados service account, client secret, token ou
 credencial corporativa no cliente.
 
-## Estratégia técnica avaliada
+## Estratégia técnica implementada
 
-A arquitetura adequada, depois de liberados os pré-requisitos, é manter DTOs,
-mapeadores, validações, gateway abstrato e fontes em `commonMain`, com
-implementações específicas por plataforma. Android poderia usar o SDK Android;
-Web/Wasm precisaria de integração JavaScript ou biblioteca comprovadamente
-compatível. Nenhuma dependência foi escolhida porque isso seria prematuro sem:
+DTOs, mapeadores, validações, gateway abstrato e fontes vivem em `commonMain`.
+Web/Wasm e Android compartilham um cliente REST Firestore somente leitura; os
+`actual` de plataforma fornecem cache isolado (`localStorage` na Web e
+`SharedPreferences` no Android). O contrato não expõe `add`, `create`, `set`,
+`update`, `delete`, `batch` ou `transaction`.
 
-- definir e validar a identidade exigida pelas futuras regras;
-- definir `schemaVersion` remoto compatível;
-- resolver `memberId` ausente e o mapeamento de turnos sem inferência;
-- validar no Emulator isolado já preparado em `firebase/`.
+O leitor busca o período ativo, assignments e membros da equipe, valida o lote
+completo e só então troca o cache. Escala e plantão têm chaves independentes.
+`assignmentType` foi limitado aos valores confirmados `WORK_SHIFT`, `OFF` e
+`VACATION`; os turnos confirmados são `Madrugada`, `Manhã`, `Tarde` e `Noite`.
+Documento incompatível preserva o cache anterior.
 
 ## Campos e fatos ainda desconhecidos
 
@@ -204,7 +213,7 @@ compatível. Nenhuma dependência foi escolhida porque isso seria prematuro sem:
 - tratamento oficial de assignment sem `memberId`;
 - ambiente Firebase de desenvolvimento autorizado para Web e Android.
 
-## Riscos e condição para retomada
+## Riscos e condição para retirada segura do modo de teste
 
 O banco já está exposto a leitura, criação, alteração e exclusão anônimas até a
 data limite. Conectar mais um cliente agora consolidaria essa dependência. Uma
@@ -212,7 +221,8 @@ troca apressada por regras fechadas, por outro lado, pode interromper Dashboard
 e Android. Também permanecem os riscos de documento incompatível, identidade de
 membro inventada e mistura entre schema proposto e produção legada.
 
-A KMP-MVP-1B pode ser retomada quando houver, simultaneamente:
+A leitura implementada é uma ponte operacional, não a solução de autorização.
+Antes de 4 de agosto de 2026 ainda são necessários:
 
 1. decisão de autenticação Firebase para Android e Web/Wasm, validada em
    ambiente não produtivo;
@@ -223,8 +233,8 @@ A KMP-MVP-1B pode ser retomada quando houver, simultaneamente:
    teste;
 5. plano de migração e rollback anterior a 4 de agosto de 2026.
 
-Até lá, arquivo local, cache local e demonstração permanecem inalterados e são
-as únicas fontes operacionais do KMP.
+Arquivo local, cache local e demonstração permanecem como fallbacks. O modo
+LOCAL não é substituído silenciosamente pelo Firebase.
 
 ## Emulator isolado e validação
 

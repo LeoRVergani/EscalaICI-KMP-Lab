@@ -1,10 +1,10 @@
-# Fontes universais — KMP-MVP-1A
+# Fontes universais — KMP-MVP-1A / 1B-SIMPLES
 
 Esta fase define contratos multiplataforma para escolher e carregar dados sem conectar rede. Todo o código vive em `commonMain` e não depende de JavaScript, Android, Firebase ou APIs JVM.
 
 ## Tipos e metadados
 
-`ScheduleSourceType` consolida `LOCAL_FILE`, `LOCAL_CACHE`, `FIREBASE`, `ONEDRIVE`, `DROPBOX` e `DEMO`. Os três tipos remotos são apenas identificadores arquiteturais nesta fase.
+`ScheduleSourceType` consolida `LOCAL_FILE`, `LOCAL_CACHE`, `FIREBASE`, `ONEDRIVE`, `DROPBOX` e `DEMO`. `FIREBASE` possui adaptador somente leitura desde a KMP-MVP-1B-SIMPLES; OneDrive e Dropbox continuam apenas como identificadores arquiteturais para dados de escala.
 
 `SourceMetadata` registra tipo, arquivo opcional, período, atualização da origem, sincronização local, conectividade, uso de cache, versão remota e mensagem curta. Tokens, URLs secretas, credenciais e conteúdo de planilha não fazem parte do modelo.
 
@@ -30,6 +30,16 @@ A ordem das fontes remotas é configurável. Dados demonstrativos nunca substitu
 
 `LocalScheduleCacheSource` e `LocalOnCallCacheSource` adaptam o `LocalDataCache` v1 existente sem migração. As chaves, parsers e serialização atuais foram preservados. Invalidar escala não apaga plantão e vice-versa.
 
-## Próximas conexões e limitações
+## Conexão Firebase e limitações
 
-KMP-MVP-1B poderá implementar um adaptador Firebase/Firestore atrás desses contratos, preservando os fallbacks locais. OneDrive/Graph e Dropbox poderão ganhar adaptadores próprios depois, sem alterar casos de uso ou telas. Esta fase não realiza rede, autenticação, sincronização remota, seleção de equipe nem migração destrutiva de cache.
+`FirebaseScheduleSource` e `FirebaseOnCallSource` usam um gateway REST que só
+expõe leitura. Há cache Firebase próprio, separado do cache de arquivo, com
+payload validado, período, `updatedAt`, `cachedAt`, última tentativa e schema
+local. Falha de rede retorna `OfflineCache` quando possível; lote remoto
+inválido não substitui o último cache válido.
+
+Em AUTO, Firebase válido precede cache Firebase, arquivo local, cache local e
+demonstração. Em LOCAL, o arquivo selecionado permanece ativo. A UI mostra
+apenas fonte, período, sincronização, disponibilidade offline, falha e nova
+tentativa, sem IDs técnicos. Não há escrita, listener em tempo real, Firebase
+Auth, OneDrive/Graph, edição, trocas nem migração destrutiva de cache.
