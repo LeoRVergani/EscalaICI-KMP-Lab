@@ -1,7 +1,7 @@
 # SPEC — Banco Universal do Escala ICI
 
-**Status:** proposta pronta para implementação incremental  
-**Escopo:** Dashboard React + Escala ICI KMP Web/PWA/Android + futuro iOS  
+**Status:** proposta pronta para implementação incremental
+**Escopo:** Dashboard React + Escala ICI KMP Web/PWA/Android + futuro iOS
 **Objetivo:** manter o banco atual, evitar coleções duplicadas e suportar vários times e tipos de escala sem reescrever os aplicativos.
 
 ## 1. Princípios
