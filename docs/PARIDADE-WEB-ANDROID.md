@@ -29,3 +29,7 @@ Esta matriz registra a base funcional compartilhada antes das integrações de F
 ## Riscos e próxima fase
 
 A paridade atual é local e demonstrativa: não há identidade corporativa, fonte universal remota, sincronização ou backend de trocas. A próxima fase deve escolher uma única integração oficial prevista no roadmap e tratá-la isoladamente; Firebase/Firestore é a base de dados recomendada antes de MSAL/Graph e trocas reais.
+
+## Contrato universal de fontes
+
+KMP-MVP-1A adicionou em `commonMain` contratos idênticos para Web e Android, com tipos de fonte, metadados, estados de carregamento, prioridade e adaptadores do arquivo/cache atuais. Escala e plantão permanecem separados. Firebase, OneDrive e Dropbox aparecem apenas como tipos futuros, sem SDK ou rede; KMP-MVP-1B poderá conectar primeiro o Firebase atrás desses contratos.

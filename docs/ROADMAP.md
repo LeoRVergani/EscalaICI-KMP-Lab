@@ -7,6 +7,15 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## KMP-MVP-1A — Contrato universal de fontes
+
+- **Status:** DONE
+- Contratos puros em `commonMain` para escala e plantão, com metadados, estados de carregamento e invalidação independente.
+- Prioridade testável: remoto válido, cache remoto, arquivo local confirmado, cache local e demonstração.
+- Cache Web/Android atual adaptado sem migração ou alteração de parser.
+- Firebase, MSAL, OneDrive, Dropbox novo e iOS não foram implementados.
+- Próxima fase recomendada: KMP-MVP-1B, adaptador Firebase/Firestore em modo controlado atrás dos contratos.
+
 **Nota (FASE 12a):** existe uma spec separada, ainda não implementada, sobre
 generalizar o Escala ICI para múltiplos setores do ICI (não só COSI/SOC) e
 tipos de escala configuráveis por equipe — ver
