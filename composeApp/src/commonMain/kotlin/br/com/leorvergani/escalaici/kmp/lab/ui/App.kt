@@ -74,6 +74,8 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabTypography
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import br.com.leorvergani.escalaici.kmp.lab.source.DataLoadResult
+import br.com.leorvergani.escalaici.kmp.lab.source.ScheduleSyncCause
+import br.com.leorvergani.escalaici.kmp.lab.source.isEmptyState
 import br.com.leorvergani.escalaici.kmp.lab.source.FirebaseOnCallSource
 import br.com.leorvergani.escalaici.kmp.lab.source.FirebaseScheduleGateway
 import br.com.leorvergani.escalaici.kmp.lab.source.FirebaseScheduleSource
@@ -132,6 +134,7 @@ fun EscalaIciLabApp(
         var cacheWarning by remember { mutableStateOf<String?>(null) }
         var firebaseMetadata by remember { mutableStateOf<SourceMetadata?>(null) }
         var firebaseError by remember { mutableStateOf<String?>(null) }
+        var firebaseSyncCause by remember { mutableStateOf<ScheduleSyncCause?>(null) }
         var firebaseLoading by remember { mutableStateOf(false) }
         var firebaseOnCall by remember { mutableStateOf<OnCallSourceData?>(null) }
         var importPreview by remember { mutableStateOf<ScheduleImportPreview?>(null) }
@@ -162,14 +165,15 @@ fun EscalaIciLabApp(
             scope.launch {
                 firebaseLoading = true
                 firebaseError = null
+                firebaseSyncCause = null
                 val timestamp = "${todayProvider.today().year.toString().padStart(4, '0')}-${todayProvider.today().month.toString().padStart(2, '0')}-${todayProvider.today().day.toString().padStart(2, '0')}"
                 val query = SourceQuery(memberId = memberId, teamId = "soc")
                 when (val result = FirebaseScheduleSource(gateway, cache) { timestamp }.loadActive(query)) {
                     is DataLoadResult.Success -> { summary = result.data.summary; firebaseMetadata = result.metadata }
                     is DataLoadResult.OfflineCache -> { summary = result.data.summary; firebaseMetadata = result.metadata }
-                    is DataLoadResult.RecoverableError -> firebaseError = result.message
-                    is DataLoadResult.Empty -> firebaseError = result.metadata.userMessage
-                    is DataLoadResult.FatalError -> firebaseError = result.message
+                    is DataLoadResult.RecoverableError -> { firebaseError = result.message; firebaseSyncCause = result.cause }
+                    is DataLoadResult.Empty -> { firebaseError = result.metadata.userMessage; firebaseSyncCause = result.cause }
+                    is DataLoadResult.FatalError -> { firebaseError = result.message; firebaseSyncCause = result.cause }
                 }
                 when (val result = FirebaseOnCallSource(gateway, cache) { timestamp }.loadActive(query)) {
                     is DataLoadResult.Success -> firebaseOnCall = result.data
@@ -269,7 +273,7 @@ fun EscalaIciLabApp(
                                 null -> {
                                 Column(modifier = Modifier.fillMaxSize()) {
                                 if (firebaseGateway != null) {
-                                    FirebaseStatusBar(firebaseMetadata, firebaseError, firebaseLoading, ::refreshFirebase)
+                                    FirebaseStatusBar(firebaseMetadata, firebaseError, firebaseSyncCause, firebaseLoading, ::refreshFirebase)
                                 }
                                 Box(modifier = Modifier.weight(1f)) {
                                 when (activeTab) {
@@ -359,6 +363,7 @@ fun EscalaIciLabApp(
 private fun FirebaseStatusBar(
     metadata: SourceMetadata?,
     error: String?,
+    cause: ScheduleSyncCause?,
     loading: Boolean,
     onRetry: () -> Unit
 ) {
@@ -373,7 +378,10 @@ private fun FirebaseStatusBar(
             metadata != null -> "Fonte: Firebase · ${metadata.periodId.orEmpty()} · sincronizado em ${metadata.localSyncedAt.orEmpty()}"
             else -> "Fonte Firebase ainda não carregada"
         }
-        Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = if (error != null) LabColors.red else LabColors.onSurfaceMuted)
+        // Estados "vazios" (equipe/período/turnos inexistentes) não são falhas — só o
+        // que sobra depois de classificar por causa é exibido em vermelho como erro real.
+        val isRealError = error != null && cause?.isEmptyState() != true
+        Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = if (isRealError) LabColors.red else LabColors.onSurfaceMuted)
         if (!loading) TextButton(onClick = onRetry) { Text("Tentar novamente") }
     }
 }

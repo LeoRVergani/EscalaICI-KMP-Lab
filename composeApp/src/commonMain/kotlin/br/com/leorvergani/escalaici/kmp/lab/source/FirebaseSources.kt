@@ -25,28 +25,38 @@ class FirebaseScheduleSource(
         val loadedAt = now()
         return try {
             val teamId = query.teamId ?: return error("Equipe não informada.", loadedAt)
-            val team = gateway.loadTeam(teamId) ?: return empty(teamId, loadedAt)
-            val period = gateway.loadActiveSchedulePeriod(teamId) ?: return empty(teamId, loadedAt)
+            val team = gateway.loadTeam(teamId) ?: return empty(teamId, loadedAt, ScheduleSyncCause.TEAM_NOT_FOUND)
+            val period = gateway.loadActiveSchedulePeriod(teamId) ?: return empty(teamId, loadedAt, ScheduleSyncCause.NO_ACTIVE_PERIOD)
             val assignments = gateway.loadScheduleAssignments(teamId, period.periodId)
+            if (assignments.isEmpty()) {
+                // Antes de aceitar "sem turnos cadastrados", tenta a última escala em cache —
+                // mesma prioridade que o caminho de exceção logo abaixo, para nunca descartar
+                // um cache válido em favor de uma resposta momentaneamente vazia do gateway.
+                cacheFallback(query.memberId, loadedAt)?.let { return it }
+                return empty(teamId, loadedAt, ScheduleSyncCause.NO_ASSIGNMENTS)
+            }
             val members = gateway.loadMembers(teamId)
             val snapshot = FirebaseScheduleSnapshot(team, period, members, assignments, loadedAt, loadedAt)
             val data = snapshot.toScheduleData(query.memberId)
             if (!cache.saveSchedule(snapshot)) return error("A escala foi carregada, mas não pôde ser disponibilizada offline.", loadedAt)
             lastSnapshot = snapshot
             DataLoadResult.Success(data, data.metadata, loadedAt = loadedAt)
-        } catch (_: Throwable) {
-            cache.loadSchedule()?.let { snapshot ->
-                runCatching { snapshot.toScheduleData(query.memberId, fromCache = true) }.getOrNull()?.let { data ->
-                    return DataLoadResult.OfflineCache(data, data.metadata, loadedAt = loadedAt)
-                }
-            }
-            error("Não foi possível atualizar a escala. Tente novamente.", loadedAt)
+        } catch (t: Throwable) {
+            cacheFallback(query.memberId, loadedAt)?.let { return it }
+            error("Não foi possível atualizar a escala. Tente novamente.", loadedAt, classifySyncFailure(t))
         }
     }
 
+    private fun cacheFallback(memberId: String?, at: String): DataLoadResult<ScheduleSourceData>? =
+        cache.loadSchedule()?.let { snapshot ->
+            runCatching { snapshot.toScheduleData(memberId, fromCache = true) }.getOrNull()?.let { data ->
+                DataLoadResult.OfflineCache(data, data.metadata, loadedAt = at)
+            }
+        }
+
     override suspend fun loadPeriod(query: SourceQuery, periodId: String): DataLoadResult<ScheduleSourceData> {
         val result = loadActive(query)
-        return if (result.metadata?.periodId == periodId) result else empty(query.teamId, now())
+        return if (result.metadata?.periodId == periodId) result else empty(query.teamId, now(), ScheduleSyncCause.NO_ACTIVE_PERIOD)
     }
 
     override suspend fun checkForUpdate(query: SourceQuery): DataLoadResult<SourceUpdateStatus> {
@@ -57,14 +67,16 @@ class FirebaseScheduleSource(
             val local = cache.loadSchedule()?.period?.updatedAt
             val metadata = metadata(cache.loadSchedule()?.period?.periodId, remote, loadedAt, false)
             DataLoadResult.Success(SourceUpdateStatus(remote != null && remote != local, metadata), metadata, loadedAt = loadedAt)
-        } catch (_: Throwable) { error("Não foi possível verificar atualizações.", loadedAt) }
+        } catch (t: Throwable) { error("Não foi possível verificar atualizações.", loadedAt, classifySyncFailure(t)) }
     }
 
     override suspend fun updateCache(data: ScheduleSourceData): Boolean = lastSnapshot?.let(cache::saveSchedule) ?: false
     override suspend fun invalidateCache(query: SourceQuery) = cache.clearSchedule()
 
-    private fun empty(teamId: String?, at: String) = DataLoadResult.Empty(metadata(userMessage = "Nenhuma escala Firebase ativa para ${teamId ?: "a equipe"}.", at = at), loadedAt = at)
-    private fun <T> error(message: String, at: String): DataLoadResult<T> = DataLoadResult.RecoverableError(message, metadata = metadata(userMessage = message, at = at), loadedAt = at)
+    private fun empty(teamId: String?, at: String, cause: ScheduleSyncCause) =
+        DataLoadResult.Empty(metadata(userMessage = cause.defaultMessage(teamId), at = at), loadedAt = at, cause = cause)
+    private fun <T> error(message: String, at: String, cause: ScheduleSyncCause = ScheduleSyncCause.UNKNOWN): DataLoadResult<T> =
+        DataLoadResult.RecoverableError(message, metadata = metadata(userMessage = message, at = at), loadedAt = at, cause = cause)
 }
 
 class FirebaseOnCallSource(
@@ -79,27 +91,34 @@ class FirebaseOnCallSource(
         val loadedAt = now()
         return try {
             val teamId = query.teamId ?: return error("Equipe não informada.", loadedAt)
-            val period = gateway.loadActiveOnCallPeriod(teamId) ?: return empty(teamId, loadedAt)
+            val period = gateway.loadActiveOnCallPeriod(teamId) ?: return empty(teamId, loadedAt, ScheduleSyncCause.NO_ACTIVE_PERIOD)
             val assignments = gateway.loadOnCallAssignments(teamId, period.periodId)
+            if (assignments.isEmpty()) {
+                cacheFallback(loadedAt)?.let { return it }
+                return empty(teamId, loadedAt, ScheduleSyncCause.NO_ASSIGNMENTS)
+            }
             val members = gateway.loadMembers(teamId)
             val snapshot = FirebaseOnCallSnapshot(period, members, assignments, loadedAt, loadedAt)
             val data = snapshot.toOnCallData()
             if (!cache.saveOnCall(snapshot)) return error("O plantão foi carregado, mas não pôde ser disponibilizado offline.", loadedAt)
             lastSnapshot = snapshot
             DataLoadResult.Success(data, data.metadata, loadedAt = loadedAt)
-        } catch (_: Throwable) {
-            cache.loadOnCall()?.let { snapshot ->
-                runCatching { snapshot.toOnCallData(fromCache = true) }.getOrNull()?.let { data ->
-                    return DataLoadResult.OfflineCache(data, data.metadata, loadedAt = loadedAt)
-                }
-            }
-            error("Não foi possível atualizar o plantão. Tente novamente.", loadedAt)
+        } catch (t: Throwable) {
+            cacheFallback(loadedAt)?.let { return it }
+            error("Não foi possível atualizar o plantão. Tente novamente.", loadedAt, classifySyncFailure(t))
         }
     }
 
+    private fun cacheFallback(at: String): DataLoadResult<OnCallSourceData>? =
+        cache.loadOnCall()?.let { snapshot ->
+            runCatching { snapshot.toOnCallData(fromCache = true) }.getOrNull()?.let { data ->
+                DataLoadResult.OfflineCache(data, data.metadata, loadedAt = at)
+            }
+        }
+
     override suspend fun loadPeriod(query: SourceQuery, periodId: String): DataLoadResult<OnCallSourceData> {
         val result = loadActive(query)
-        return if (result.metadata?.periodId == periodId) result else empty(query.teamId, now())
+        return if (result.metadata?.periodId == periodId) result else empty(query.teamId, now(), ScheduleSyncCause.NO_ACTIVE_PERIOD)
     }
 
     override suspend fun checkForUpdate(query: SourceQuery): DataLoadResult<SourceUpdateStatus> {
@@ -110,14 +129,16 @@ class FirebaseOnCallSource(
             val local = cache.loadOnCall()?.period?.updatedAt
             val metadata = metadata(cache.loadOnCall()?.period?.periodId, remote, loadedAt, false)
             DataLoadResult.Success(SourceUpdateStatus(remote != null && remote != local, metadata), metadata, loadedAt = loadedAt)
-        } catch (_: Throwable) { error("Não foi possível verificar atualizações do plantão.", loadedAt) }
+        } catch (t: Throwable) { error("Não foi possível verificar atualizações do plantão.", loadedAt, classifySyncFailure(t)) }
     }
 
     override suspend fun updateCache(data: OnCallSourceData): Boolean = lastSnapshot?.let(cache::saveOnCall) ?: false
     override suspend fun invalidateCache(query: SourceQuery) = cache.clearOnCall()
 
-    private fun empty(teamId: String?, at: String) = DataLoadResult.Empty(metadata(userMessage = "Nenhum plantão Firebase ativo para ${teamId ?: "a equipe"}.", at = at), loadedAt = at)
-    private fun <T> error(message: String, at: String): DataLoadResult<T> = DataLoadResult.RecoverableError(message, metadata = metadata(userMessage = message, at = at), loadedAt = at)
+    private fun empty(teamId: String?, at: String, cause: ScheduleSyncCause) =
+        DataLoadResult.Empty(metadata(userMessage = cause.defaultMessage(teamId), at = at), loadedAt = at, cause = cause)
+    private fun <T> error(message: String, at: String, cause: ScheduleSyncCause = ScheduleSyncCause.UNKNOWN): DataLoadResult<T> =
+        DataLoadResult.RecoverableError(message, metadata = metadata(userMessage = message, at = at), loadedAt = at, cause = cause)
 }
 
 private fun FirebaseScheduleSnapshot.toScheduleData(memberId: String?, fromCache: Boolean = false): ScheduleSourceData {

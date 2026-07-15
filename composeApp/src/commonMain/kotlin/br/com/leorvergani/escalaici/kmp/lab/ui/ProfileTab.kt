@@ -52,6 +52,8 @@ import br.com.leorvergani.escalaici.kmp.lab.model.relevantShift
 import br.com.leorvergani.escalaici.kmp.lab.platform.WebNotificationService
 import br.com.leorvergani.escalaici.kmp.lab.platform.NotificationPermissionState
 import br.com.leorvergani.escalaici.kmp.lab.platform.rememberAppUpdateChecker
+import br.com.leorvergani.escalaici.kmp.lab.source.ScheduleSyncCause
+import br.com.leorvergani.escalaici.kmp.lab.source.defaultMessage
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCollaboratorAvatar
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
@@ -114,7 +116,7 @@ internal fun ProfileTab(
         item {
             LabCard(title = "Identidade da escala", icon = Icons.Default.Security, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
                 Text("Colaborador identificado: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Associação corporativa ainda não configurada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text(ScheduleSyncCause.IDENTITY_NOT_LINKED.defaultMessage(), color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
         item {

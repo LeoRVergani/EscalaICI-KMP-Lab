@@ -37,7 +37,8 @@ sealed interface DataLoadResult<out T> {
         override val metadata: SourceMetadata,
         override val warnings: List<String> = emptyList(),
         override val loadedAt: String,
-        override val canRetry: Boolean = true
+        override val canRetry: Boolean = true,
+        val cause: ScheduleSyncCause = ScheduleSyncCause.UNKNOWN
     ) : DataLoadResult<Nothing>
 
     data class OfflineCache<T>(
@@ -54,7 +55,8 @@ sealed interface DataLoadResult<out T> {
         override val metadata: SourceMetadata? = null,
         override val warnings: List<String> = emptyList(),
         override val loadedAt: String,
-        override val canRetry: Boolean = true
+        override val canRetry: Boolean = true,
+        val cause: ScheduleSyncCause = ScheduleSyncCause.UNKNOWN
     ) : DataLoadResult<T>
 
     data class FatalError(
@@ -62,7 +64,8 @@ sealed interface DataLoadResult<out T> {
         override val metadata: SourceMetadata? = null,
         override val warnings: List<String> = emptyList(),
         override val loadedAt: String,
-        override val canRetry: Boolean = false
+        override val canRetry: Boolean = false,
+        val cause: ScheduleSyncCause = ScheduleSyncCause.UNKNOWN
     ) : DataLoadResult<Nothing>
 }
 
