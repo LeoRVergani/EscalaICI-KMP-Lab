@@ -7,6 +7,78 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14a.1 — Endurecimento emergencial das regras do Firestore
+
+- **Status:** DONE — regras e testes prontos e passando no Emulator; **não
+  implantada em produção** (deploy é ação humana, documentada mas não
+  executada por esta sessão).
+- Motivação: as regras hoje publicadas em produção liberam leitura e
+  escrita totalmente anônimas até 2026-08-04 (ver FASE 14a). Antes de
+  esperar pela solução definitiva (MSAL + `user_links` + Firebase Auth no
+  KMP, FASE 14d), esta correção emergencial elimina o risco mais grave:
+  escrita anônima em qualquer coleção.
+- `firebase/firestore.rules` reescrita: nenhuma escrita anônima em nenhuma
+  coleção; leitura anônima mantida apenas nas 6 coleções que
+  `FirestoreRestGateway.kt` já lê hoje sem sessão (`teams`, `members`,
+  `schedule_periods`, `schedule_assignments`, `oncall_periods`,
+  `oncall_assignments`); `system_admins`, `user_links`, `source_files`,
+  `import_jobs` e demais coleções administrativas nunca públicas; coleções
+  desconhecidas negadas tanto para leitura quanto para escrita (corrige uma
+  lacuna real do rascunho anterior, que permitia leitura de qualquer nome
+  de coleção para qualquer usuário autenticado).
+- Achado técnico importante: testado no Emulator que uma regra que só
+  libere leitura anônima de documentos `active == true` faz o Firestore
+  **rejeitar a listagem inteira** (não apenas filtrar), porque o cliente
+  KMP hoje lista sem nenhum `where`. Como esta fase não altera Kotlin, a
+  troca (manter a leitura anônima no nível atual, incluindo documentos
+  inativos/rascunho, versus quebrar a leitura do KMP agora) foi apresentada
+  explicitamente ao usuário, que confirmou manter a leitura no nível atual.
+  Detalhe completo, matriz de acesso e riscos residuais em
+  `docs/spec/51-ESCALAICI-FIRESTORE-HARDENING-TRANSITORIO.md`.
+- 22 testes no Firestore Emulator (`cd firebase && npm run test:rules`),
+  cobrindo: nenhuma escrita anônima, leitura mínima preservada, coleções
+  sensíveis sempre bloqueadas, coleções desconhecidas negadas, isolamento
+  entre equipes, e que a autorização não depende de campos enviados pelo
+  próprio cliente.
+- Não implementa MSAL, `user_links` ou sincronização real — isso continua
+  nas FASES 14b-14e. Não altera Kotlin, Gradle, manifest, `applicationId`,
+  dependências ou o snapshot histórico da regra de produção.
+
+## FASE 14a — Auditoria e specs finais de autenticação, sincronização, pausa e migração
+
+- **Status:** DONE — documentação/auditoria apenas, nenhum código funcional
+  alterado.
+- Auditoria de leitura (três frentes paralelas, somente leitura, nenhuma
+  alteração) deste repositório, do `EscalaSOC` (referência) e do Dashboard
+  (referência), consolidada em relatório interno não versionado
+  (`.ai-runs/fase14a-diagnostico/DIAGNOSTICO-FASE14A.md`).
+- Achados centrais confirmados por leitura direta de código: (1) o texto
+  "Associação corporativa ainda não configurada" em `ProfileTab.kt` é
+  estático, sempre exibido, sem nenhuma condição real; (2) o login atual é
+  inteiramente mockado (`LoginGateScreen.kt`), com `"lvergani"` como membro
+  padrão de mock; (3) o botão/toggle de pausa é `enabled = false` fixo no
+  código-fonte, sem nenhuma lógica de habilitação; (4) a leitura Firestore
+  atual busca coleções inteiras e filtra no cliente, sem query real; (5) as
+  regras Firestore hoje publicadas em produção liberam leitura e escrita
+  totalmente livres até **4 de agosto de 2026**, sem que nenhum cliente
+  (Android legado ou KMP) tenha ainda uma sessão Firebase Auth real.
+- Cinco specs novas criadas em `docs/spec/`: `46-ESCALAICI-AUTENTICACAO-CORPORATIVA-MSAL-FIREBASE.md`,
+  `47-ESCALAICI-VINCULO-USUARIO-MEMBRO-E-TIME.md`,
+  `48-ESCALAICI-SINCRONIZACAO-ESCALA-CACHE-OFFLINE.md`,
+  `49-ESCALAICI-PAUSA-15-MINUTOS-E-NOTIFICACOES.md`,
+  `50-ESCALAICI-MIGRACAO-FINAL-E-PARIDADE.md` — decisões arquiteturais,
+  estados tipados, matriz de paridade e critérios de aceite para as fases
+  seguintes. Índice atualizado em `docs/SPECS-ESCALAICI.md`.
+- Revisão independente (subagente sem memória desta sessão) das 5 specs
+  quanto a contradições internas, completude e coerência com o código
+  auditado — ver seção correspondente no relatório final da fase.
+- Não implementa MSAL, vínculo de usuário, sincronização real, pausa
+  funcional ou qualquer alteração em Kotlin, Gradle, manifest, Firebase
+  Rules/Functions, Dashboard ou EscalaSOC. Sequência de implementação:
+  FASE 14b (MSAL/identidade) → 14c (`user_links`) → 14d (Firebase Auth +
+  Rules, antes de 2026-08-04) → 14e (sincronização) → 14f (pausa/notificações)
+  → 14g (paridade) → 14h (release candidato).
+
 ## KMP-MVP-1A — Contrato universal de fontes
 
 - **Status:** DONE
