@@ -1,7 +1,9 @@
 # SPEC 54 — Ícone oficial do Escala ICI no Android e Web/PWA
 
 **Fase:** 14b-1a  
-**Versão:** `versionCode 15` / `versionName 0.7.1`  
+**Versão inicial:** `versionCode 15` / `versionName 0.7.1`
+
+**Correção 14b-1b:** `versionCode 16` / `versionName 0.7.2`
 **Nome visível:** Escala ICI
 
 ## 1. Objetivo e fonte
@@ -136,3 +138,33 @@ Para trocar o ícone futuramente:
 
 Qualquer redesenho do calendário ou relógio, troca de paleta ou inclusão de
 texto exige autorização explícita.
+
+## 9. Correção de safe zone — FASE 14b-1b
+
+### Causa
+
+O foreground e o splash reutilizavam o mesmo símbolo com ocupação aproximada
+de 68% do canvas. Embora o bounding box estivesse matematicamente centralizado,
+essa escala ficava no limite superior da zona segura e sofria recorte adicional
+pelas máscaras do launcher e pelo splash do Android 12+.
+
+### Correção
+
+O gerador determinístico `scripts/generate-icon-assets.py` centraliza a arte
+pelo bounding box real do canal alpha e aplica escalas específicas, sem
+redesenhar ou alterar cores:
+
+- fonte processada: aproximadamente 60% do canvas 1024×1024;
+- adaptive foreground: aproximadamente 58% do canvas 432×432;
+- splash: aproximadamente 48% do canvas 432×432;
+- ícones legacy/round: aproximadamente 60% em mdpi a xxxhdpi.
+
+O background `#2F145C`, os adaptive XMLs e o nome visível “Escala ICI” foram
+preservados. Web/PWA não precisou ser alterado.
+
+### Arquivos e validação
+
+Foram regenerados a fonte processada, foreground adaptive, splash e launchers
+legacy/round. A validação inclui alpha real, bounding boxes centralizados,
+previews de 48/72/96/144/192 px, máscaras circular/rounded, testes unitários,
+builds debug/release e `aapt2 dump badging` do APK final.

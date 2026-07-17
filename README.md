@@ -2,8 +2,8 @@
 
 Aplicativo multiplataforma para consulta de escalas e plantões.
 
-Versão atual: **0.7.1** (`versionCode 15`). Esta versão aplica o novo ícone
-oficial do Escala ICI no Android, splash e Web/PWA. O APK de atualização
+Versão atual: **0.7.2** (`versionCode 16`). Esta versão corrige a centralização
+e a safe zone do ícone oficial no launcher e splash Android. O APK de atualização
 mantém o nome público `EscalaICI-latest.apk`; a publicação continua manual.
 
 O produto usa Compose Multiplatform e atualmente possui targets Android e Web/Wasm. Esta fase prepara exclusivamente a aplicação Web para validação no GitHub e hospedagem estática no Cloudflare Pages.
