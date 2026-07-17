@@ -13,7 +13,10 @@ funcionando na Web via OAuth. Removido deste checklist — ver
 
 ---
 
-## 1. Microsoft Entra ID — login Microsoft real no Android (FASE 11.3)
+## 1. Microsoft Entra ID — login Microsoft real no Android (FASE 11.3 / código pronto na FASE 14b-1)
+
+**Status: BLOQUEADO EXTERNAMENTE — código implementado, falta só o cadastro
+no Entra e o `auth-config.json` local com os valores reais.**
 
 **Por quê:** o Escala ICI tem um `applicationId`
 (`br.com.leorvergani.escalaici`) e uma chave de assinatura próprios — o
@@ -53,10 +56,17 @@ passo precisa ser refeito — recalcular com:
 keytool -exportcert -alias escalaici-kmp-lab -keystore escalaici-kmp-lab.jks -storepass <senha do keystore.properties> | openssl sha1 -binary | openssl base64
 ```
 
-**Depois de feito**: aguarde a FASE 11.3 ser implementada (login MSAL real
-no Android, ainda não codado neste projeto) e teste o botão "Login" na
-tela de entrada do app — deve abrir o fluxo Microsoft real em vez da
-mensagem "Login corporativo Microsoft ainda não disponível".
+**Depois de feito**: preencha `auth-config.json` (raiz do projeto, fora do
+Git — copie de `auth-config.example.json`) com os valores reais de
+`tenant_id`/`client_id`/`android.signature_hash_debug`/
+`android.signature_hash_release`/`android.redirect_uri_debug`/
+`android.redirect_uri_release`, recompile e teste o botão "Entrar com
+conta corporativa" na tela de entrada do app — deve abrir o fluxo
+Microsoft real em vez da mensagem "Autenticação corporativa ainda não
+configurada neste ambiente". O código do login MSAL Android já está
+implementado (FASE 14b-1, ver
+[`docs/spec/53-ESCALAICI-MSAL-ANDROID-E-IDENTIDADE-CORPORATIVA.md`](spec/53-ESCALAICI-MSAL-ANDROID-E-IDENTIDADE-CORPORATIVA.md));
+o que falta é só este cadastro externo + o preenchimento do arquivo local.
 
 **Web**: se/quando o MSAL Web for implementado, vai precisar de outra
 redirect URI própria (tipo **Single-page application**, não Android), no

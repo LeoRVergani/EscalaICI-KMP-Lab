@@ -64,7 +64,21 @@ cada checkpoint intermediário pode incluí-lo).
   `testDebugUnitTest` (21 testes de auth, 0 falhas) e `assembleDebug`
   BUILD SUCCESSFUL (ambos UP-TO-DATE, confirmando que o diff já havia
   sido validado antes da queda).
-- [ ] Tarefa 5 (documentação/checklist): pendente.
+- [x] Tarefa 5 (documentação/checklist): `docs/PENDENCIAS-EXTERNAS.md`
+  seção 1 e `docs/setup/00-CHECKLIST-CONFIGURACAO-AMANHA.md` seção 1/8.3
+  atualizados — status passa de "BLOQUEADO EXTERNAMENTE" (código
+  inexistente) para "PRONTO PARA CONFIGURAÇÃO" (código implementado na
+  FASE 14b-1, falta só o cadastro no Entra + `auth-config.json` local).
+  Removidas as referências ao botão "Login"/mensagem antiga, atualizadas
+  para "Entrar com conta corporativa"/"Autenticação corporativa ainda não
+  configurada neste ambiente.". `auth-config.example.json` e
+  `msal-config.example.json` (criados na Tarefa 3) já cobrem todos os
+  placeholders pedidos (`tenant_id`, `client_id`, package, signature hash
+  debug/release, redirect URIs, scopes) — nenhuma alteração necessária
+  neles. Confirmado: nenhum valor real (client_secret, senha, token)
+  entrado em nenhum arquivo versionado; `auth-config.json`/
+  `msal-config.json` reais não existem localmente e seguem no
+  `.gitignore`.
 - [ ] Tarefa 6 (validação final): pendente.
 
 ## Commits de checkpoint (hash, ordem cronológica)
@@ -73,3 +87,4 @@ cada checkpoint intermediário pode incluí-lo).
 - checkpoint 2 (Tarefa 2): 2c9b6eb
 - checkpoint 3 (Tarefa 3): b2247e5
 - checkpoint 4 (Tarefa 4): 89de5e9
+- checkpoint 5 (Tarefa 5): (a registrar após o commit)

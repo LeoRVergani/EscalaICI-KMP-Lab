@@ -53,17 +53,23 @@ de política de segurança que só o dono do projeto Firebase pode tomar.
 
 ## 1. Login corporativo Microsoft (MSAL) no Android do Escala ICI
 
-**Status: BLOQUEADO EXTERNAMENTE.** Passo a passo completo, com os valores
-exatos de `client_id`/`tenant_id`/`package name`/signature hash e a
-redirect URI pronta para colar:
+**Status: PRONTO PARA CONFIGURAÇÃO.** O código do login MSAL Android já
+está implementado (FASE 14b-1 — ver
+[`docs/spec/53-ESCALAICI-MSAL-ANDROID-E-IDENTIDADE-CORPORATIVA.md`](../spec/53-ESCALAICI-MSAL-ANDROID-E-IDENTIDADE-CORPORATIVA.md)).
+Sem a configuração externa abaixo, o app continua compilando e abrindo
+normalmente e mostra "Autenticação corporativa ainda não configurada neste
+ambiente." na tela de entrada (mais o modo demonstração, separado). Passo
+a passo completo, com os valores exatos de `client_id`/`tenant_id`/
+`package name`/signature hash e a redirect URI pronta para colar:
 [`docs/PENDENCIAS-EXTERNAS.md`](../PENDENCIAS-EXTERNAS.md), seção 1.
 
 Resumo: falta cadastrar a plataforma Android do **Escala ICI**
 (applicationId `br.com.leorvergani.escalaici`, assinatura própria) no App
-Registration do Entra ID que já existe para o app oficial — sem isso, o
-login Microsoft real no Android nunca vai funcionar neste app, mesmo depois
-de a FASE 11.3 (login MSAL real) ser implementada em código. O hash da
-redirect URI MSAL precisa ser recalculado porque o `applicationId` mudou.
+Registration do Entra ID que já existe para o app oficial, e depois copiar
+`auth-config.example.json` → `auth-config.json` (raiz do projeto, fora do
+Git) preenchido com os valores reais — sem isso, o login Microsoft real no
+Android não funciona neste app. O hash da redirect URI MSAL precisa ser
+recalculado porque o `applicationId` mudou.
 
 Ver também [`01-IDENTIDADE-OFICIAL-DO-APP.md`](01-IDENTIDADE-OFICIAL-DO-APP.md)
 nesta mesma pasta — a raiz do porquê disso ser necessário é a identidade
@@ -181,8 +187,9 @@ Os passos abaixo são só configuração externa/humana, em ordem.
 - **Público ou secreto**: público (cadastro visível só a quem tem acesso
   ao App Registration, mas os valores em si — package/hash — não são
   segredo).
-- **Como validar**: depois da FASE 14b (login MSAL implementado), abrir o
-  app e tentar o login real — se o hash/package baterem, o browser/broker
+- **Como validar**: o login MSAL Android já está implementado (FASE
+  14b-1) — depois de cadastrar aqui e preencher `auth-config.json`, abra o
+  app e tente o login real; se o hash/package baterem, o browser/broker
   retorna ao app; se não, a Microsoft mostra erro de "redirect URI not
   registered".
 - **Erro comum**: cadastrar só um hash (esquecer debug **ou** release) —
