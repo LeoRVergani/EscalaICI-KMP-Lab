@@ -101,10 +101,10 @@ aviso no topo) nem chamando a API do Dropbox por conta própria.
       `br.com.leorvergani.escalaici` (ver spec 52). Um APK `0.6.3` com o
       package antigo não é mais compatível com o fluxo de atualização do
       app novo — não faz sentido subir esse artefato antigo agora. O
-      próximo upload pendente é o da v`0.7.0` (abaixo), não o da v0.6.3.
-- [ ] Suba `EscalaICI-latest.apk` (versionCode `14`, `0.7.0` — FASE 14b-0:
-      novo `applicationId`/`namespace`/packages Kotlin, sem `.kmp.lab`,
-      mesmo nome visível "Escala ICI") para o Dropbox, no mesmo link já
+      próximo upload pendente é o da v`0.7.1` (abaixo), não o da v0.6.3.
+- [ ] Suba `EscalaICI-latest.apk` (versionCode `15`, `0.7.1` — FASE 14b-1a:
+      novo ícone oficial no Android, splash e Web/PWA; mantém o
+      `applicationId` oficial e o nome visível "Escala ICI") para o Dropbox, no mesmo link já
       cadastrado (sobrescrever o conteúdo, sem apagar o arquivo — senão o
       link muda).
 - [ ] Suba `version.json` (mesma pasta) para o Dropbox, mesmo link.
@@ -121,7 +121,7 @@ próximas versões (mesmo `applicationId`, mesma assinatura).
 
 **Depois de feito**: peça pra eu testar (ou teste você mesmo: abra o app
 Escala ICI no celular → Perfil → "Atualizar aplicativo" → deve aparecer
-"Nova versão disponível: v0.7.0..." e abrir o instalador do Android — pode
+"Nova versão disponível: v0.7.1..." e abrir o instalador do Android — pode
 pedir pra permitir "instalar apps de fontes desconhecidas" na primeira
 vez, é normal, só acontece 1x).
 

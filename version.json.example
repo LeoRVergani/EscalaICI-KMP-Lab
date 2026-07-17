@@ -6,8 +6,8 @@
   "apkUrl": "https://www.dropbox.com/scl/fi/EXEMPLO/EscalaSOC-latest.apk?dl=1",
   "changelog": "Changelog do EscalaSOC oficial — não é lido por este app.",
 
-  "kmpVersionCode": 14,
-  "kmpVersionName": "0.7.0",
+  "kmpVersionCode": 15,
+  "kmpVersionName": "0.7.1",
   "kmpApkUrl": "<URL_PLACEHOLDER_DROPBOX_DIRECT_DOWNLOAD_ESCALAICI_LATEST_APK>",
-  "kmpChangelog": "FASE 14b-0: identidade oficial (applicationId br.com.leorvergani.escalaici, sem .kmp.lab), assinatura e processo de release congelados."
+  "kmpChangelog": "Novo ícone oficial do Escala ICI aplicado no Android, splash e Web/PWA."
 }

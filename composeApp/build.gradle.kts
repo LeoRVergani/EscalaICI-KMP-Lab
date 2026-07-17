@@ -98,8 +98,8 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = "br.com.leorvergani.escalaici"
         minSdk = 28
         targetSdk = 36
-        versionCode = 14
-        versionName = "0.7.0"
+        versionCode = 15
+        versionName = "0.7.1"
 
         buildConfigField("boolean", "MSAL_CONFIGURED", msalConfigured.toString())
         buildConfigField("String", "MSAL_TENANT_ID", "\"$msalTenantId\"")

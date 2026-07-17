@@ -67,7 +67,7 @@ private class AndroidAppUpdateChecker(private val context: Context) : AppUpdateC
 
     private suspend fun downloadApk(apkUrl: String): File {
         val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
-        val apkFile = File(updatesDir, "EscalaICI-KMP-latest.apk")
+        val apkFile = File(updatesDir, "EscalaICI-latest.apk")
         if (apkFile.exists()) apkFile.delete()
         downloadToFile(apkUrl, apkFile)
         if (!apkFile.exists() || apkFile.length() <= 0L) {
