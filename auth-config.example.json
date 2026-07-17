@@ -1,0 +1,20 @@
+{
+  "_comentario": "Configuração de autenticação corporativa (MSAL/Entra ID) do Escala ICI, nível projeto — cobre Android e Web/SPA. Não implementado em código nesta fase (FASE 14b-0 só congela identidade). Preencher com valores reais do App Registration no Entra e salvar como auth-config.json (fora do Git, já listado em .gitignore) quando a FASE 14b (login MSAL) começar. Enquanto este arquivo real não existir, a UI deve mostrar 'Autenticação corporativa ainda não configurada.'",
+
+  "tenant_id": "<MSAL_TENANT_ID>",
+  "client_id": "<MSAL_CLIENT_ID>",
+
+  "android": {
+    "package_name": "<ANDROID_PACKAGE_NAME>",
+    "signature_hash_debug": "<ANDROID_SIGNATURE_HASH_DEBUG>",
+    "signature_hash_release": "<ANDROID_SIGNATURE_HASH_RELEASE>",
+    "redirect_uri_debug": "<ANDROID_REDIRECT_URI_DEBUG>",
+    "redirect_uri_release": "<ANDROID_REDIRECT_URI_RELEASE>"
+  },
+
+  "web": {
+    "redirect_uri_local": "http://localhost:8080/",
+    "redirect_uri_production": "<WEB_REDIRECT_URI_PRODUCTION_CLOUDFLARE>",
+    "scope": ["openid", "profile", "User.Read"]
+  }
+}

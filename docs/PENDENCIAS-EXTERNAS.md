@@ -15,14 +15,12 @@ funcionando na Web via OAuth. Removido deste checklist — ver
 
 ## 1. Microsoft Entra ID — login Microsoft real no Android (FASE 11.3)
 
-**Por quê:** o KMP lab tem um `applicationId`
-(`br.com.leorvergani.escalaici.kmp.lab`) e uma chave de assinatura
-(`escalaici-kmp-lab.jks`) diferentes do app oficial — o hash de assinatura
-que o MSAL usa dentro da redirect URI do Android muda com a chave, então a
-URI já cadastrada para o app oficial (`br.com.leorvergani.escalasoc`) não
-serve para o lab. Sem isso cadastrado, o login Microsoft real abre o
-navegador/broker mas a Microsoft recusa o retorno com erro de redirect URI
-não reconhecida.
+**Por quê:** o Escala ICI tem um `applicationId`
+(`br.com.leorvergani.escalaici`) e uma chave de assinatura próprios — o
+hash de assinatura que o MSAL usa dentro da redirect URI do Android muda
+com a chave e também precisa ser recalculado quando o `applicationId`
+muda. Sem isso cadastrado, o login Microsoft real abre o navegador/broker
+mas a Microsoft recusa o retorno com erro de redirect URI não reconhecida.
 
 **Onde:** [entra.microsoft.com](https://entra.microsoft.com) (Microsoft
 Entra admin center — nome atual do que já foi "Azure AD") → **Identity**
@@ -36,22 +34,21 @@ app oficial, `tenant_id` `d2d23346-e737-4cac-96ec-fb25e7889f01`) →
 
 - [ ] Em **Platform configurations**, clique em **Add a platform** →
       **Android** (se ainda não houver uma entrada Android separada para
-      o lab; pode reaproveitar a mesma seção Android existente, adicionando
-      mais uma redirect URI a ela).
-- [ ] **Package name**: `br.com.leorvergani.escalaici.kmp.lab`
-- [ ] **Signature hash**: `CNEvyhyc8lYTPFcNPDJzzJe1XyI=` (calculado a
-      partir de `escalaici-kmp-lab.jks`, o keystore de assinatura já
-      usado por toda build debug/release deste projeto desde a FASE 11.0c
-      — ver seção 10 do spec 33).
+      o Escala ICI; pode reaproveitar a mesma seção Android existente,
+      adicionando mais uma redirect URI a ela).
+- [ ] **Package name**: `br.com.leorvergani.escalaici`
+- [ ] **Signature hash**: `CNEvyhyc8lYTPFcNPDJzzJe1XyI=` (hash antigo
+      mantido aqui apenas como referência textual; precisa ser recalculado
+      porque o `applicationId` mudou para `br.com.leorvergani.escalaici`).
 - [ ] Isso gera a redirect URI completa, que também pode ser adicionada
       manualmente se o portal pedir o valor pronto:
       ```
-      msauth://br.com.leorvergani.escalaici.kmp.lab/CNEvyhyc8lYTPFcNPDJzzJe1XyI%3D
+      msauth://br.com.leorvergani.escalaici/CNEvyhyc8lYTPFcNPDJzzJe1XyI%3D
       ```
 - [ ] Clique em **Configure**/**Save**.
 
-**Se algum dia recriar o keystore do lab** (`escalaici-kmp-lab.jks`), esse
-hash muda e este passo precisa ser refeito — recalcular com:
+**Se o `applicationId` ou a assinatura mudarem**, esse hash muda e este
+passo precisa ser refeito — recalcular com:
 ```bash
 keytool -exportcert -alias escalaici-kmp-lab -keystore escalaici-kmp-lab.jks -storepass <senha do keystore.properties> | openssl sha1 -binary | openssl base64
 ```
@@ -88,33 +85,37 @@ aviso no topo) nem chamando a API do Dropbox por conta própria.
 `./gerar_update_escalaici_local.sh` nessa pasta (ver seção "FASE 11.2e" do
 `README.md` deste projeto para o procedimento completo).
 
-- [ ] Suba `EscalaICI-latest.apk` (versionCode `13`, `0.6.3` — junta FASE
-      12b/12b-2/12b-3: modelos universais de organização/escala ainda sem
-      tela própria, base de card de atividade configurável, e rebrand
-      visual "Escala ICI" sem "KMP" em nenhum texto) para o Dropbox, no
-      mesmo link já cadastrado (sobrescrever o conteúdo, sem apagar o
-      arquivo — senão o link muda).
+- [x] ~~Suba `EscalaICI-latest.apk` (versionCode `13`, `0.6.3` — junta FASE
+      12b/12b-2/12b-3...) para o Dropbox~~ **Superado pela FASE 14b-0**: o
+      `applicationId` mudou de `br.com.leorvergani.escalaici.kmp.lab` para
+      `br.com.leorvergani.escalaici` (ver spec 52). Um APK `0.6.3` com o
+      package antigo não é mais compatível com o fluxo de atualização do
+      app novo — não faz sentido subir esse artefato antigo agora. O
+      próximo upload pendente é o da v`0.7.0` (abaixo), não o da v0.6.3.
+- [ ] Suba `EscalaICI-latest.apk` (versionCode `14`, `0.7.0` — FASE 14b-0:
+      novo `applicationId`/`namespace`/packages Kotlin, sem `.kmp.lab`,
+      mesmo nome visível "Escala ICI") para o Dropbox, no mesmo link já
+      cadastrado (sobrescrever o conteúdo, sem apagar o arquivo — senão o
+      link muda).
 - [ ] Suba `version.json` (mesma pasta) para o Dropbox, mesmo link.
+
+**Atenção — mudança de `applicationId` nesta versão**: como o Android não
+permite trocar `applicationId` nem assinatura de um app já instalado sem
+desinstalar antes, qualquer celular com a v0.6.3 (package
+`...kmp.lab`) instalada **não vai receber a v0.7.0 via "Atualizar
+aplicativo"** — é preciso desinstalar a versão antiga e instalar a v0.7.0
+manualmente uma vez (`adb install -r EscalaICI-latest.apk` ou baixando o
+link do Dropbox direto no navegador do celular). A partir da v0.7.0, o
+fluxo de atualização automática volta a funcionar normalmente para as
+próximas versões (mesmo `applicationId`, mesma assinatura).
 
 **Depois de feito**: peça pra eu testar (ou teste você mesmo: abra o app
 Escala ICI no celular → Perfil → "Atualizar aplicativo" → deve aparecer
-"Nova versão disponível: v0.6.3..." e abrir o instalador do Android — pode
+"Nova versão disponível: v0.7.0..." e abrir o instalador do Android — pode
 pedir pra permitir "instalar apps de fontes desconhecidas" na primeira
 vez, é normal, só acontece 1x).
 
-**Se o celular já estiver na v0.6.2** (FASE 12a-2, que corrigiu o crash de
-download): o botão "Atualizar aplicativo" já deve funcionar normalmente
-para baixar a v0.6.3, sem precisar de instalação manual — o bug de OOM
-foi resolvido naquela versão. **Se o celular ainda estiver numa versão
-anterior à 0.6.2** (ex.: nunca chegou a instalar a 0.6.2 manualmente): o
-botão vai travar/fechar sozinho do mesmo jeito documentado na FASE 12a-2 —
-nesse caso, instale a v0.6.3 manualmente uma vez (`adb install -r
-EscalaICI-latest.apk` com o celular em depuração USB, ou baixando o link
-do Dropbox direto no navegador do celular e abrindo o instalador). A
-partir da v0.6.2 em diante, o botão "Atualizar aplicativo" volta a
-funcionar normalmente para as próximas versões.
-
-**Mantendo isso pra sempre**: a cada nova versão real do KMP lab, o
+**Mantendo isso pra sempre**: a cada nova versão real do Escala ICI, o
 procedimento é sempre: build release → `gerar_update_escalaici_local.sh`
 → editar `kmpVersionCode`/`kmpVersionName`/`kmpChangelog` no `version.json`
 local → você sobe os dois arquivos manualmente. Vou lembrar de avisar

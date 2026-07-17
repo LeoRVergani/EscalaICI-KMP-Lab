@@ -14,4 +14,9 @@ cloudflare-dist/
 web-dist/
 .env
 .env.*
+!.env.example
 web-config.local.json
+auth-config.json
+msal-config.json
+auth_config_single_account.json
+version.json

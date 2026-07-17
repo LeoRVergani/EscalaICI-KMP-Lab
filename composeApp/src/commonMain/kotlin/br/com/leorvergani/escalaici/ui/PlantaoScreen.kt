@@ -1,0 +1,463 @@
+package br.com.leorvergani.escalaici.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import br.com.leorvergani.escalaici.model.LabDate
+import br.com.leorvergani.escalaici.model.LabYearMonth
+import br.com.leorvergani.escalaici.model.OnCallAssignment
+import br.com.leorvergani.escalaici.model.OnCallStatus
+import br.com.leorvergani.escalaici.model.LabDateTime
+import br.com.leorvergani.escalaici.model.TemporalState
+import br.com.leorvergani.escalaici.model.onCallDates
+import br.com.leorvergani.escalaici.model.relevantOnCall
+import br.com.leorvergani.escalaici.model.PlantaoWorkbookParser
+import br.com.leorvergani.escalaici.model.WorkbookImportResult
+import br.com.leorvergani.escalaici.model.mockOnCallAssignments
+import br.com.leorvergani.escalaici.platform.rememberWorkbookImportLauncher
+import br.com.leorvergani.escalaici.repository.CacheRead
+import br.com.leorvergani.escalaici.repository.CachedOnCall
+import br.com.leorvergani.escalaici.repository.LocalDataCache
+import br.com.leorvergani.escalaici.model.YearResolutionSource
+import br.com.leorvergani.escalaici.ui.components.LabCard
+import br.com.leorvergani.escalaici.ui.theme.LabColors
+import br.com.leorvergani.escalaici.ui.theme.LabShapes
+import br.com.leorvergani.escalaici.source.OnCallSourceData
+
+/**
+ * Porte de `ui/plantao/PlantaoScreen.kt` (app real). Importação real do
+ * relatório de plantão via `PlantaoWorkbookParser` (FASE 11.2c) — mesmo
+ * seletor de arquivo (`rememberWorkbookImportLauncher`) já usado pela
+ * escala, parser próprio e separado (igual ao app real: plantão trabalha
+ * com intervalos de data/hora, não com dias 6x1). Enquanto nenhum
+ * relatório é importado, mostra `OnCallAssignment`/`OnCallStatus` mock
+ * (FASE 9c) de `MockSchedule.kt`.
+ */
+@Composable
+internal fun PlantaoScreen(
+    onBack: () -> Unit,
+    today: LabDate,
+    now: LabDateTime,
+    localDataCache: LocalDataCache,
+    firebaseData: OnCallSourceData? = null,
+    onRetryFirebase: () -> Unit = {}
+) {
+    var assignments by remember { mutableStateOf(mockOnCallAssignments()) }
+    var isImported by remember { mutableStateOf(false) }
+    var importedFileName by remember { mutableStateOf<String?>(null) }
+    var importMessage by remember { mutableStateOf<String?>(null) }
+    var importError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(localDataCache) {
+        when (val cached = localDataCache.loadOnCall()) {
+            is CacheRead.Valid -> {
+                assignments = cached.value.assignments
+                isImported = true
+                importedFileName = cached.value.originalFileName
+            }
+            is CacheRead.Invalid -> importError = cached.safeMessage
+            CacheRead.Missing -> Unit
+        }
+    }
+
+    LaunchedEffect(firebaseData) {
+        firebaseData?.let {
+            assignments = it.assignments
+            isImported = true
+            importedFileName = "Firebase"
+            importMessage = if (it.metadata.fromCache) "Dados disponíveis offline." else "Fonte: Firebase"
+            importError = null
+        }
+    }
+
+    val importLauncher = rememberWorkbookImportLauncher { result ->
+        when (result) {
+            is WorkbookImportResult.Success -> {
+                val parsed = PlantaoWorkbookParser.parse(result.workbook)
+                if (parsed.error != null) {
+                    importError = parsed.error
+                } else {
+                    assignments = parsed.assignments
+                    isImported = true
+                    importedFileName = parsed.fileName
+                    importMessage = parsed.warnings.firstOrNull()
+                    importError = null
+                    val firstDate = parsed.assignments.minOfOrNull { it.startDate }?.let(LabDate::parseIso)
+                    if (firstDate != null) {
+                        localDataCache.saveOnCall(CachedOnCall(
+                            originalFileName = parsed.fileName,
+                            importedAt = "${today.year.toString().padStart(4, '0')}-${today.month.toString().padStart(2, '0')}-${today.day.toString().padStart(2, '0')}",
+                            resolvedYear = firstDate.year,
+                            yearResolutionSource = YearResolutionSource.FULL_DATE_IN_WORKBOOK,
+                            teamId = "soc",
+                            assignments = parsed.assignments,
+                            warnings = parsed.warnings
+                        ))
+                    }
+                }
+            }
+            is WorkbookImportResult.Failure -> {
+                importError = result.message
+            }
+        }
+    }
+
+    val sortedAssignments = remember(assignments) { assignments.sortedBy { "${it.startDate}T${it.startTime}" } }
+    val relevant = remember(assignments, now) { relevantOnCall(assignments, now) }
+    val heroShifts = listOfNotNull(relevant?.assignment)
+    val heroTitle = when (relevant?.state) {
+        TemporalState.CURRENT -> "Plantão atual"
+        TemporalState.UPCOMING -> "Próximo plantão"
+        else -> "Nenhum próximo plantão neste período"
+    }
+    val referenceDate = relevant?.start?.date
+
+    val periodStart = sortedAssignments.firstOrNull()?.startDate?.let(LabDate::parseIso)
+    val periodEnd = sortedAssignments.maxOfOrNull { it.endDate }?.let(LabDate::parseIso)
+    val initialDate = if (periodStart != null && periodEnd != null && today in periodStart..periodEnd) today else periodStart ?: today
+    var selectedDate by remember(assignments) { mutableStateOf(initialDate) }
+    var visibleMonth by remember(assignments) { mutableStateOf(selectedDate.yearMonth()) }
+
+    val selectedDayAssignments = remember(selectedDate, assignments) {
+        assignments.filter { selectedDate in onCallDates(it) }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = LabColors.onSurface)
+                }
+                Spacer(Modifier.width(4.dp))
+                Text("Plantão", style = MaterialTheme.typography.titleLarge, color = LabColors.onSurface, fontWeight = FontWeight.Bold)
+            }
+        }
+        item {
+            PlantaoHeroCard(
+                title = heroTitle,
+                active = relevant?.state == TemporalState.CURRENT,
+                heroShifts = heroShifts,
+                assignmentCount = assignments.size,
+                isImported = isImported,
+                importedFileName = importedFileName,
+                importMessage = importMessage,
+                importError = importError,
+                onImportClick = {
+                    importError = null
+                    importLauncher.launch()
+                },
+                onRetryFirebase = onRetryFirebase
+            )
+        }
+        item {
+            PlantaoMonthHeader(
+                visibleMonth = visibleMonth,
+                onPrevious = { visibleMonth = visibleMonth.plusMonths(-1) },
+                onNext = { visibleMonth = visibleMonth.plusMonths(1) }
+            )
+        }
+        item {
+            PlantaoCalendarGrid(
+                yearMonth = visibleMonth,
+                assignments = assignments,
+                selectedDate = selectedDate,
+                referenceDate = referenceDate,
+                onDateClick = { selectedDate = it }
+            )
+        }
+        item {
+            PlantaoDayDetailCard(selectedDate = selectedDate, assignments = selectedDayAssignments)
+        }
+    }
+}
+
+@Composable
+private fun PlantaoHeroCard(
+    title: String,
+    active: Boolean,
+    heroShifts: List<OnCallAssignment>,
+    assignmentCount: Int,
+    isImported: Boolean,
+    importedFileName: String?,
+    importMessage: String?,
+    importError: String?,
+    onImportClick: () -> Unit,
+    onRetryFirebase: () -> Unit
+) {
+    val accent = when {
+        active -> LabColors.primary
+        heroShifts.isNotEmpty() -> LabColors.purple
+        else -> LabColors.onSurfaceMuted
+    }
+    LabCard(borderColor = accent.copy(alpha = 0.40f)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    if (active) "PLANTÃO" else "PLANTÃO",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = accent,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(title, style = MaterialTheme.typography.titleLarge, color = LabColors.onSurface, fontWeight = FontWeight.Black)
+                Text(
+                    if (assignmentCount > 0) "$assignmentCount plantão(ões) no período" else "Nenhum plantão carregado para o período atual.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LabColors.onSurfaceMuted
+                )
+            }
+            Box(
+                modifier = Modifier.size(46.dp).clip(LabShapes.cardSmall).background(accent.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Schedule, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
+            }
+        }
+        if (heroShifts.isEmpty()) {
+            Text("Nenhum plantão disponível no momento.", style = MaterialTheme.typography.bodySmall, color = LabColors.onSurfaceMuted)
+        } else {
+            heroShifts.forEach { shift ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(LabShapes.cardSmall)
+                        .background(LabColors.surfaceElevated.copy(alpha = 0.70f))
+                        .padding(12.dp)
+                ) {
+                    Text(shift.memberName, style = MaterialTheme.typography.titleSmall, color = LabColors.onSurface, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(formatOnCallInterval(shift), style = MaterialTheme.typography.bodySmall, color = accent, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        Text(
+            if (isImported) "Relatório importado: ${importedFileName ?: "arquivo"}" else "Nenhum relatório de plantão publicado ainda — mostrando dados ilustrativos.",
+            style = MaterialTheme.typography.labelSmall,
+            color = LabColors.onSurfaceMuted
+        )
+        importMessage?.let { message ->
+            Text(message, style = MaterialTheme.typography.labelSmall, color = Color(0xFFFDE68A))
+        }
+        importError?.let { error ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Error, contentDescription = null, tint = LabColors.red, modifier = Modifier.size(14.dp))
+                Text(error, style = MaterialTheme.typography.labelSmall, color = LabColors.red)
+            }
+        }
+        Button(
+            onClick = onImportClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White)
+        ) {
+            Text(if (isImported) "Importar outro relatório" else "Importar relatório")
+        }
+        if (importedFileName == "Firebase") {
+            Button(onClick = onRetryFirebase, modifier = Modifier.fillMaxWidth()) { Text("Tentar novamente") }
+        }
+    }
+}
+
+@Composable
+private fun PlantaoMonthHeader(visibleMonth: LabYearMonth, onPrevious: () -> Unit, onNext: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onPrevious) {
+            Icon(Icons.Default.ChevronLeft, contentDescription = "Mês anterior", tint = LabColors.onSurface)
+        }
+        Text(
+            text = visibleMonth.monthTitle(),
+            style = MaterialTheme.typography.titleMedium,
+            color = LabColors.onSurface,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = onNext) {
+            Icon(Icons.Default.ChevronRight, contentDescription = "Próximo mês", tint = LabColors.onSurface)
+        }
+    }
+}
+
+@Composable
+private fun PlantaoCalendarGrid(
+    yearMonth: LabYearMonth,
+    assignments: List<OnCallAssignment>,
+    selectedDate: LabDate,
+    referenceDate: LabDate?,
+    onDateClick: (LabDate) -> Unit
+) {
+    val weekHeaders = listOf("DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB")
+    val startOffset = yearMonth.firstDayOffsetSunday()
+    val daysInMonth = yearMonth.lengthOfMonth()
+    val rows = (startOffset + daysInMonth + 6) / 7
+
+    LabCard(borderColor = LabColors.outline.copy(alpha = 0.30f)) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            weekHeaders.forEach { header ->
+                Text(
+                    header,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = LabColors.onSurfaceMuted
+                )
+            }
+        }
+        repeat(rows) { row ->
+            Row(modifier = Modifier.fillMaxWidth()) {
+                repeat(7) { column ->
+                    val dayNumber = row * 7 + column - startOffset + 1
+                    val date = if (dayNumber in 1..daysInMonth) yearMonth.atDay(dayNumber) else null
+                    if (date == null) {
+                        Spacer(Modifier.weight(1f).aspectRatio(1f))
+                    } else {
+                        val startsPlantao = assignments.any { LabDate.parseIso(it.startDate) == date }
+                        val continuesPlantao = !startsPlantao && assignments.any { date in onCallDates(it) }
+                        PlantaoDayCell(
+                            date = date,
+                            selected = date == selectedDate,
+                            isReference = date == referenceDate,
+                            hasPlantao = startsPlantao || continuesPlantao,
+                            isContinuation = continuesPlantao,
+                            modifier = Modifier.weight(1f),
+                            onClick = { onDateClick(date) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlantaoDayCell(
+    date: LabDate,
+    selected: Boolean,
+    isReference: Boolean,
+    hasPlantao: Boolean,
+    isContinuation: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val background = when {
+        selected -> LabColors.primary
+        isReference -> LabColors.primary.copy(alpha = 0.16f)
+        else -> Color.Transparent
+    }
+    val textColor = if (selected) Color.White else LabColors.onSurface
+
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .padding(2.dp)
+            .clip(CircleShape)
+            .background(background)
+            .then(if (!selected && isReference) Modifier.border(1.dp, LabColors.primary.copy(alpha = 0.5f), CircleShape) else Modifier)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(date.day.toString(), style = MaterialTheme.typography.bodyMedium, color = textColor, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+            if (hasPlantao) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(if (selected) Color.White else if (isContinuation) LabColors.tertiary else LabColors.purple)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlantaoDayDetailCard(selectedDate: LabDate, assignments: List<OnCallAssignment>) {
+    LabCard(title = "Detalhe do dia", borderColor = LabColors.primary.copy(alpha = 0.25f)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Groups, contentDescription = null, tint = LabColors.primary, modifier = Modifier.size(20.dp))
+            Column {
+                Text(selectedDate.dayOfWeekShort(), style = MaterialTheme.typography.labelSmall, color = LabColors.onSurfaceMuted)
+                Text(selectedDate.fullDateLabel(), style = MaterialTheme.typography.titleMedium, color = LabColors.onSurface, fontWeight = FontWeight.Bold)
+            }
+        }
+        if (assignments.isEmpty()) {
+            Text("Nenhum plantão registrado neste dia.", style = MaterialTheme.typography.bodySmall, color = LabColors.onSurfaceMuted)
+        } else {
+            assignments.forEach { shift ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(LabShapes.cardSmall)
+                        .background(LabColors.surfaceElevated.copy(alpha = 0.60f))
+                        .padding(10.dp)
+                ) {
+                    Text(shift.memberName, style = MaterialTheme.typography.titleSmall, color = LabColors.onSurface, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(formatOnCallInterval(shift), style = MaterialTheme.typography.bodySmall, color = LabColors.onSurfaceMuted)
+                    Text("${shift.durationLabel()} de plantão", style = MaterialTheme.typography.labelSmall, color = LabColors.primary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+private fun formatOnCallInterval(shift: OnCallAssignment): String = if (shift.startDate == shift.endDate) {
+    "${formatIsoDate(shift.startDate)} · ${shift.startTime}–${shift.endTime}"
+} else {
+    "${formatIsoDate(shift.startDate)} ${shift.startTime} até ${formatIsoDate(shift.endDate)} ${shift.endTime}"
+}
+
+private fun formatIsoDate(value: String): String = LabDate.parseIso(value)?.let {
+    "${it.day.toString().padStart(2, '0')}/${it.month.toString().padStart(2, '0')}/${it.year}"
+} ?: value
+
+/** Duração do plantão a partir de "HH:mm" → "HH:mm", cruzando meia-noite se preciso. */
+private fun OnCallAssignment.durationLabel(): String {
+    val totalMinutes = durationMinutes() ?: return "-"
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (minutes == 0L) "${hours}h" else "${hours}h${minutes.toString().padStart(2, '0')}"
+}

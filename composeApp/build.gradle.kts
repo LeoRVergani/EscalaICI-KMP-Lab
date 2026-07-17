@@ -58,15 +58,15 @@ val keystoreProperties = Properties().apply {
 }
 
 extensions.configure<ApplicationExtension>("android") {
-    namespace = "br.com.leorvergani.escalaici.kmp.lab"
+    namespace = "br.com.leorvergani.escalaici"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "br.com.leorvergani.escalaici.kmp.lab"
+        applicationId = "br.com.leorvergani.escalaici"
         minSdk = 28
         targetSdk = 36
-        versionCode = 13
-        versionName = "0.6.3"
+        versionCode = 14
+        versionName = "0.7.0"
     }
 
     signingConfigs {

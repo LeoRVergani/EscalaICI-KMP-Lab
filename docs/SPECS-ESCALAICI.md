@@ -114,14 +114,15 @@ pelo app e não autorizam deploy, importação, Rules ou escrita em Firestore.
 
 ## Identidade técnica e release
 
-Nesta fase não muda:
+Identidade técnica atual:
 
-- `applicationId`: `br.com.leorvergani.escalaici.kmp.lab`;
+- `applicationId`: `br.com.leorvergani.escalaici`;
 - keystore de assinatura do KMP lab: `escalaici-kmp-lab.jks`;
 - nome técnico do repositório: `EscalaICI-KMP-Lab`;
 - processo de upload do Escala ICI: manual, conforme spec 41.
 
 O nome visível do produto é **Escala ICI**, mas a identidade técnica instalada
-continua histórica. Qualquer mudança de `applicationId`, keystore, pacote,
-ícone final, loja ou estratégia de migração exige decisão explícita do usuário
-em fase própria.
+passou a usar o identificador oficial `br.com.leorvergani.escalaici`.
+Qualquer nova mudança de `applicationId`, keystore, pacote, ícone final,
+loja ou estratégia de migração exige decisão explícita do usuário em fase
+própria.

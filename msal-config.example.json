@@ -1,0 +1,16 @@
+{
+  "client_id": "<MSAL_CLIENT_ID>",
+  "authorization_user_agent": "DEFAULT",
+  "redirect_uri": "msauth://<ANDROID_PACKAGE_NAME>/<ANDROID_SIGNATURE_HASH_RELEASE>",
+  "account_mode": "SINGLE",
+  "broker_redirect_uri_registered": true,
+  "authorities": [
+    {
+      "type": "AAD",
+      "audience": {
+        "type": "AzureADMyOrg",
+        "tenant_id": "<MSAL_TENANT_ID>"
+      }
+    }
+  ]
+}

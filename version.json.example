@@ -1,0 +1,13 @@
+{
+  "_comentario": "Exemplo do version.json real (fora do Git, hospedado no Dropbox). Este arquivo convive no MESMO version.json do app EscalaSOC oficial — os campos versionCode/versionName/apkUrl/changelog abaixo são do EscalaSOC (não remover, não sobrescrever). O Escala ICI (este projeto) lê apenas os campos kmp* prefixados, via org.json.JSONObject.optInt/optString, que ignoram chaves desconhecidas em silêncio.",
+
+  "versionCode": 31,
+  "versionName": "1.20.1",
+  "apkUrl": "https://www.dropbox.com/scl/fi/EXEMPLO/EscalaSOC-latest.apk?dl=1",
+  "changelog": "Changelog do EscalaSOC oficial — não é lido por este app.",
+
+  "kmpVersionCode": 14,
+  "kmpVersionName": "0.7.0",
+  "kmpApkUrl": "<URL_PLACEHOLDER_DROPBOX_DIRECT_DOWNLOAD_ESCALAICI_LATEST_APK>",
+  "kmpChangelog": "FASE 14b-0: identidade oficial (applicationId br.com.leorvergani.escalaici, sem .kmp.lab), assinatura e processo de release congelados."
+}

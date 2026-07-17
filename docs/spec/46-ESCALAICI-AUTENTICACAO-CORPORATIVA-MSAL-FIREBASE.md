@@ -75,19 +75,18 @@ servidor, e nunca no cliente.
   `tenant_id d2d23346-e737-4cac-96ec-fb25e7889f01`, tipo `AzureADMyOrg`,
   single-tenant) — não criar um app registration novo. Adicionar apenas uma
   segunda plataforma Android a esse registro (ver seção 8).
-- Redirect URI própria do KMP lab, derivada do `applicationId`
-  (`br.com.leorvergani.escalaici.kmp.lab`) + hash de assinatura do
-  `escalaici-kmp-lab.jks`:
-  `msauth://br.com.leorvergani.escalaici.kmp.lab/CNEvyhyc8lYTPFcNPDJzzJe1XyI%3D`
-  (valor já calculado em `docs/PENDENCIAS-EXTERNAS.md:37-51`). Nunca
-  reaproveitar a redirect URI do `EscalaSOC`
-  (`br.com.leorvergani.escalasoc`) — hash de assinatura diferente, a
-  Microsoft recusaria o retorno.
+- Redirect URI própria do Escala ICI, derivada do `applicationId`
+  (`br.com.leorvergani.escalaici`) + hash de assinatura:
+  `msauth://br.com.leorvergani.escalaici/CNEvyhyc8lYTPFcNPDJzzJe1XyI%3D`
+  (o package já foi atualizado; o hash mantido no texto precisa ser
+  recalculado porque o `applicationId` mudou). Nunca reaproveitar a
+  redirect URI do `EscalaSOC` (`br.com.leorvergani.escalasoc`) — hash de
+  assinatura diferente, a Microsoft recusaria o retorno.
 - `AndroidManifest.xml` precisa de uma `BrowserTabActivity` com
-  `android:scheme="msauth"` `android:host="br.com.leorvergani.escalaici.kmp.lab"`
+  `android:scheme="msauth"` `android:host="br.com.leorvergani.escalaici"`
   `android:path="/CNEvyhyc8lYTPFcNPDJzzJe1XyI="`, mesmo padrão do EscalaSOC
   (`AndroidManifest.xml:65-77`).
-- Arquivo `auth_config_single_account.json` próprio do KMP lab (não reaproveitar
+- Arquivo `auth_config_single_account.json` próprio do Escala ICI (não reaproveitar
   o do EscalaSOC), com o `client_id`/`tenant_id`/redirect_uri acima.
 
 ## 4. Arquitetura Web/PWA
@@ -170,8 +169,9 @@ mesmos do fluxo padrão do EscalaSOC.
 
 - Entra admin center → App registration `e5b5154d-e65e-4605-b221-73d7ee570580`
   → Authentication → **Add a platform → Android**: package name
-  `br.com.leorvergani.escalaici.kmp.lab`, signature hash
-  `CNEvyhyc8lYTPFcNPDJzzJe1XyI=` (já calculado, `docs/PENDENCIAS-EXTERNAS.md:41-49`).
+  `br.com.leorvergani.escalaici`, signature hash
+  `CNEvyhyc8lYTPFcNPDJzzJe1XyI=` (hash textual antigo; precisa ser
+  recalculado porque o `applicationId` mudou).
 - Entra admin center → mesmo app registration → Authentication → **Add a
   platform → Single-page application**: redirect URI do domínio Cloudflare
   Pages do Escala ICI Web (a definir na FASE 14b, depende de qual domínio
