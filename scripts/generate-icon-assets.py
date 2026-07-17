@@ -14,7 +14,12 @@ ANDROID_RES = ROOT / "composeApp/src/androidMain/res"
 BACKGROUND = (47, 20, 92, 255)  # #2F145C, mantido da identidade oficial.
 
 
-def centered_symbol(source: Image.Image, canvas_size: int, coverage: float) -> Image.Image:
+def centered_symbol(
+    source: Image.Image,
+    canvas_size: int,
+    coverage: float,
+    offset: tuple[int, int] = (0, 0),
+) -> Image.Image:
     source = source.convert("RGBA")
     bounds = source.getchannel("A").getbbox()
     if bounds is None:
@@ -27,7 +32,10 @@ def centered_symbol(source: Image.Image, canvas_size: int, coverage: float) -> I
     symbol = symbol.resize(size, Image.Resampling.LANCZOS)
 
     canvas = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
-    position = ((canvas_size - size[0]) // 2, (canvas_size - size[1]) // 2)
+    position = (
+        (canvas_size - size[0]) // 2 + offset[0],
+        (canvas_size - size[1]) // 2 + offset[1],
+    )
     canvas.alpha_composite(symbol, position)
     return canvas
 
@@ -56,7 +64,10 @@ def main() -> None:
 
     # O launcher amplia a camada foreground do adaptive icon (~1,5x) antes
     # de aplicar a máscara. 40% no bitmap resulta em ~60% visual na máscara.
-    adaptive = centered_symbol(master, 432, 0.40)
+    # A massa visual (principalmente o relógio sobreposto) puxa a percepção
+    # para a esquerda. O deslocamento óptico de 6 px compensa essa assimetria
+    # sem alterar o recorte geométrico, a escala ou a arte oficial.
+    adaptive = centered_symbol(master, 432, 0.40, offset=(6, 0))
     # Android 12+ também mascara/amplia o drawable do splash; usa margem maior.
     splash = centered_symbol(master, 432, 0.36)
     save(adaptive, ANDROID_RES / "drawable-xxxhdpi/ic_launcher_foreground.png")

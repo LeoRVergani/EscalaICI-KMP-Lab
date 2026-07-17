@@ -3,7 +3,7 @@
 **Fase:** 14b-1a  
 **Versão inicial:** `versionCode 15` / `versionName 0.7.1`
 
-**Correção 14b-1b:** `versionCode 17` / `versionName 0.7.3`
+**Correção 14b-1b:** `versionCode 18` / `versionName 0.7.4`
 **Nome visível:** Escala ICI
 
 ## 1. Objetivo e fonte
@@ -30,6 +30,11 @@ O foreground gerado possui transparência real, incluindo pixels totalmente
 transparentes. O símbolo fica centralizado, com margem para que calendário,
 relógio e sombras permaneçam dentro da zona segura em máscaras circulares,
 quadradas arredondadas e squircle. O relógio não encosta na borda.
+
+No adaptive foreground, uma compensação óptica determinística de 6 px para a
+direita corrige a assimetria perceptiva medida no conjunto calendário/relógio.
+O splash e os ícones legados permanecem geometricamente centralizados; não
+houve mudança de escala, cor, desenho ou recorte da fonte oficial.
 
 O fundo do launcher nunca é incorporado ao foreground. A composição usa uma
 camada roxa/violeta separada, coerente com a paleta do aplicativo. Essa
