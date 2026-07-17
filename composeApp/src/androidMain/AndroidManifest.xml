@@ -25,5 +25,22 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+        <!-- Redirect URI da MSAL (login corporativo Microsoft). O host e o path
+             mudam por variante (applicationId fixo; hash de assinatura difere
+             entre debug/release) via manifestPlaceholders em build.gradle.kts.
+             Ver docs/spec/53 secao 5. -->
+        <activity
+            android:name="com.microsoft.identity.client.BrowserTabActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="msauth"
+                    android:host="${applicationId}"
+                    android:path="${msalSignatureHashPath}" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

@@ -6,5 +6,6 @@ data class PlatformCapabilities(
     val supportsLocalFilePicker: Boolean = true,
     val supportsCloudFilePicker: Boolean = false,
     val supportsPushNotifications: Boolean = false,
-    val supportsBackgroundScheduledNotifications: Boolean = false
+    val supportsBackgroundScheduledNotifications: Boolean = false,
+    val supportsCorporateAuth: Boolean = false
 )

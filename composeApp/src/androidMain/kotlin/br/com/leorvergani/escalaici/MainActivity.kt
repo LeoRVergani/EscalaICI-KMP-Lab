@@ -19,7 +19,8 @@ class MainActivity : ComponentActivity() {
                 firebaseGateway = createFirebaseScheduleGateway(),
                 firebaseCache = FirebaseSourceCache(createFirebaseRawCacheStore()),
                 platformCapabilities = PlatformCapabilities(
-                    supportsAppUpdate = true
+                    supportsAppUpdate = true,
+                    supportsCorporateAuth = true
                 )
             )
         }

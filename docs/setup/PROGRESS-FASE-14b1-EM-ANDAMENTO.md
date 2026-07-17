@@ -26,7 +26,28 @@ cada checkpoint intermediário pode incluí-lo).
   (21 testes, cobrindo os 17 cenários pedidos) escritos por Claude —
   `:composeApp:testDebugUnitTest` completo passou (todas as classes,
   não só as novas).
-- [ ] Tarefa 3 (adapter MSAL Android): pendente.
+- [x] Tarefa 3 (adapter MSAL Android): Codex implementou `MsalCorporateAuthRepository`
+  (androidMain) + `CorporateAuthHostProvider` expect/actual (commonMain/androidMain/
+  wasmJsMain) + `AndroidCorporateAuthHost`. Dependência `msal:4.9.0` adicionada via
+  `androidMainImplementation` com GAV em string (exclude de `opentelemetry-bom` e
+  `display-mask`, conflitos conhecidos do MSAL). Config lida de `auth-config.json`
+  (gitignorado) em tempo de build via `buildConfigField`; sem config real, todos os
+  campos ficam vazios/`NOT_CONFIGURED` e o app continua compilando e abrindo
+  normalmente (confirmado no manifest mesclado: path do redirect cai em
+  `/NOT_CONFIGURED`, nunca crasha). `BrowserTabActivity` registrada no
+  AndroidManifest com `manifestPlaceholders` por variante (debug/release).
+  `PlatformCapabilities.supportsCorporateAuth` adicionado; `MainActivity` seta
+  `true` no Android. Repositório MSAL ainda não é instanciado em lugar nenhum
+  (isso é Tarefa 4 — wiring de UI). Claude revisou: nenhum token/log sensível
+  (grep vazio), nenhuma persistência manual de token (cache delegado à lib MSAL
+  via `SingleAccountPublicClientApplication`), nenhum client secret, continuations
+  protegidas contra double-resume (`resumeIfActive`), sem override de
+  `onActivityResult` necessário (MSAL moderno usa `BrowserTabActivity` do
+  manifest). Observação não bloqueante: `MsalServiceException` mapeia hoje para
+  `TenantNotAllowed` de forma ampla (não distingue todos os códigos AADSTS) —
+  só será possível refinar com testes contra o Entra real, fora do escopo desta
+  fase. Validado: `compileDebugKotlinAndroid`, `testDebugUnitTest` (mantém as
+  21 novas + suíte completa) e `assembleDebug` — todos BUILD SUCCESSFUL.
 - [ ] Tarefa 4 (interface): pendente.
 - [ ] Tarefa 5 (documentação/checklist): pendente.
 - [ ] Tarefa 6 (validação final): pendente.
@@ -34,4 +55,5 @@ cada checkpoint intermediário pode incluí-lo).
 ## Commits de checkpoint (hash, ordem cronológica)
 
 - checkpoint 1 (Tarefa 1): c9cc3de
-- checkpoint 2 (Tarefa 2): (preencher após este commit)
+- checkpoint 2 (Tarefa 2): 2c9b6eb
+- checkpoint 3 (Tarefa 3): (preencher após este commit)
