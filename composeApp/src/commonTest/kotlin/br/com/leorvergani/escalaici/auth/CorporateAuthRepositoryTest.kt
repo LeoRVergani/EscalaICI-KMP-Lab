@@ -12,7 +12,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 private val sampleIdentity = CorporateIdentity(
-    tenantId = "d2d23346-e737-4cac-96ec-fb25e7889f01",
+    tenantId = "11111111-2222-3333-4444-555555555555",
     objectId = "00000000-0000-0000-0000-000000000001",
     username = "ana.paula@ici.tec.br",
     displayName = "Ana Paula",

@@ -2,6 +2,7 @@
 build/
 **/build/
 .idea/
+.vscode/
 local.properties
 /keystore.properties
 *.jks

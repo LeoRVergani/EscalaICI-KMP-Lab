@@ -213,8 +213,9 @@ membro demo continua igual, só ganha o rótulo visual "(demonstração)".
 
 `ProfileTab`: substitui a linha fixa
 `ScheduleSyncCause.IDENTITY_NOT_LINKED.defaultMessage()` por um bloco
-condicional lendo o mesmo `CorporateAuthRepository`: mostra nome/login/
-tenant/status quando `Authenticated`, e o aviso "vínculo com membro/time
+condicional lendo o mesmo `CorporateAuthRepository`: mostra nome/login,
+confirma apenas que a organização corporativa foi identificada (sem expor o
+`tenantId` completo) e mostra o status quando `Authenticated`, além do aviso "vínculo com membro/time
 ainda será configurado em uma próxima fase" sempre que autenticado (não é
 mais texto incondicional — só aparece quando há identidade real para
 qualificar). Quando não autenticado corporativamente, mostra o estado
@@ -250,3 +251,42 @@ não é tratado como `CorporateAuthState.Authenticated`, Web permanece
 Firebase Custom Token, `user_links`, resolução de `memberId`/`teamId` a
 partir da identidade corporativa, MSAL Web/PWA, Cloud Functions, deploy —
 todos ficam para as fases seguintes (ver spec 46 seção de fases).
+
+## 11. Encerramento e validação final (2026-07-17)
+
+A validação final foi executada sequencialmente em Windows com JDK 21 e o
+Gradle Wrapper, usando os equivalentes locais dos comandos prescritos. O WSL
+estava instalado sem distribuição Linux, portanto o caminho literal
+`/usr/lib/jvm/java-21-openjdk` não era utilizável. O SDK Android e o keystore
+locais permaneceram fora do Git.
+
+Resultados:
+
+- `:composeApp:testDebugUnitTest`: `BUILD SUCCESSFUL` (executado novamente
+  depois da última correção de segurança);
+- `:composeApp:assembleDebug`: `BUILD SUCCESSFUL`;
+- `:composeApp:assembleRelease`: `BUILD SUCCESSFUL`;
+- `:composeApp:wasmJsBrowserDistribution`: `BUILD SUCCESSFUL`;
+- `:composeApp:wasmJsTest`: `BUILD SUCCESSFUL` com Google Chrome local;
+- revisão da interface: no estado `Authenticated`, o botão normal de entrada
+  foi substituído por identidade autenticada, nome/login, aviso do vínculo
+  futuro, logout corporativo e opção demo separada; o Perfil não exibe mais o
+  `tenantId` completo;
+- revisão independente desde `5416a3f`: nenhum achado crítico; um achado
+  importante (fixture de teste reutilizando um tenant real) foi corrigido por
+  UUID inequivocamente fictício; nenhum achado importante ficou aberto;
+- segurança: nenhum token persistido manualmente ou emitido em log, nenhum
+  client secret/credencial/registry privado, nenhum arquivo de configuração
+  real, keystore ou APK versionado e nenhum arquivo versionado indevido acima
+  de 1 MiB;
+- Web continua sem MSAL e informa que o login corporativo Web ainda não está
+  configurado; modo demonstração permanece distinto da identidade real;
+- nenhum emulador foi iniciado e nenhum teste visual foi declarado. O teste em
+  dispositivo/emulador permanece como pendência humana;
+- nenhum merge, deploy, upload, rebase, force push ou alteração no EscalaSOC e
+  Dashboard foi realizado.
+
+Configuração externa pendente: concluir o App Registration no Entra, cadastrar
+redirect URIs/hashes debug e release e preencher `auth-config.json` local
+gitignorado. O vínculo `tenantId + objectId` para `memberId`/`teamId`, Firebase
+Custom Token e MSAL Web continuam nas fases futuras previstas.
