@@ -72,4 +72,4 @@ cada checkpoint intermediário pode incluí-lo).
 - checkpoint 1 (Tarefa 1): c9cc3de
 - checkpoint 2 (Tarefa 2): 2c9b6eb
 - checkpoint 3 (Tarefa 3): b2247e5
-- checkpoint 4 (Tarefa 4): (a registrar após o commit)
+- checkpoint 4 (Tarefa 4): 89de5e9
