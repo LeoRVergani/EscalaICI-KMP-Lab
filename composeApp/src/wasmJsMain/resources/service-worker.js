@@ -1,9 +1,9 @@
-const CACHE_NAME = "escala-ici-web-v5";
+const CACHE_NAME = "escala-ici-web-v6";
 const APP_SHELL = [
   "./",
   "index.html",
   "manifest.json",
-  "icons/icon.svg",
+  "icons/favicon-32.png",
   "icons/icon-192.png",
   "icons/icon-512.png",
   "icons/icon-maskable-192.png",
