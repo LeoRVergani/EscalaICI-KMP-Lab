@@ -3,7 +3,7 @@
 **Fase:** 14b-1a  
 **Versão inicial:** `versionCode 15` / `versionName 0.7.1`
 
-**Correção 14b-1b:** `versionCode 16` / `versionName 0.7.2`
+**Correção 14b-1b:** `versionCode 17` / `versionName 0.7.3`
 **Nome visível:** Escala ICI
 
 ## 1. Objetivo e fonte
@@ -155,12 +155,18 @@ pelo bounding box real do canal alpha e aplica escalas específicas, sem
 redesenhar ou alterar cores:
 
 - fonte processada: aproximadamente 60% do canvas 1024×1024;
-- adaptive foreground: aproximadamente 58% do canvas 432×432;
-- splash: aproximadamente 48% do canvas 432×432;
+- adaptive foreground: aproximadamente 40% do canvas 432×432, que resulta em
+  cerca de 60% visual após a ampliação interna do launcher;
+- splash: aproximadamente 36% do canvas 432×432 para tolerar a máscara e a
+  ampliação do Android 12+;
 - ícones legacy/round: aproximadamente 60% em mdpi a xxxhdpi.
 
 O background `#2F145C`, os adaptive XMLs e o nome visível “Escala ICI” foram
 preservados. Web/PWA não precisou ser alterado.
+
+O primeiro ajuste de 58%/48% ainda apareceu cortado em aparelho real porque a
+prévia local aplicava somente a máscara, sem simular o zoom interno do launcher.
+O print do dispositivo foi adotado como evidência e motivou a compensação acima.
 
 ### Arquivos e validação
 

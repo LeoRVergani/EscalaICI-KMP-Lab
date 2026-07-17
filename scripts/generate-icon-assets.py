@@ -54,8 +54,11 @@ def main() -> None:
     master = centered_symbol(source, 1024, 0.60)
     save(master, SOURCE)
 
-    adaptive = centered_symbol(master, 432, 0.58)
-    splash = centered_symbol(master, 432, 0.48)
+    # O launcher amplia a camada foreground do adaptive icon (~1,5x) antes
+    # de aplicar a máscara. 40% no bitmap resulta em ~60% visual na máscara.
+    adaptive = centered_symbol(master, 432, 0.40)
+    # Android 12+ também mascara/amplia o drawable do splash; usa margem maior.
+    splash = centered_symbol(master, 432, 0.36)
     save(adaptive, ANDROID_RES / "drawable-xxxhdpi/ic_launcher_foreground.png")
     save(splash, ANDROID_RES / "drawable-xxxhdpi/ic_splash_icon.png")
 

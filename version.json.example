@@ -6,8 +6,8 @@
   "apkUrl": "https://www.dropbox.com/scl/fi/EXEMPLO/EscalaSOC-latest.apk?dl=1",
   "changelog": "Changelog do EscalaSOC oficial — não é lido por este app.",
 
-  "kmpVersionCode": 16,
-  "kmpVersionName": "0.7.2",
+  "kmpVersionCode": 17,
+  "kmpVersionName": "0.7.3",
   "kmpApkUrl": "<URL_PLACEHOLDER_DROPBOX_DIRECT_DOWNLOAD_ESCALAICI_LATEST_APK>",
-  "kmpChangelog": "Corrige a centralização e a safe zone do ícone e do splash do Escala ICI."
+  "kmpChangelog": "Ajusta o ícone e o splash à ampliação real aplicada pelo launcher Android."
 }
