@@ -45,6 +45,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import br.com.leorvergani.escalaici.auth.CorporateAuthConfigurationState
+import br.com.leorvergani.escalaici.auth.CorporateAuthRepository
 import br.com.leorvergani.escalaici.model.ImportedWorkbook
 import br.com.leorvergani.escalaici.model.LabWorkbookParser
 import br.com.leorvergani.escalaici.model.Member
@@ -112,7 +114,8 @@ fun EscalaIciLabApp(
     platformCapabilities: PlatformCapabilities = PlatformCapabilities(),
     notificationService: WebNotificationService = UnsupportedWebNotificationService,
     firebaseGateway: FirebaseScheduleGateway? = null,
-    firebaseCache: FirebaseSourceCache? = null
+    firebaseCache: FirebaseSourceCache? = null,
+    corporateAuthRepository: CorporateAuthRepository? = null
 ) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
@@ -122,6 +125,9 @@ fun EscalaIciLabApp(
         var demoMembers by remember { mutableStateOf<List<Member>>(emptyList()) }
 
         LaunchedEffect(Unit) {
+            corporateAuthRepository
+                ?.takeIf { it.configurationState == CorporateAuthConfigurationState.CONFIGURED }
+                ?.restoreSession()
             sessionMemberId = authRepository.currentMemberId()
             demoMembers = runCatching { firebaseGateway?.loadMembers("soc")?.map { it.toMember() } }.getOrNull()
                 ?.takeIf { it.isNotEmpty() }
@@ -227,6 +233,8 @@ fun EscalaIciLabApp(
         if (sessionMemberId == null) {
             LoginGateScreen(
                 members = demoMembers,
+                supportsCorporateAuth = platformCapabilities.supportsCorporateAuth,
+                corporateAuthRepository = corporateAuthRepository,
                 onSelectMember = { member ->
                     scope.launch {
                         authRepository.signIn(member.id)
@@ -338,6 +346,8 @@ fun EscalaIciLabApp(
                                         now = now,
                                         supportsAppUpdate = platformCapabilities.supportsAppUpdate,
                                         supportsWebNotifications = platformCapabilities.supportsWebNotifications,
+                                        supportsCorporateAuth = platformCapabilities.supportsCorporateAuth,
+                                        corporateAuthRepository = corporateAuthRepository,
                                         notificationService = notificationService,
                                         onLogout = {
                                             scope.launch { authRepository.signOut() }

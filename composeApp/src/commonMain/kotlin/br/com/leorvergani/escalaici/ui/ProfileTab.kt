@@ -29,6 +29,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +42,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import br.com.leorvergani.escalaici.auth.CorporateAuthConfigurationState
+import br.com.leorvergani.escalaici.auth.CorporateAuthRepository
+import br.com.leorvergani.escalaici.auth.CorporateAuthState
+import br.com.leorvergani.escalaici.auth.defaultMessage
 import br.com.leorvergani.escalaici.model.AppUpdateResult
 import br.com.leorvergani.escalaici.model.AppVersion
 import br.com.leorvergani.escalaici.model.GenerateLabAlerts
@@ -52,8 +57,6 @@ import br.com.leorvergani.escalaici.model.relevantShift
 import br.com.leorvergani.escalaici.platform.WebNotificationService
 import br.com.leorvergani.escalaici.platform.NotificationPermissionState
 import br.com.leorvergani.escalaici.platform.rememberAppUpdateChecker
-import br.com.leorvergani.escalaici.source.ScheduleSyncCause
-import br.com.leorvergani.escalaici.source.defaultMessage
 import br.com.leorvergani.escalaici.ui.components.LabCard
 import br.com.leorvergani.escalaici.ui.components.LabCollaboratorAvatar
 import br.com.leorvergani.escalaici.ui.components.LabPremiumHeader
@@ -69,11 +72,14 @@ internal fun ProfileTab(
     now: LabDateTime,
     supportsAppUpdate: Boolean,
     supportsWebNotifications: Boolean,
+    supportsCorporateAuth: Boolean,
+    corporateAuthRepository: CorporateAuthRepository?,
     notificationService: WebNotificationService,
     onLogout: () -> Unit,
     onOpenPlantao: () -> Unit,
     onOpenSwap: () -> Unit
 ) {
+    val corporateAuthState = corporateAuthRepository?.state?.collectAsState()?.value
     val criticalAlerts = remember(summary) { GenerateLabAlerts(summary).count { it.severity == LabAlert.Severity.CRITICO } }
     var notificationPermission by remember(notificationService) { mutableStateOf(notificationService.capability().permissionState) }
     var requestingNotification by remember { mutableStateOf(false) }
@@ -116,7 +122,23 @@ internal fun ProfileTab(
         item {
             LabCard(title = "Identidade da escala", icon = Icons.Default.Security, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
                 Text("Colaborador identificado: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text(ScheduleSyncCause.IDENTITY_NOT_LINKED.defaultMessage(), color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                when {
+                    !supportsCorporateAuth -> Text("Login corporativo Web ainda não configurado.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    corporateAuthRepository == null || corporateAuthRepository.configurationState == CorporateAuthConfigurationState.NOT_CONFIGURED ->
+                        Text("Autenticação corporativa ainda não configurada neste ambiente.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    corporateAuthState == CorporateAuthState.SignedOut -> Text("Nenhuma conta corporativa conectada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    corporateAuthState == CorporateAuthState.Authenticating -> Text("Autenticando conta corporativa...", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    corporateAuthState == CorporateAuthState.Demo -> Text("Modo demonstração corporativo ativo (nenhuma conta Microsoft real conectada).", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    corporateAuthState is CorporateAuthState.Failed -> Text(corporateAuthState.error.defaultMessage(), color = LabColors.red, style = MaterialTheme.typography.bodySmall)
+                    corporateAuthState is CorporateAuthState.Authenticated -> {
+                        Text("Nome: ${corporateAuthState.identity.displayName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("Login: ${corporateAuthState.identity.username}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("Tenant identificado: ${corporateAuthState.identity.tenantId}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("Conta corporativa autenticada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("O vínculo com o membro/time da escala ainda será configurado em uma próxima fase.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    }
+                    else -> Text("Nenhuma conta corporativa conectada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
         item {

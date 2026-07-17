@@ -48,7 +48,22 @@ cada checkpoint intermediário pode incluí-lo).
   só será possível refinar com testes contra o Entra real, fora do escopo desta
   fase. Validado: `compileDebugKotlinAndroid`, `testDebugUnitTest` (mantém as
   21 novas + suíte completa) e `assembleDebug` — todos BUILD SUCCESSFUL.
-- [ ] Tarefa 4 (interface): pendente.
+- [x] Tarefa 4 (interface): sessão anterior do VS Code caiu com o diff pronto
+  mas sem commit; retomado e validado nesta sessão. `LoginGateScreen`
+  cobre os 5 estados (`!supportsCorporateAuth` → "Login corporativo Web
+  ainda não configurado."; `NOT_CONFIGURED` → mensagem real + "Ver
+  instruções de configuração" (AlertDialog) + "Entrar no modo
+  demonstração"; `Authenticating` com progresso; `Failed` com mensagem
+  tipada + "Tentar novamente"; `Authenticated`/`Demo` com texto de
+  status), texto estático enganoso removido. `ProfileTab` mostra nome,
+  login, tenantId e aviso de que o vínculo membro/time é fase futura
+  quando `Authenticated`. `App.kt` injeta `corporateAuthRepository` e
+  chama `restoreSession()` só quando `CONFIGURED`. `MainActivity` passa
+  `MsalCorporateAuthRepository(this)`; `Main.kt` (wasmJs) não foi tocado
+  — `supportsCorporateAuth` default `false` já cai no ramo Web. Validado:
+  `testDebugUnitTest` (21 testes de auth, 0 falhas) e `assembleDebug`
+  BUILD SUCCESSFUL (ambos UP-TO-DATE, confirmando que o diff já havia
+  sido validado antes da queda).
 - [ ] Tarefa 5 (documentação/checklist): pendente.
 - [ ] Tarefa 6 (validação final): pendente.
 
@@ -57,3 +72,4 @@ cada checkpoint intermediário pode incluí-lo).
 - checkpoint 1 (Tarefa 1): c9cc3de
 - checkpoint 2 (Tarefa 2): 2c9b6eb
 - checkpoint 3 (Tarefa 3): b2247e5
+- checkpoint 4 (Tarefa 4): (a registrar após o commit)

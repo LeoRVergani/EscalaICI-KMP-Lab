@@ -3,6 +3,7 @@ package br.com.leorvergani.escalaici
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import br.com.leorvergani.escalaici.auth.MsalCorporateAuthRepository
 import br.com.leorvergani.escalaici.platform.PlatformCapabilities
 import br.com.leorvergani.escalaici.ui.EscalaIciLabApp
 import br.com.leorvergani.escalaici.source.FirebaseSourceCache
@@ -18,6 +19,7 @@ class MainActivity : ComponentActivity() {
             EscalaIciLabApp(
                 firebaseGateway = createFirebaseScheduleGateway(),
                 firebaseCache = FirebaseSourceCache(createFirebaseRawCacheStore()),
+                corporateAuthRepository = MsalCorporateAuthRepository(this),
                 platformCapabilities = PlatformCapabilities(
                     supportsAppUpdate = true,
                     supportsCorporateAuth = true
