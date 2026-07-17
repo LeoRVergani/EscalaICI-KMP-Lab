@@ -133,7 +133,7 @@ internal fun ProfileTab(
                     corporateAuthState is CorporateAuthState.Authenticated -> {
                         Text("Nome: ${corporateAuthState.identity.displayName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                         Text("Login: ${corporateAuthState.identity.username}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                        Text("Tenant identificado: ${corporateAuthState.identity.tenantId}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("Organização corporativa identificada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                         Text("Conta corporativa autenticada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                         Text("O vínculo com o membro/time da escala ainda será configurado em uma próxima fase.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                     }

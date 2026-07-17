@@ -111,40 +111,56 @@ internal fun LoginGateScreen(
                     }
                 }
                 else -> {
-                    when (corporateAuthState) {
-                        CorporateAuthState.Demo -> Text("Modo demonstração corporativo ativo", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                        is CorporateAuthState.Authenticated -> Text("Conta corporativa conectada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                        else -> Unit
-                    }
-                    Button(
-                        onClick = ::signInCorporate,
-                        enabled = !isAuthenticating,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        shape = LabShapes.button,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = LabColors.primary,
-                            disabledContainerColor = LabColors.primary,
-                            disabledContentColor = LabColors.onSurface
+                    if (corporateAuthState is CorporateAuthState.Authenticated) {
+                        Text("Conta corporativa autenticada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("Nome: ${corporateAuthState.identity.displayName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("Login: ${corporateAuthState.identity.username}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "O vínculo com membro e time será feito na próxima fase.",
+                            color = LabColors.onSurfaceMuted,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center
                         )
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("Entrar com conta corporativa", color = LabColors.onSurface.copy(alpha = if (isAuthenticating) 0f else 1f))
-                            if (isAuthenticating) {
-                                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = LabColors.onSurface, strokeWidth = 2.dp)
+                        TextButton(onClick = { scope.launch { corporateAuthRepository.signOut() } }) {
+                            Text("Sair da conta corporativa", color = LabColors.primary)
+                        }
+                        TextButton(onClick = { showDemoOptions = true }) {
+                            Text("Continuar em modo demonstração", color = LabColors.primary)
+                        }
+                    } else {
+                        if (corporateAuthState == CorporateAuthState.Demo) {
+                            Text("Modo demonstração corporativo ativo", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Button(
+                            onClick = ::signInCorporate,
+                            enabled = !isAuthenticating,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            shape = LabShapes.button,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = LabColors.primary,
+                                disabledContainerColor = LabColors.primary,
+                                disabledContentColor = LabColors.onSurface
+                            )
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("Entrar com conta corporativa", color = LabColors.onSurface.copy(alpha = if (isAuthenticating) 0f else 1f))
+                                if (isAuthenticating) {
+                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = LabColors.onSurface, strokeWidth = 2.dp)
+                                }
                             }
                         }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = "Será aberta a autenticação Microsoft corporativa",
-                        color = LabColors.onSurfaceMuted,
-                        style = MaterialTheme.typography.bodySmall,
-                        textAlign = TextAlign.Center
-                    )
-                    (corporateAuthState as? CorporateAuthState.Failed)?.let { failed ->
                         Spacer(Modifier.height(12.dp))
-                        Text(failed.error.defaultMessage(), color = LabColors.red, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                        TextButton(onClick = ::signInCorporate) { Text("Tentar novamente", color = LabColors.primary) }
+                        Text(
+                            text = "Será aberta a autenticação Microsoft corporativa",
+                            color = LabColors.onSurfaceMuted,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center
+                        )
+                        (corporateAuthState as? CorporateAuthState.Failed)?.let { failed ->
+                            Spacer(Modifier.height(12.dp))
+                            Text(failed.error.defaultMessage(), color = LabColors.red, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                            TextButton(onClick = ::signInCorporate) { Text("Tentar novamente", color = LabColors.primary) }
+                        }
                     }
                 }
             }
