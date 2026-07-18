@@ -7,6 +7,83 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14c-1 — Resolução de identidade MSAL/Demo → member/team
+
+- **Status:** DONE — código real, testado automaticamente e validado
+  manualmente em emulador real (ver abaixo).
+- Novo pacote `br.com.leorvergani.escalaici.identity` (commonMain): resolve
+  `CorporateIdentity` (MSAL, já validada) ou um personagem do novo catálogo
+  Demo (3 personas 100% fictícias, domínio `example.invalid`) em `member` →
+  `member_team_memberships` (existia só como modelo puro desde a FASE 12b,
+  agora consultado de verdade pela primeira vez) → `team`, sempre isolado por
+  workspace (`ici`/`demo-v1`, nunca misturados, nunca fallback silencioso de
+  um para o outro).
+- Correspondência de identidade sempre exata (e-mail/UPN/login normalizados
+  — trim+lowercase), nunca aproximada. 9 estados tipados de resultado
+  (`Resolved`, `MemberFoundNoActiveTeam`, `MemberNotFound`, `MemberInactive`,
+  `MemberIdentityAmbiguous`, `MembershipNotFound`, `TeamNotFound`,
+  `MultipleActiveTeams`, `WorkspaceMismatch`, `DataSourceUnavailable`) — spec
+  59 detalha cada um e a mensagem amigável correspondente.
+- `Member`/`Team`/`MemberTeamMembership` ganharam campo aditivo
+  `workspaceId: String? = null` (nenhum call site existente quebrado).
+- UI: `LoginGateScreen` ganhou o seletor "Testar como" (3 personas Demo),
+  sempre rotulado "AMBIENTE DE DEMONSTRAÇÃO", convivendo sem se confundir
+  com o diálogo pré-existente "Login de teste" (que não foi alterado);
+  `ProfileTab` mostra equipe/função reais quando resolvido, ou uma mensagem
+  específica por estado (nunca uma mensagem genérica única).
+- Achado colateral corrigido: `model/AppVersion.kt` estava desatualizado
+  (`18`/`0.7.4`) desde o hotfix da spec 55 (`versionCode`/`versionName` reais
+  já eram `19`/`0.7.5` no Gradle) — sincronizado no bump de versão desta
+  fase.
+- 29 testes novos (`commonTest/.../identity/`) cobrindo normalização,
+  resolução de membro/membership/time, isolamento de workspace (com
+  repositórios que contam chamadas, provando zero cruzamento
+  corporativo↔Demo) e cache. Suíte completa: **148 testes Android, 0
+  falhas** + **144 testes Wasm/Chromium, 0 falhas** (`wasmJsTest`, gap da
+  spec 55 fechado nesta sessão).
+  `:composeApp:assembleDebug`/`assembleRelease`/`wasmJsBrowserDistribution`
+  também `BUILD SUCCESSFUL` (release verificado com `apksigner`, mesma
+  keystore/identidade da spec 52).
+- **Validação manual real no emulador** (`EscalaSOC_API_37`, Android 17):
+  headless (`-no-window`) crashava consistentemente (`qemu-system-x86`
+  segfault, `systemd-coredump`); resolvido rodando com o display real da
+  sessão (sem `-no-window`) e `-gpu host` (GPU AMD real, em vez de
+  swiftshader) — causa raiz era o backend gráfico, não a ausência de janela.
+  Com uma sessão MSAL corporativa real já restaurada
+  (`lvergani@ici.tec.br`): fluxo corporativo mostrou corretamente
+  `MemberNotFound` (diretório honesto/vazio nesta fase), restauração
+  silenciosa confirmada (force-stop + relançamento), sem crash/logout/
+  fallback; fluxo Demo validado nos 3 personagens (2 resolvidos com equipe
+  correta, o Gestor em `MultipleActiveTeams` por desenho); diálogo legado
+  "Login de teste" confirmado intacto. **Dois bugs reais de alcançabilidade
+  de UI encontrados e corrigidos** por este teste manual (não capturáveis
+  pelos 148 testes automatizados): o seletor "Testar como" e a seção de
+  resolução Demo em `ProfileTab` só apareciam dentro de
+  `CorporateAuthState.Demo`, inatingível em qualquer dispositivo com MSAL
+  configurado — corrigido para aparecer sempre que há personagem
+  selecionado, independente do estado corporativo. `wasmJsTest` também
+  passou a funcionar nesta sessão após o usuário instalar Chromium
+  (Flatpak) e apontar `CHROME_BIN` — fecha o gap da spec 55.
+- **Revisão independente final (Codex)** encontrou mais dois efeitos
+  colaterais da correção acima, ambos corrigidos: `selectedDemoPersona`
+  ainda era limpa sempre que `corporateAuthState != Demo` (quase sempre
+  verdadeiro após a correção), podendo apagar a persona escolhida sozinha
+  após a restauração silenciosa — removida essa limpeza automática; e
+  `Main.kt` (Web) não recebia nenhum `organizationIdentityResolver`, então
+  uma seleção Demo lá nunca resolvia — passou a receber o mesmo resolver
+  honesto/vazio do Android. Suíte completa (148+144 testes) e
+  `assembleDebug`/`assembleRelease`/`wasmJsBrowserDistribution`/`wasmJsTest`
+  reexecutados com sucesso após as duas correções.
+- `versionCode`/`versionName`: `19`/`0.7.5` → `20`/`0.7.6`. APK de release
+  gerado e copiado para `EscalaICI-latest.apk`; `version.json` local
+  (campos `kmp*`) atualizado. Upload para o Dropbox continua manual.
+- Não implementa ainda: responsáveis por equipe, solicitações de alteração,
+  Dashboard, publicação, escrita no Firestore, Firebase Authentication, área
+  do gestor — tudo isso continua na spec 58 (FASE 14c-2 em diante). Nenhuma
+  alteração em Gradle além do bump de versão, Firebase Rules, Dashboard,
+  Entra ou parser XLS.
+- Detalhe completo: `docs/spec/59-ESCALAICI-RESOLUCAO-MSAL-DEMO-MEMBER-TEAM.md`.
+
 ## FASE 14c-0 — Contrato mestre de responsáveis, aprovações e workspace de demonstração
 
 - **Status:** DONE — documentação apenas, nenhum código funcional alterado.

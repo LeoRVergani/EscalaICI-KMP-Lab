@@ -47,6 +47,7 @@ funcional — são o resultado da auditoria e do desenho arquitetural da FASE
 | [56 — Gestão de responsáveis e aprovações](spec/56-GESTAO-DE-RESPONSAVEIS-E-APROVACOES.md) | Contrato mestre (FASE 14c-0): responsáveis/aprovadores por equipe, papéis, permissões, substituição temporária e o ambiente de demonstração (`workspace`) oficial. |
 | [57 — Modelo Firestore: organização e solicitações](spec/57-MODELO-FIRESTORE-ORGANIZACAO-E-SOLICITACOES.md) | Estende o Firestore universal (spec 35) sem substituir: `team_manager_assignments`, `schedule_change_requests`, `workspaces`, `publication_records`, campo aditivo `workspaceId`. |
 | [58 — Roadmap: responsáveis, solicitações e área do gestor](spec/58-ROADMAP-RESPONSAVEIS-SOLICITACOES-E-AREA-GESTOR.md) | Sequência FASE 14c-1 a 14c-10, incluindo o cenário de aceitação ponta a ponta `DEMO-E2E-001`. |
+| [59 — Resolução MSAL/Demo → member/team](spec/59-ESCALAICI-RESOLUCAO-MSAL-DEMO-MEMBER-TEAM.md) | FASE 14c-1: resolve identidade corporativa MSAL ou personagem Demo em `member`/`member_team_memberships`/`team`, sempre isolado por workspace (`ici`/`demo-v1`), sem responsáveis/solicitações ainda. |
 
 **Achado que motivou a urgência desta fase**: as regras Firestore hoje em
 produção (`firebase/firestore.production.snapshot.rules`) liberam leitura e
@@ -111,8 +112,9 @@ pelo app e não autorizam deploy, importação, Rules ou escrita em Firestore.
 | 14a | Auditoria e specs finais de autenticação, sincronização, pausa e migração (specs 46-50, este pacote). | concluída — documentação apenas |
 | 14a.1 | Endurecimento emergencial das Firestore Rules: elimina escrita anônima, mantém leitura mínima atual do KMP (spec 51). | concluída — regras/testes prontos, deploy pendente de ação humana |
 | 14b | MSAL e identidade real no Escala ICI (Android primeiro, specs 46 e 53). | em andamento — 14b-1 e 14b-1a concluídas |
-| 14c | Vínculo de usuário: coleção `user_links`, fluxo de vínculo administrativo (spec 47). Detalhado em 10 subfases (14c-1 a 14c-10) pelo contrato mestre de responsáveis/aprovações e workspace de demonstração (specs 56-58). | 14c-0 concluída — documentação apenas; 14c-1 em diante não iniciadas |
+| 14c | Vínculo de usuário: coleção `user_links`, fluxo de vínculo administrativo (spec 47). Detalhado em 10 subfases (14c-1 a 14c-10) pelo contrato mestre de responsáveis/aprovações e workspace de demonstração (specs 56-58). | 14c-0 e 14c-1 concluídas; 14c-2 em diante não iniciadas |
 | 14c-0 | Contrato mestre de responsáveis, aprovadores, solicitações de alteração de escala e workspace de demonstração (specs 56-58). | concluída — documentação apenas |
+| 14c-1 | Resolve identidade MSAL corporativa ou personagem Demo em `member`/`member_team_memberships`/`team`, isolado por workspace (spec 59). | concluída — ver relatório final da fase |
 | 14d | Firebase Auth real + substituição das Firestore Rules abertas (spec 46/48, antes de 2026-08-04). | não iniciada |
 | 14e | Sincronização real de escala/plantão por query, cache e estados tipados (spec 48). | não iniciada |
 | 14f | Pausa de 15 minutos e notificações reais, corrigindo lacunas do legado (spec 49). | não iniciada |
