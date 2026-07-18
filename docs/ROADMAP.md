@@ -7,6 +7,46 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14c-0 — Contrato mestre de responsáveis, aprovações e workspace de demonstração
+
+- **Status:** DONE — documentação apenas, nenhum código funcional alterado.
+- Três specs novas em `docs/spec/`: `56-GESTAO-DE-RESPONSAVEIS-E-APROVACOES.md`
+  (papéis `PRIMARY_MANAGER`/`PRIMARY_APPROVER`/`BACKUP_APPROVER`/
+  `SCHEDULE_EDITOR`/`PUBLISHER`/`VIEW_ONLY`, permissões independentes do
+  papel, substituição temporária por vigência, modo local de teste sem MSAL
+  no Dashboard, e um **ambiente de demonstração** oficial — `workspace`
+  `PRODUCTION`/`DEMO` — para validar o fluxo completo Dashboard → Firebase →
+  app sem tocar em dados reais), `57-MODELO-FIRESTORE-ORGANIZACAO-E-SOLICITACOES.md`
+  (audita o schema universal já existente antes de propor algo novo; conclui
+  que `member_team_memberships` já cobre o vínculo membro↔equipe — não cria
+  `member_team_assignments`; define como novas apenas `team_manager_assignments`,
+  `schedule_change_requests`, `workspaces` e `publication_records`, todas
+  aditivas, com campo `workspaceId` opcional estendido às coleções
+  existentes), `58-ROADMAP-RESPONSAVEIS-SOLICITACOES-E-AREA-GESTOR.md`
+  (FASE 14c-1 a 14c-10, cenário de aceitação ponta a ponta `DEMO-E2E-001`).
+- Novo `docs/contracts/organization-approval-v1.schema.json` (JSON Schema
+  Draft 2020-12): valida a forma de `workspace`/`teams`/`members`/
+  `memberTeamMemberships`/`teamManagerAssignments`/`scheduleChangeRequests`
+  com dados só fictícios (domínio `example.invalid`); validado
+  estruturalmente com `jsonschema` (Python) além de `json.tool`, incluindo 2
+  casos negativos (recusa sem justificativa, workspace `DEMO` com efeitos
+  externos habilitados) confirmados como rejeitados pelo schema.
+- Índice `docs/SPECS-ESCALAICI.md` atualizado com as specs 56-58 e a
+  subdivisão da FASE 14c em 14c-0..14c-10.
+- Preservado sem alteração: hierarquia de Segurança (ICI→DIO→GEDSI→COSI)
+  separada de Service Desk (ICI→DIO→GST→CCS→SD), já confirmada distinta no
+  seed universal existente; códigos `M1`-`M4` continuam exclusivos do perfil
+  N1 (`ActivityCode`/`ScheduleProfile`, não tocados); nome visível
+  `Escala ICI`; nenhuma coleção existente removida/renomeada; nenhuma
+  Firebase Authentication, Cloud Function ou regra nova; MSAL Android
+  validado nas FASES 14b-1/14b-1a/hotfix intocado.
+- Branch documental própria (`feature/fase-14c-gestao-responsaveis-aprovacoes`,
+  nascida de `fix/fase-14b1c-msal-runtime-linux`, já com a validação MSAL
+  Android real) — sem merge, sem alteração de Gradle/versão/dashboard/app/
+  parser/autenticação.
+- Próximo passo: FASE 14c-1 (spec 58), identidade MSAL/Demo resolvendo
+  member/team no app.
+
 ## FASE 14a.1 — Endurecimento emergencial das regras do Firestore
 
 - **Status:** DONE — regras e testes prontos e passando no Emulator; **não
