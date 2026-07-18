@@ -21,3 +21,5 @@ auth-config.json
 msal-config.json
 auth_config_single_account.json
 version.json
+__pycache__/
+*.pyc

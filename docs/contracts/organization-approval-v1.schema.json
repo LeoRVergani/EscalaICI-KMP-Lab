@@ -36,6 +36,21 @@
       "type": "array",
       "description": "Mapeia para a colecao Firestore schedule_change_requests (nova - spec 57 secao 4). Solicitacao pendente de decisao, distinta do log de auditoria schedule_change_events (ja existente).",
       "items": { "$ref": "#/$defs/scheduleChangeRequest" }
+    },
+    "schedulePeriods": {
+      "type": "array",
+      "description": "Mapeia para a colecao Firestore schedule_periods (ja existente, estendida - spec 57 secao 7, campo aditivo workspaceId).",
+      "items": { "$ref": "#/$defs/schedulePeriod" }
+    },
+    "scheduleAssignments": {
+      "type": "array",
+      "description": "Mapeia para a colecao Firestore schedule_assignments (ja existente, estendida - spec 57 secao 7, campo aditivo workspaceId).",
+      "items": { "$ref": "#/$defs/scheduleAssignment" }
+    },
+    "publicationRecords": {
+      "type": "array",
+      "description": "Mapeia para a colecao Firestore publication_records (nova - spec 57 secao 6). Registro de auditoria de cada publicacao, sem segredo.",
+      "items": { "$ref": "#/$defs/publicationRecord" }
     }
   },
   "$defs": {
@@ -295,6 +310,74 @@
           "description": "Recusa exige justificativa (spec 56 secao 9.4)."
         }
       ]
+    },
+    "scheduleAssignmentType": {
+      "type": "string",
+      "enum": ["WORK_SHIFT", "OFF", "VACATION", "ABSENCE", "TRAINING", "OTHER"]
+    },
+    "schedulePeriod": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Forma minima de schedule_periods (colecao ja existente, estendida - spec 57 secao 7, campo aditivo workspaceId).",
+      "required": ["id", "workspaceId", "teamId", "startDate", "endDate", "active", "schemaVersion"],
+      "properties": {
+        "id": { "$ref": "#/$defs/genericId" },
+        "workspaceId": { "$ref": "#/$defs/genericId" },
+        "teamId": { "$ref": "#/$defs/genericId" },
+        "name": { "type": "string", "minLength": 1 },
+        "startDate": { "$ref": "#/$defs/dateString" },
+        "endDate": { "$ref": "#/$defs/dateString" },
+        "active": { "type": "boolean" },
+        "publicationRevision": { "type": "integer", "minimum": 0 },
+        "schemaVersion": { "const": 1 }
+      }
+    },
+    "scheduleAssignment": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Forma minima de schedule_assignments (colecao ja existente, estendida - spec 57 secao 7, campo aditivo workspaceId).",
+      "required": ["id", "workspaceId", "periodId", "teamId", "memberId", "date", "assignmentType", "schemaVersion"],
+      "properties": {
+        "id": { "$ref": "#/$defs/genericId" },
+        "workspaceId": { "$ref": "#/$defs/genericId" },
+        "periodId": { "$ref": "#/$defs/genericId" },
+        "teamId": { "$ref": "#/$defs/genericId" },
+        "memberId": { "$ref": "#/$defs/genericId" },
+        "date": { "$ref": "#/$defs/dateString" },
+        "assignmentType": { "$ref": "#/$defs/scheduleAssignmentType" },
+        "shiftName": { "type": ["string", "null"] },
+        "startTime": { "type": ["string", "null"] },
+        "endTime": { "type": ["string", "null"] },
+        "schemaVersion": { "const": 1 }
+      }
+    },
+    "publicationRecordSource": {
+      "type": "string",
+      "enum": ["DASHBOARD_MANUAL_PUBLISH", "DEMO_RESET", "DEMO_SEED"]
+    },
+    "publicationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Registro de auditoria de uma publicacao (spec 57 secao 6) - nunca contem segredo.",
+      "required": [
+        "id", "workspaceId", "publicationRevision", "publishedAt",
+        "publishedByMode", "dryRun", "countsCreated", "countsUpdated",
+        "countsDeleted", "source", "schemaVersion"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/genericId" },
+        "workspaceId": { "$ref": "#/$defs/genericId" },
+        "publicationRevision": { "type": "integer", "minimum": 0 },
+        "publishedAt": { "$ref": "#/$defs/timestampPlaceholder" },
+        "publishedByMode": { "type": "string", "enum": ["LOCAL_TEST_MODE", "CORPORATE_MSAL"] },
+        "publishedByLogin": { "type": "string" },
+        "dryRun": { "type": "boolean" },
+        "countsCreated": { "type": "integer", "minimum": 0 },
+        "countsUpdated": { "type": "integer", "minimum": 0 },
+        "countsDeleted": { "const": 0 },
+        "source": { "$ref": "#/$defs/publicationRecordSource" },
+        "schemaVersion": { "const": 1 }
+      }
     }
   }
 }

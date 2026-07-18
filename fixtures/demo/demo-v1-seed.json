@@ -1,0 +1,167 @@
+{
+  "seedVersion": 1,
+  "_note": "Fonte canonica, compacta e legivel do cenario Demo (FASE 14c-2, spec 60). Nao editar o pacote gerado manualmente - rode scripts/generate_demo_v1.py apos qualquer mudanca aqui. Nenhum dado real: dominio example.invalid, IDs ficticios com prefixo demo/-demo-.",
+  "workspace": {
+    "workspaceId": "demo-v1",
+    "workspaceType": "DEMO",
+    "scenarioId": "schedule-approval-basic",
+    "externalEffectsAllowed": false,
+    "notificationsEnabled": false
+  },
+  "teams": [
+    { "id": "team-demo-soc", "name": "SOC Demonstração", "acronym": "SOC-DEMO" },
+    { "id": "team-demo-seguranca", "name": "Segurança da Informação Demonstração", "acronym": "SEG-DEMO" }
+  ],
+  "members": [
+    {
+      "id": "member-demo-gestor-seguranca",
+      "displayName": "Gestor de Segurança Demo",
+      "corporateLogin": "gestor.seguranca.demo",
+      "emailNormalized": "gestor.seguranca.demo@example.invalid",
+      "primaryTeamId": "team-demo-seguranca"
+    },
+    {
+      "id": "member-demo-soc-01",
+      "displayName": "Analista SOC Demo 1",
+      "corporateLogin": "analista.soc.demo1",
+      "emailNormalized": "analista.soc.demo1@example.invalid",
+      "primaryTeamId": "team-demo-soc"
+    },
+    {
+      "id": "member-demo-soc-02",
+      "displayName": "Analista SOC Demo 2",
+      "corporateLogin": "analista.soc.demo2",
+      "emailNormalized": "analista.soc.demo2@example.invalid",
+      "primaryTeamId": "team-demo-soc"
+    },
+    {
+      "id": "member-demo-seguranca-01",
+      "displayName": "Analista de Segurança Demo 1",
+      "corporateLogin": "analista.seguranca.demo1",
+      "emailNormalized": "analista.seguranca.demo1@example.invalid",
+      "primaryTeamId": "team-demo-seguranca"
+    },
+    {
+      "id": "member-demo-seguranca-02",
+      "displayName": "Analista de Segurança Demo 2",
+      "corporateLogin": "analista.seguranca.demo2",
+      "emailNormalized": "analista.seguranca.demo2@example.invalid",
+      "primaryTeamId": "team-demo-seguranca"
+    }
+  ],
+  "_note_memberships": "Cada membro tem exatamente um vinculo ativo (isPrimary=true) - o time PESSOAL. O gestor e pessoalmente da equipe de Seguranca; ele ADMINISTRA os dois times separadamente, via teamManagerAssignments (secao abaixo), nunca via um segundo membership. Isso e o que garante que a persona do gestor nunca resolva para MultipleActiveTeams (spec 59 secao 3.2 passo 5: exatamente 1 membership ativo -> e sempre a principal, sem ambiguidade).",
+  "memberTeamMemberships": [
+    { "id": "membership-demo-gestor-seguranca", "memberId": "member-demo-gestor-seguranca", "teamId": "team-demo-seguranca", "startDate": "2020-01-01", "isPrimary": true },
+    { "id": "membership-demo-soc-01", "memberId": "member-demo-soc-01", "teamId": "team-demo-soc", "startDate": "2020-01-01", "isPrimary": true },
+    { "id": "membership-demo-soc-02", "memberId": "member-demo-soc-02", "teamId": "team-demo-soc", "startDate": "2020-01-01", "isPrimary": true },
+    { "id": "membership-demo-seguranca-01", "memberId": "member-demo-seguranca-01", "teamId": "team-demo-seguranca", "startDate": "2020-01-01", "isPrimary": true },
+    { "id": "membership-demo-seguranca-02", "memberId": "member-demo-seguranca-02", "teamId": "team-demo-seguranca", "startDate": "2020-01-01", "isPrimary": true }
+  ],
+  "_note_managerAssignments": "Um responsavel (gestor) administrando duas equipes - o cenario central da spec 56 secao 7. PRIMARY_MANAGER na propria equipe (Seguranca), PRIMARY_APPROVER na equipe que ele so aprova (SOC), sem ser membro pessoal dela.",
+  "teamManagerAssignments": [
+    {
+      "id": "manager-demo-seguranca",
+      "managerMemberId": "member-demo-gestor-seguranca",
+      "teamId": "team-demo-seguranca",
+      "role": "PRIMARY_MANAGER",
+      "permissions": {
+        "viewTeamSchedule": true,
+        "viewTeamMembers": true,
+        "editTeamSchedule": false,
+        "approveScheduleChanges": true,
+        "publishSchedule": false,
+        "manageTeamAssignments": false
+      },
+      "validFrom": "2026-07-01",
+      "validTo": null
+    },
+    {
+      "id": "manager-demo-soc",
+      "managerMemberId": "member-demo-gestor-seguranca",
+      "teamId": "team-demo-soc",
+      "role": "PRIMARY_APPROVER",
+      "permissions": {
+        "viewTeamSchedule": true,
+        "viewTeamMembers": true,
+        "editTeamSchedule": false,
+        "approveScheduleChanges": true,
+        "publishSchedule": false,
+        "manageTeamAssignments": false
+      },
+      "validFrom": "2026-07-01",
+      "validTo": null
+    }
+  ],
+  "_note_period": "Um documento schedule_periods POR EQUIPE (o modelo real - SPEC-DB-UNIVERSAL-TIMES-E-ESCALAS.md - escopa periodo a uma equipe). As duas equipes usam o MESMO intervalo de datas para o cenario Demo caber num unico periodo visivel.",
+  "schedulePeriodRange": { "startDate": "2026-07-26", "endDate": "2026-08-25" },
+  "schedulePeriods": [
+    { "id": "period-demo-soc-2026-07-26-2026-08-25", "teamId": "team-demo-soc" },
+    { "id": "period-demo-seguranca-2026-07-26-2026-08-25", "teamId": "team-demo-seguranca" }
+  ],
+  "_note_patterns": "O gerador expande schedulePatterns em documentos scheduleAssignments concretos, um por (membro, dia) dentro de schedulePeriodRange. dayIndex e 0-based a partir de startDate (0 = 2026-07-26).",
+  "schedulePatterns": {
+    "team-demo-soc": {
+      "type": "ROTATING_6X1",
+      "restCycle": { "cycleLengthDays": 7, "restDayIndexInCycle": 6 },
+      "shifts": [
+        { "memberId": "member-demo-soc-01", "shiftName": "Manhã", "startTime": "07:00", "endTime": "13:00" },
+        { "memberId": "member-demo-soc-02", "shiftName": "Tarde", "startTime": "13:00", "endTime": "19:00" }
+      ]
+    },
+    "team-demo-seguranca": {
+      "type": "BUSINESS_HOURS",
+      "workWeekdays": [1, 2, 3, 4, 5],
+      "startTime": "08:00",
+      "endTime": "18:00",
+      "shiftName": "Comercial",
+      "members": ["member-demo-seguranca-01", "member-demo-seguranca-02"]
+    }
+  },
+  "_note_requests": "targetAssignment referencia um assignment pelo (memberId, dayIndex) - o gerador resolve para o assignmentId real depois de gerar scheduleAssignments, garantindo que sempre aponte para um WORK_SHIFT existente.",
+  "scheduleChangeRequests": [
+    {
+      "id": "request-demo-pending-001",
+      "requesterMemberId": "member-demo-soc-01",
+      "requesterTeamId": "team-demo-soc",
+      "targetAssignment": { "memberId": "member-demo-soc-01", "dayIndex": 5 },
+      "requestType": "SHIFT_CHANGE",
+      "status": "PENDING",
+      "reason": "Consulta médica agendada",
+      "createdAt": "2026-07-30T09:00:00Z"
+    },
+    {
+      "id": "request-demo-approved-001",
+      "requesterMemberId": "member-demo-seguranca-01",
+      "requesterTeamId": "team-demo-seguranca",
+      "targetAssignment": { "memberId": "member-demo-seguranca-01", "dayIndex": 10 },
+      "requestType": "DAY_OFF_CHANGE",
+      "status": "APPROVED",
+      "reason": "Troca de folga por compromisso pessoal",
+      "createdAt": "2026-08-02T10:00:00Z",
+      "resolvedAt": "2026-08-02T15:00:00Z",
+      "resolvedByMemberId": "member-demo-gestor-seguranca",
+      "resolutionNote": "Aprovado - sem impacto na cobertura da equipe."
+    },
+    {
+      "id": "request-demo-rejected-001",
+      "requesterMemberId": "member-demo-soc-02",
+      "requesterTeamId": "team-demo-soc",
+      "targetAssignment": { "memberId": "member-demo-soc-02", "dayIndex": 12 },
+      "requestType": "SCHEDULE_CORRECTION",
+      "status": "REJECTED",
+      "reason": "Turno registrado incorretamente",
+      "createdAt": "2026-08-04T09:00:00Z",
+      "resolvedAt": "2026-08-04T14:00:00Z",
+      "resolvedByMemberId": "member-demo-gestor-seguranca",
+      "resolutionNote": "Recusado - turno confere com o planejamento original da equipe."
+    }
+  ],
+  "publicationRecord": {
+    "id": "publication-demo-v1-revision-001",
+    "publicationRevision": 1,
+    "publishedAt": "2026-07-25T18:00:00Z",
+    "publishedByMode": "LOCAL_TEST_MODE",
+    "dryRun": false,
+    "source": "DEMO_SEED"
+  }
+}
