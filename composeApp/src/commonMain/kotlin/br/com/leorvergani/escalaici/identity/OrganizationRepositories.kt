@@ -67,16 +67,44 @@ class InMemoryTeamRepository(
     override suspend fun getTeams(): List<Team> = teams
 }
 
-class DemoMemberDirectoryRepository : MemberDirectoryRepository by InMemoryMemberDirectoryRepository(
-    members = DemoOrganizationData.members,
-    workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
-    loginByMemberId = DemoPersonaCatalog.personas.associate { it.memberId to it.fictitiousLogin }
-)
+class DemoMemberDirectoryRepository : MemberDirectoryRepository {
+    override suspend fun findActiveMemberIds(normalizedEmail: String?, normalizedLogin: String?): List<String> {
+        val pkg = DemoFixtureCache.get()
+        return InMemoryMemberDirectoryRepository(
+            members = pkg.toMembers(),
+            workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+            loginByMemberId = pkg.loginByMemberId()
+        ).findActiveMemberIds(normalizedEmail, normalizedLogin)
+    }
+}
 
-class DemoMembershipRepository : MembershipRepository by InMemoryMembershipRepository(
-    memberships = DemoOrganizationData.memberships
-)
+class DemoMembershipRepository : MembershipRepository {
+    override suspend fun getMemberships(memberId: String): List<MemberTeamMembership> {
+        val pkg = DemoFixtureCache.get()
+        return InMemoryMembershipRepository(pkg.toMemberships()).getMemberships(memberId)
+    }
+}
 
-class DemoMemberRepository : MemberRepository by InMemoryMemberRepository(DemoOrganizationData.members)
+class DemoMemberRepository : MemberRepository {
+    override suspend fun getMember(memberId: String): Member? {
+        val pkg = DemoFixtureCache.get()
+        return InMemoryMemberRepository(pkg.toMembers()).getMember(memberId)
+    }
 
-class DemoTeamRepository : TeamRepository by InMemoryTeamRepository(DemoOrganizationData.teams)
+    override suspend fun getMembersByTeam(teamId: String): List<Member> {
+        val pkg = DemoFixtureCache.get()
+        return InMemoryMemberRepository(pkg.toMembers()).getMembersByTeam(teamId)
+    }
+}
+
+class DemoTeamRepository : TeamRepository {
+    override suspend fun getTeam(teamId: String): Team? {
+        val pkg = DemoFixtureCache.get()
+        return InMemoryTeamRepository(pkg.toTeams()).getTeam(teamId)
+    }
+
+    override suspend fun getTeams(): List<Team> {
+        val pkg = DemoFixtureCache.get()
+        return InMemoryTeamRepository(pkg.toTeams()).getTeams()
+    }
+}

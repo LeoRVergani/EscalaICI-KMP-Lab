@@ -114,7 +114,7 @@ class OrganizationMemberResolutionTest {
             members = members,
             loginByMemberId = members.associate { it.id to it.scaleName }
         ),
-        demoDirectory: MemberDirectoryRepository = DemoMemberDirectoryRepository()
+        demoDirectory: MemberDirectoryRepository = InMemoryMemberDirectoryRepository(emptyList())
     ) = DefaultOrganizationIdentityResolver(
         corporateMemberDirectoryRepository = memberDirectory,
         corporateMembershipRepository = InMemoryMembershipRepository(memberships),

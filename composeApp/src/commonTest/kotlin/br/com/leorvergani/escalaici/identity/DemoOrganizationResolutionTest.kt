@@ -29,7 +29,7 @@ class DemoOrganizationResolutionTest {
     }
 
     @Test
-    fun demoManagerReturnsMultipleActiveTeamsByDesign() = runTest {
+    fun demoManagerReturnsMultipleActiveTeamsWithInjectedFixtureData() = runTest {
         val result = demoResolver().resolveDemoPersona(DemoPersonaCatalog.personas[2])
 
         assertEquals(
@@ -113,12 +113,117 @@ class DemoOrganizationResolutionTest {
         assertEquals(0, demoTeams.calls)
     }
 
-    private fun demoResolver() = DefaultOrganizationIdentityResolver(
+    private fun demoResolver(pkg: DemoFixturePackage = demoResolutionFixturePackage()) = DefaultOrganizationIdentityResolver(
         corporateMemberDirectoryRepository = InMemoryMemberDirectoryRepository(emptyList()),
         corporateMembershipRepository = InMemoryMembershipRepository(emptyList()),
         corporateMemberRepository = InMemoryMemberRepository(emptyList()),
         corporateTeamRepository = InMemoryTeamRepository(emptyList()),
+        demoMemberDirectoryRepository = InMemoryMemberDirectoryRepository(
+            members = pkg.toMembers(),
+            workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+            loginByMemberId = pkg.loginByMemberId()
+        ),
+        demoMembershipRepository = InMemoryMembershipRepository(pkg.toMemberships()),
+        demoMemberRepository = InMemoryMemberRepository(pkg.toMembers()),
+        demoTeamRepository = InMemoryTeamRepository(pkg.toTeams()),
         todayProvider = TodayProvider { br.com.leorvergani.escalaici.model.LabDate(2026, 7, 18) }
+    )
+
+    private fun demoResolutionFixturePackage(): DemoFixturePackage {
+        val personas = DemoPersonaCatalog.personas.associateBy { it.memberId }
+        return DemoFixturePackage(
+            schemaVersion = 1,
+            workspace = DemoFixtureWorkspace(
+                workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+                workspaceType = "DEMO",
+                scenarioId = "resolution-test",
+                seedVersion = 1,
+                publicationRevision = 1,
+                externalEffectsAllowed = false,
+                notificationsEnabled = false
+            ),
+            teams = listOf(
+                DemoFixtureTeam(
+                    id = "team-demo-soc",
+                    workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+                    name = "SOC Demonstracao",
+                    acronym = "SOC-DEMO",
+                    active = true,
+                    schemaVersion = 1
+                ),
+                DemoFixtureTeam(
+                    id = "team-demo-seguranca",
+                    workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+                    name = "Seguranca da Informacao Demonstracao",
+                    acronym = "SEG-DEMO",
+                    active = true,
+                    schemaVersion = 1
+                )
+            ),
+            members = listOf(
+                demoFixtureMember(personas.getValue("member-demo-soc-01")),
+                demoFixtureMember(personas.getValue("member-demo-seguranca-01")),
+                demoFixtureMember(personas.getValue("member-demo-gestor-seguranca"))
+            ),
+            memberTeamMemberships = listOf(
+                demoFixtureMembership(
+                    id = "membership-demo-soc-01",
+                    memberId = "member-demo-soc-01",
+                    teamId = "team-demo-soc",
+                    isPrimary = true
+                ),
+                demoFixtureMembership(
+                    id = "membership-demo-seguranca-01",
+                    memberId = "member-demo-seguranca-01",
+                    teamId = "team-demo-seguranca",
+                    isPrimary = true
+                ),
+                demoFixtureMembership(
+                    id = "membership-demo-gestor-soc",
+                    memberId = "member-demo-gestor-seguranca",
+                    teamId = "team-demo-soc",
+                    isPrimary = false
+                ),
+                demoFixtureMembership(
+                    id = "membership-demo-gestor-seguranca",
+                    memberId = "member-demo-gestor-seguranca",
+                    teamId = "team-demo-seguranca",
+                    isPrimary = false
+                )
+            ),
+            teamManagerAssignments = emptyList(),
+            scheduleChangeRequests = emptyList(),
+            schedulePeriods = emptyList(),
+            scheduleAssignments = emptyList(),
+            publicationRecords = emptyList()
+        )
+    }
+
+    private fun demoFixtureMember(persona: DemoPersona) = DemoFixtureMember(
+        id = persona.memberId,
+        workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+        displayName = persona.displayName,
+        corporateLogin = persona.fictitiousLogin,
+        emailNormalized = persona.fictitiousEmail,
+        active = true,
+        schemaVersion = 1
+    )
+
+    private fun demoFixtureMembership(
+        id: String,
+        memberId: String,
+        teamId: String,
+        isPrimary: Boolean
+    ) = DemoFixtureMembership(
+        id = id,
+        workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+        memberId = memberId,
+        teamId = teamId,
+        startDate = "2020-01-01",
+        endDate = null,
+        active = true,
+        isPrimary = isPrimary,
+        schemaVersion = 1
     )
 
     private class CountingTeamRepository : TeamRepository {
