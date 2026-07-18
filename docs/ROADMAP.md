@@ -9,9 +9,19 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
 ## FASE 14c-2 — Fixtures oficiais do workspace demo-v1
 
-- **Status:** IN_PROGRESS — geração determinística e integração Kotlin
-  concluídas e validadas automaticamente; revisão independente, validação
-  manual em emulador, bump de versão e commit/push ainda pendentes.
+- **Status:** DONE — geração determinística, integração Kotlin, revisão
+  independente (Codex), validação manual em Android (emulador) e Web
+  (Chromium headless via CDP), bump de versão e commit/push concluídos.
+- Revisão independente (Codex) encontrou 1 achado IMPORTANTE, corrigido:
+  `DemoPersona.kt` ainda tinha um campo `shortDescription` (nunca
+  renderizado na UI) citando nome de equipe/papel — duplicava dado que já
+  vem da fixture. Campo removido; as outras 16 checagens vieram OK.
+- Validação manual confirmou nas 3 personas, em Android e Web: Analista
+  SOC Demo 1 → SOC Demonstração; Analista de Segurança Demo 1 → Segurança
+  da Informação Demonstração; Gestor de Segurança Demo → equipe única
+  Segurança da Informação Demonstração (sem `MultipleActiveTeams`, o
+  objetivo central desta fase). Sessão MSAL corporativa restaurada
+  silenciosamente após force-stop, sem impacto.
 - Substitui o catálogo Demo hardcoded da FASE 14c-1
   (`DemoOrganizationData.kt`, removido) por uma fonte única de verdade:
   `fixtures/demo/demo-v1-seed.json` (seed compacto, escrito à mão) →
