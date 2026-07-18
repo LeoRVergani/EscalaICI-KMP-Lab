@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.auth.CorporateAuthConfigurationState
 import br.com.leorvergani.escalaici.auth.CorporateAuthRepository
+import br.com.leorvergani.escalaici.auth.CorporateAuthState
+import br.com.leorvergani.escalaici.identity.DemoPersona
+import br.com.leorvergani.escalaici.identity.OrganizationIdentityResolver
+import br.com.leorvergani.escalaici.identity.OrganizationResolutionResult
 import br.com.leorvergani.escalaici.model.ImportedWorkbook
 import br.com.leorvergani.escalaici.model.LabWorkbookParser
 import br.com.leorvergani.escalaici.model.Member
@@ -115,7 +120,8 @@ fun EscalaIciLabApp(
     notificationService: WebNotificationService = UnsupportedWebNotificationService,
     firebaseGateway: FirebaseScheduleGateway? = null,
     firebaseCache: FirebaseSourceCache? = null,
-    corporateAuthRepository: CorporateAuthRepository? = null
+    corporateAuthRepository: CorporateAuthRepository? = null,
+    organizationIdentityResolver: OrganizationIdentityResolver? = null
 ) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
@@ -123,6 +129,10 @@ fun EscalaIciLabApp(
         val scope = rememberCoroutineScope()
         var sessionMemberId by remember { mutableStateOf<String?>(null) }
         var demoMembers by remember { mutableStateOf<List<Member>>(emptyList()) }
+        val corporateAuthState = corporateAuthRepository?.state?.collectAsState()?.value
+        var organizationResolutionResult by remember { mutableStateOf<OrganizationResolutionResult?>(null) }
+        var selectedDemoPersona by remember { mutableStateOf<DemoPersona?>(null) }
+        var demoPersonaResolutionResult by remember { mutableStateOf<OrganizationResolutionResult?>(null) }
 
         LaunchedEffect(Unit) {
             corporateAuthRepository
@@ -152,6 +162,34 @@ fun EscalaIciLabApp(
             while (true) {
                 delay(30_000)
                 now = currentTimeProvider.now()
+            }
+        }
+
+        LaunchedEffect(corporateAuthState) {
+            val resolver = organizationIdentityResolver
+            val state = corporateAuthState
+            if (state is CorporateAuthState.Authenticated && resolver != null) {
+                organizationResolutionResult = null
+                organizationResolutionResult = resolver.resolveCorporateIdentity(state.identity)
+            } else {
+                organizationResolutionResult = null
+            }
+            // Nao limpa selectedDemoPersona aqui: workspace Demo e ortogonal ao
+            // CorporateAuthState (spec 56 secao 12), entao uma transicao generica
+            // (ex.: restauracao silenciosa terminando depois da selecao) nunca deve
+            // apagar a persona escolhida - so uma acao explicita do usuario faria
+            // isso (nao implementada nesta fase; hoje a selecao so muda quando o
+            // usuario toca em outro personagem).
+        }
+
+        LaunchedEffect(selectedDemoPersona) {
+            val resolver = organizationIdentityResolver
+            val persona = selectedDemoPersona
+            if (resolver != null && persona != null) {
+                demoPersonaResolutionResult = null
+                demoPersonaResolutionResult = resolver.resolveDemoPersona(persona)
+            } else {
+                demoPersonaResolutionResult = null
             }
         }
 
@@ -235,6 +273,8 @@ fun EscalaIciLabApp(
                 members = demoMembers,
                 supportsCorporateAuth = platformCapabilities.supportsCorporateAuth,
                 corporateAuthRepository = corporateAuthRepository,
+                selectedDemoPersona = selectedDemoPersona,
+                onSelectDemoPersona = { selectedDemoPersona = it },
                 onSelectMember = { member ->
                     scope.launch {
                         authRepository.signIn(member.id)
@@ -348,6 +388,9 @@ fun EscalaIciLabApp(
                                         supportsWebNotifications = platformCapabilities.supportsWebNotifications,
                                         supportsCorporateAuth = platformCapabilities.supportsCorporateAuth,
                                         corporateAuthRepository = corporateAuthRepository,
+                                        organizationResolutionResult = organizationResolutionResult,
+                                        demoPersonaResolutionResult = demoPersonaResolutionResult,
+                                        selectedDemoPersona = selectedDemoPersona,
                                         notificationService = notificationService,
                                         onLogout = {
                                             scope.launch { authRepository.signOut() }

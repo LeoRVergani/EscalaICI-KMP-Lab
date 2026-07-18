@@ -1,5 +1,6 @@
 package br.com.leorvergani.escalaici.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,6 +38,8 @@ import br.com.leorvergani.escalaici.auth.CorporateAuthRepository
 import br.com.leorvergani.escalaici.auth.CorporateAuthState
 import br.com.leorvergani.escalaici.auth.defaultMessage
 import br.com.leorvergani.escalaici.auth.rememberCorporateAuthHost
+import br.com.leorvergani.escalaici.identity.DemoPersona
+import br.com.leorvergani.escalaici.identity.DemoPersonaCatalog
 import br.com.leorvergani.escalaici.model.Member
 import br.com.leorvergani.escalaici.ui.components.LabPremiumBackground
 import br.com.leorvergani.escalaici.ui.theme.LabColors
@@ -51,6 +55,8 @@ internal fun LoginGateScreen(
     members: List<Member>,
     supportsCorporateAuth: Boolean,
     corporateAuthRepository: CorporateAuthRepository?,
+    selectedDemoPersona: DemoPersona?,
+    onSelectDemoPersona: (DemoPersona) -> Unit,
     onSelectMember: (Member) -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -130,6 +136,7 @@ internal fun LoginGateScreen(
                     } else {
                         if (corporateAuthState == CorporateAuthState.Demo) {
                             Text("Modo demonstração corporativo ativo", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                            Spacer(Modifier.height(18.dp))
                         }
                         Button(
                             onClick = ::signInCorporate,
@@ -169,6 +176,16 @@ internal fun LoginGateScreen(
             TextButton(onClick = { showDemoOptions = true }) {
                 Text("Login de teste (demonstração)", color = LabColors.primary)
             }
+
+            // Sempre visível, independente do estado/configuração do MSAL corporativo
+            // (workspace demo-v1 é um conceito ortogonal à identidade corporativa,
+            // spec 56 seção 12 — nunca deve ficar inalcançável num dispositivo já
+            // configurado, como o teste manual desta fase confirmou).
+            Spacer(Modifier.height(24.dp))
+            DemoPersonaSelector(
+                selectedDemoPersona = selectedDemoPersona,
+                onSelectDemoPersona = onSelectDemoPersona
+            )
         }
     }
 
@@ -233,5 +250,64 @@ internal fun LoginGateScreen(
 private fun DemoOptionButton(text: String, onClick: () -> Unit) {
     TextButton(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
         Text(text, color = LabColors.primary)
+    }
+}
+
+@Composable
+private fun DemoPersonaSelector(
+    selectedDemoPersona: DemoPersona?,
+    onSelectDemoPersona: (DemoPersona) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(LabShapes.cardSmall)
+            .background(LabColors.surfaceElevated.copy(alpha = 0.72f))
+            .padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "AMBIENTE DE DEMONSTRAÇÃO",
+            color = LabColors.tertiary,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = "Testar como:",
+            color = LabColors.onSurfaceMuted,
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center
+        )
+        DemoPersonaCatalog.personas.forEach { persona ->
+            val selected = selectedDemoPersona?.personaId == persona.personaId
+            Button(
+                onClick = { onSelectDemoPersona(persona) },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                shape = LabShapes.button,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (selected) LabColors.tertiary else LabColors.surface,
+                    contentColor = LabColors.onSurface
+                )
+            ) {
+                Text(persona.displayName, textAlign = TextAlign.Center)
+            }
+        }
+        selectedDemoPersona?.let { persona ->
+            Text(
+                text = "Personagem selecionado: ${persona.displayName}",
+                color = LabColors.onSurface,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "As alterações realizadas aqui não afetam equipes reais.",
+                color = LabColors.onSurfaceMuted,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }

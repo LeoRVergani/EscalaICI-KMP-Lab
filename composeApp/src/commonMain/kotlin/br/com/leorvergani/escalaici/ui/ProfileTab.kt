@@ -46,6 +46,8 @@ import br.com.leorvergani.escalaici.auth.CorporateAuthConfigurationState
 import br.com.leorvergani.escalaici.auth.CorporateAuthRepository
 import br.com.leorvergani.escalaici.auth.CorporateAuthState
 import br.com.leorvergani.escalaici.auth.defaultMessage
+import br.com.leorvergani.escalaici.identity.DemoPersona
+import br.com.leorvergani.escalaici.identity.OrganizationResolutionResult
 import br.com.leorvergani.escalaici.model.AppUpdateResult
 import br.com.leorvergani.escalaici.model.AppVersion
 import br.com.leorvergani.escalaici.model.GenerateLabAlerts
@@ -74,6 +76,9 @@ internal fun ProfileTab(
     supportsWebNotifications: Boolean,
     supportsCorporateAuth: Boolean,
     corporateAuthRepository: CorporateAuthRepository?,
+    organizationResolutionResult: OrganizationResolutionResult?,
+    demoPersonaResolutionResult: OrganizationResolutionResult?,
+    selectedDemoPersona: DemoPersona?,
     notificationService: WebNotificationService,
     onLogout: () -> Unit,
     onOpenPlantao: () -> Unit,
@@ -126,18 +131,34 @@ internal fun ProfileTab(
                     !supportsCorporateAuth -> Text("Login corporativo Web ainda não configurado.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                     corporateAuthRepository == null || corporateAuthRepository.configurationState == CorporateAuthConfigurationState.NOT_CONFIGURED ->
                         Text("Autenticação corporativa ainda não configurada neste ambiente.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                    corporateAuthState == CorporateAuthState.SignedOut -> Text("Nenhuma conta corporativa conectada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                    corporateAuthState == CorporateAuthState.Authenticating -> Text("Autenticando conta corporativa...", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                    corporateAuthState == CorporateAuthState.Demo -> Text("Modo demonstração corporativo ativo (nenhuma conta Microsoft real conectada).", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                    corporateAuthState is CorporateAuthState.Failed -> Text(corporateAuthState.error.defaultMessage(), color = LabColors.red, style = MaterialTheme.typography.bodySmall)
-                    corporateAuthState is CorporateAuthState.Authenticated -> {
-                        Text("Nome: ${corporateAuthState.identity.displayName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                        Text("Login: ${corporateAuthState.identity.username}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                        Text("Organização corporativa identificada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                        Text("Conta corporativa autenticada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                        Text("O vínculo com o membro/time da escala ainda será configurado em uma próxima fase.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    else -> {
+                        when (corporateAuthState) {
+                            null,
+                            CorporateAuthState.NotConfigured,
+                            CorporateAuthState.SignedOut -> Text("Nenhuma conta corporativa conectada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                            CorporateAuthState.Authenticating -> Text("Autenticando conta corporativa...", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                            CorporateAuthState.Demo ->
+                                Text("Modo demonstração corporativo ativo (nenhuma conta Microsoft real conectada).", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                            is CorporateAuthState.Failed -> Text(corporateAuthState.error.defaultMessage(), color = LabColors.red, style = MaterialTheme.typography.bodySmall)
+                            is CorporateAuthState.Authenticated -> {
+                                Text("Nome: ${corporateAuthState.identity.displayName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                                Text("Login: ${corporateAuthState.identity.username}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                                Text("Organização corporativa identificada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                                Text("Conta corporativa autenticada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                                OrganizationResolutionBody(organizationResolutionResult)
+                            }
+                        }
                     }
-                    else -> Text("Nenhuma conta corporativa conectada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                }
+                // Sempre visível quando há personagem Demo selecionado, independente do
+                // corporateAuthState (workspace demo-v1 é ortogonal à identidade
+                // corporativa, spec 56 seção 12 — mesma correção de alcançabilidade
+                // aplicada em LoginGateScreen).
+                if (selectedDemoPersona != null) {
+                    DemoPersonaResolutionSection(
+                        selectedDemoPersona = selectedDemoPersona,
+                        demoPersonaResolutionResult = demoPersonaResolutionResult
+                    )
                 }
             }
         }
@@ -271,6 +292,79 @@ private fun StatusLine(label: String, value: String) {
         Text(label, modifier = Modifier.width(112.dp), color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         Text(value, modifier = Modifier.weight(1f), color = LabColors.onSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
+}
+
+@Composable
+private fun OrganizationResolutionBody(result: OrganizationResolutionResult?) {
+    when (result) {
+        null -> Text("Buscando vínculo com a organização...", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+        is OrganizationResolutionResult.Resolved -> {
+            Text(
+                "Equipe: ${result.context.primaryTeamName ?: "equipe principal não informada"}",
+                color = LabColors.onSurfaceMuted,
+                style = MaterialTheme.typography.bodySmall
+            )
+            result.context.roleDisplayName?.let { role ->
+                Text("Função: $role", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        is OrganizationResolutionResult.MemberFoundNoActiveTeam ->
+            Text("Seu cadastro foi encontrado, mas ainda não possui uma equipe ativa vinculada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+        is OrganizationResolutionResult.MemberNotFound ->
+            Text("Conta corporativa autenticada, mas seu cadastro ainda não foi localizado na organização.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+        is OrganizationResolutionResult.MemberInactive ->
+            Text("Seu cadastro na organização está inativo no momento. Contate o administrador.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+        is OrganizationResolutionResult.MemberIdentityAmbiguous ->
+            Text("Foram encontrados cadastros duplicados para esta identidade. O responsável pelo cadastro precisa revisar os dados.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+        is OrganizationResolutionResult.MembershipNotFound ->
+            Text("Seu cadastro foi encontrado, mas ainda não possui nenhum vínculo de equipe registrado.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+        is OrganizationResolutionResult.TeamNotFound ->
+            Text("Seu vínculo de equipe foi encontrado, mas a equipe correspondente não está mais disponível. Contate o administrador.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+        is OrganizationResolutionResult.MultipleActiveTeams ->
+            Text("Foram encontrados múltiplos vínculos de equipe ativos. A seleção de equipe estará disponível em uma próxima fase.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+        is OrganizationResolutionResult.WorkspaceMismatch,
+        is OrganizationResolutionResult.DataSourceUnavailable ->
+            Text("Não foi possível confirmar seu vínculo organizacional no momento. Tente novamente mais tarde.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun DemoPersonaResolutionSection(
+    selectedDemoPersona: DemoPersona,
+    demoPersonaResolutionResult: OrganizationResolutionResult?
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(LabShapes.cardSmall)
+            .background(LabColors.tertiary.copy(alpha = 0.10f))
+            .border(1.dp, LabColors.tertiary.copy(alpha = 0.45f), LabShapes.cardSmall)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            "AMBIENTE DE DEMONSTRAÇÃO",
+            color = LabColors.tertiary,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Text("Personagem: ${selectedDemoPersona.displayName}", color = LabColors.onSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+        Text(demoPersonaResolutionLine(demoPersonaResolutionResult), color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+private fun demoPersonaResolutionLine(result: OrganizationResolutionResult?): String = when (result) {
+    null -> "Equipe: buscando vínculo de demonstração..."
+    is OrganizationResolutionResult.Resolved -> "Equipe: ${result.context.primaryTeamName ?: "equipe principal não informada"}"
+    is OrganizationResolutionResult.MemberFoundNoActiveTeam -> "Seu cadastro foi encontrado, mas ainda não possui uma equipe ativa vinculada."
+    is OrganizationResolutionResult.MemberNotFound -> "Conta corporativa autenticada, mas seu cadastro ainda não foi localizado na organização."
+    is OrganizationResolutionResult.MemberInactive -> "Seu cadastro na organização está inativo no momento. Contate o administrador."
+    is OrganizationResolutionResult.MemberIdentityAmbiguous -> "Foram encontrados cadastros duplicados para esta identidade. O responsável pelo cadastro precisa revisar os dados."
+    is OrganizationResolutionResult.MembershipNotFound -> "Seu cadastro foi encontrado, mas ainda não possui nenhum vínculo de equipe registrado."
+    is OrganizationResolutionResult.TeamNotFound -> "Seu vínculo de equipe foi encontrado, mas a equipe correspondente não está mais disponível. Contate o administrador."
+    is OrganizationResolutionResult.MultipleActiveTeams -> "Múltiplos vínculos de equipe (ver Dashboard)."
+    is OrganizationResolutionResult.WorkspaceMismatch,
+    is OrganizationResolutionResult.DataSourceUnavailable -> "Não foi possível confirmar seu vínculo organizacional no momento. Tente novamente mais tarde."
 }
 
 @Composable
