@@ -7,6 +7,50 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14c-2 — Fixtures oficiais do workspace demo-v1
+
+- **Status:** IN_PROGRESS — geração determinística e integração Kotlin
+  concluídas e validadas automaticamente; revisão independente, validação
+  manual em emulador, bump de versão e commit/push ainda pendentes.
+- Substitui o catálogo Demo hardcoded da FASE 14c-1
+  (`DemoOrganizationData.kt`, removido) por uma fonte única de verdade:
+  `fixtures/demo/demo-v1-seed.json` (seed compacto, escrito à mão) →
+  `scripts/generate_demo_v1.py` (gerador Python 100% determinístico, sem
+  `datetime.now()`/`random`/`uuid`) → pacote completo em
+  `composeApp/src/commonMain/composeResources/files/demo/demo-v1-publication-package.json`
+  (recurso Compose Multiplatform) + `fixtures/demo/demo-v1-manifest.json`
+  (contagens + SHA-256) → `scripts/validate_demo_v1.py` (schema + 17
+  invariantes de negócio/isolamento).
+- Cenário fixo: 2 times (SOC Demonstração, Segurança da Informação
+  Demonstração), 5 membros, 5 vínculos de pertencimento (um time pessoal por
+  membro, inclusive o gestor), 2 vínculos de gestão (mesmo gestor
+  administrando as duas equipes só via `team_manager_assignments`, nunca por
+  um segundo membership), período 26/07/2026–25/08/2026, 124
+  `scheduleAssignments` (SOC rotativo 6x1, nunca mais de 6 dias seguidos de
+  trabalho; Segurança comercial, nunca fim de semana), 3 solicitações de
+  alteração (pendente/aprovada/recusada) e 1 registro de publicação
+  (revisão 1). Diferente da FASE 14c-1, o gestor resolve para uma única
+  equipe pessoal na fixture oficial (nunca `MultipleActiveTeams`) — esse
+  estado continua coberto por um teste sintético dedicado.
+- Contrato JSON (spec 57) estendido de forma aditiva com `schedulePeriod`,
+  `scheduleAssignment` e `publicationRecord`.
+- Achado de ambiente (não é bug, é limitação real): `Res.readBytes`
+  (Compose Resources) funciona no app real (Android/Web), mas não em
+  nenhum alvo de teste automatizado desta sessão (`IllegalStateException`
+  em `testDebugUnitTest`, `MissingResourceException` em `wasmJsTest`) —
+  confirmado com um teste "spike" descartável. Por isso a suíte separa
+  lógica pura de parsing (`commonTest`, JSON inline) da leitura do arquivo
+  real (`androidUnitTest`, via `java.io.File`, JVM puro).
+- `testDebugUnitTest`: **153 testes, 0 falhas** (era 148 antes desta fase).
+  `assembleDebug`/`assembleRelease`/`wasmJsBrowserDistribution`/`wasmJsTest`:
+  todos `BUILD SUCCESSFUL`.
+- Determinismo comprovado: duas execuções independentes do gerador
+  produziram o pacote byte a byte idêntico (`cmp`); validador confirmou 0
+  erros de schema e todas as 17 invariantes.
+- Nenhuma escrita no Firebase nesta fase — publicação real fica para FASE
+  14c-4 em diante (spec 58).
+- Detalhe completo: `docs/spec/60-ESCALAICI-FIXTURES-OFICIAIS-DEMO-V1.md`.
+
 ## FASE 14c-1 — Resolução de identidade MSAL/Demo → member/team
 
 - **Status:** DONE — código real, testado automaticamente e validado

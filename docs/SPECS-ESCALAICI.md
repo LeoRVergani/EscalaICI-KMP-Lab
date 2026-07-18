@@ -48,6 +48,7 @@ funcional — são o resultado da auditoria e do desenho arquitetural da FASE
 | [57 — Modelo Firestore: organização e solicitações](spec/57-MODELO-FIRESTORE-ORGANIZACAO-E-SOLICITACOES.md) | Estende o Firestore universal (spec 35) sem substituir: `team_manager_assignments`, `schedule_change_requests`, `workspaces`, `publication_records`, campo aditivo `workspaceId`. |
 | [58 — Roadmap: responsáveis, solicitações e área do gestor](spec/58-ROADMAP-RESPONSAVEIS-SOLICITACOES-E-AREA-GESTOR.md) | Sequência FASE 14c-1 a 14c-10, incluindo o cenário de aceitação ponta a ponta `DEMO-E2E-001`. |
 | [59 — Resolução MSAL/Demo → member/team](spec/59-ESCALAICI-RESOLUCAO-MSAL-DEMO-MEMBER-TEAM.md) | FASE 14c-1: resolve identidade corporativa MSAL ou personagem Demo em `member`/`member_team_memberships`/`team`, sempre isolado por workspace (`ici`/`demo-v1`), sem responsáveis/solicitações ainda. |
+| [60 — Fixtures oficiais do workspace demo-v1](spec/60-ESCALAICI-FIXTURES-OFICIAIS-DEMO-V1.md) | FASE 14c-2: seed + gerador Python determinístico + validador para o cenário Demo completo (times, membros, vínculos, responsáveis, período, escala, solicitações, publicação), substituindo o catálogo hardcoded da FASE 14c-1. |
 
 **Achado que motivou a urgência desta fase**: as regras Firestore hoje em
 produção (`firebase/firestore.production.snapshot.rules`) liberam leitura e
