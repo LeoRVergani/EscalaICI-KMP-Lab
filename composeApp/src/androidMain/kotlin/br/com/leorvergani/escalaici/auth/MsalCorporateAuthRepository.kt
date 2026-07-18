@@ -1,6 +1,7 @@
 package br.com.leorvergani.escalaici.auth
 
 import android.content.Context
+import android.util.Log
 import br.com.leorvergani.escalaici.BuildConfig
 import com.microsoft.identity.client.AuthenticationCallback
 import com.microsoft.identity.client.IAccount
@@ -161,7 +162,14 @@ class MsalCorporateAuthRepository(context: Context) : CorporateAuthRepository {
                     }
 
                     override fun onError(exception: MsalException) {
-                        mutableState.value = CorporateAuthState.Failed(CorporateAuthError.InvalidConfiguration)
+                        if (BuildConfig.DEBUG) {
+                            Log.w(
+                                AUTH_LOG_TAG,
+                                "MSAL init failed: ${exception.toDiagnosticCode()} " +
+                                    "(exceptionClass=${exception::class.simpleName}, errorCode=${exception.errorCode})",
+                            )
+                        }
+                        mutableState.value = CorporateAuthState.Failed(exception.toCorporateAuthError())
                         continuation.resumeIfActive(null)
                     }
                 },
@@ -199,6 +207,7 @@ class MsalCorporateAuthRepository(context: Context) : CorporateAuthRepository {
     }
 
     private companion object {
+        const val AUTH_LOG_TAG = "EscalaICI-Auth"
         const val MSAL_RUNTIME_CONFIG_FILE = "msal_runtime_config.json"
         const val USER_READ_SCOPE = "User.Read"
     }
