@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -164,7 +167,9 @@ internal fun PlantaoScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -237,15 +242,25 @@ private fun PlantaoHeroCard(
     LabCard(borderColor = accent.copy(alpha = 0.40f)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    if (active) "PLANTÃO" else "PLANTÃO",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = accent,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "PLANTÃO",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accent,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (shouldShowIllustrativeBadge(isImported)) {
+                        IllustrativeOnCallBadge()
+                    }
+                }
                 Text(title, style = MaterialTheme.typography.titleLarge, color = LabColors.onSurface, fontWeight = FontWeight.Black)
                 Text(
                     if (assignmentCount > 0) "$assignmentCount plantão(ões) no período" else "Nenhum plantão carregado para o período atual.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LabColors.onSurfaceMuted
+                )
+                Text(
+                    "Plantão é um relatório separado da escala principal.",
                     style = MaterialTheme.typography.bodySmall,
                     color = LabColors.onSurfaceMuted
                 )
@@ -297,6 +312,20 @@ private fun PlantaoHeroCard(
         if (importedFileName == "Firebase") {
             Button(onClick = onRetryFirebase, modifier = Modifier.fillMaxWidth()) { Text("Tentar novamente") }
         }
+    }
+}
+
+@Composable
+private fun IllustrativeOnCallBadge() {
+    val color = Color(0xFFF59E0B)
+    Box(
+        modifier = Modifier
+            .clip(LabShapes.chip)
+            .background(color.copy(alpha = 0.16f))
+            .border(1.dp, color.copy(alpha = 0.36f), LabShapes.chip)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text("DADOS ILUSTRATIVOS", color = color, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
     }
 }
 

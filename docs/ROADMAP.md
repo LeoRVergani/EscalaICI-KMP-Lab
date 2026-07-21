@@ -7,6 +7,53 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14E — Estabilizacao Android/Web do Ambiente Demo (insets, dados, alertas, identidade)
+
+- **Status:** DONE (local) — 4 rodadas de correcao (Codex, revisadas e testadas
+  independentemente por mim), validacao manual real no emulador com dado remoto
+  (`workspaces/demo-v1` revisao 3, Firestore ja ativo), build Web/Wasm validado no
+  Chromium real.
+- Motivada por teste manual real no checkpoint FASE 14c-5B: titulo/botao Voltar do
+  Ambiente Demo sob a status bar, "Equipe nao localizada na escala" sempre aparecendo,
+  turno "Comercial" da equipe de Seguranca virando "Turno indefinido" (zerando dias
+  trabalhados/horas), "Fonte: Fonte:" duplicado, e mensagens contraditorias de
+  identidade no Perfil em modo Demo.
+- Insets: `LabPremiumBackground` centraliza `Modifier.windowInsetsPadding(WindowInsets.safeDrawing)`;
+  `PlantaoScreen`/`ShiftSwapScreen` corrigidos localmente (nao usavam o wrapper
+  compartilhado). Nenhuma mudanca de comportamento no Web (insets resolvem para zero
+  fora do Android).
+- Navegacao: novo `PlatformBackHandler` (`expect`/`actual`, no-op no Wasm) + logica pura
+  `decideDemoBackNavigation` — Android Back navega persona -> administracao -> entrada
+  sem encerrar a sessao MSAL.
+- Causa raiz real (confirmada com leitura direta, somente leitura, da revisao 3):
+  `scheduleSummaryForMember` nunca calculava colegas do dia (`ShiftDay.teamMembers`
+  sempre vazio) e o mapeador de turno nao reconhecia `shiftName: "Comercial"` (turno
+  real e valido da equipe de Seguranca), classificando como `ShiftType.INDEFINIDO`
+  (`isWorkShift = false`) e zerando as metricas de dias trabalhados/horas. Corrigido nas
+  duas causas; novo `ShiftType.COMERCIAL` (`isWorkShift = true`).
+- `sourceFileName` (pensado para "arquivo XLS importado") estava sendo reaproveitado
+  para guardar a mensagem de origem remota, causando "Fonte: Fonte: ..." duplicado e
+  "Arquivo importado: ..."/"Escala salva apenas neste dispositivo" incorretos para dado
+  remoto. Novo campo `ScheduleSummary.remoteSourceLabel`, distinto e correto.
+- Perfil em modo Demo agora separa claramente: conta MSAL real autenticada, sessao
+  administrativa Demo (papel `DEMO_DEVELOPER`), persona ficticia selecionada — sem
+  mostrar a resolucao de vinculo no workspace oficial (irrelevante em modo Demo) como se
+  fosse um erro.
+- Alertas "Turno indefinido" consolidam em um unico item quando ha mais de 3 dias
+  afetados no mesmo resumo (protecao contra spam se um turno desconhecido aparecer numa
+  publicacao futura).
+- Plantao ganhou um badge visual "DADOS ILUSTRATIVOS" quando nenhum relatorio real foi
+  publicado, alem do aviso textual ja existente.
+- `versionCode`/`versionName`: `23`/`0.7.9` -> `24`/`0.7.10`.
+- Validado: `testDebugUnitTest`, `compileKotlinWasmJs`, `wasmJsTest`,
+  `wasmJsBrowserDistribution`, `assembleDebug`, `assembleRelease` — todos
+  `BUILD SUCCESSFUL`. Validacao manual real no emulador (screenshots, logcat sem
+  erro/crash) e no Chromium real servindo a build de producao Web (sem erro de
+  console).
+- Limitacao conhecida, nao introduzida nesta fase: MSAL Web nao configurado para
+  validacao visual completa das telas autenticadas no navegador local ad-hoc.
+- Detalhe completo: `docs/spec/62-ESCALAICI-DEMO-INSETS-QUALIDADE-DADOS-E-WEB.md`.
+
 ## FASE 14c-5B — LOGIN/DEMO: causas de erro separadas, autorizacao lvergani e visao administrativa Demo
 
 - **Status:** DONE (local) — codigo, testes automatizados e validacao manual
