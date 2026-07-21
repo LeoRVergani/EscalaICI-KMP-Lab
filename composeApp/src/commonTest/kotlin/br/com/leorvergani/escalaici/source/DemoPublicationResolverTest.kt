@@ -25,6 +25,7 @@ import br.com.leorvergani.escalaici.identity.RemoteFirstDemoMembershipRepository
 import br.com.leorvergani.escalaici.identity.RemoteFirstDemoTeamRepository
 import br.com.leorvergani.escalaici.identity.isDemoAuthorizedForIdentity
 import br.com.leorvergani.escalaici.model.LabDate
+import br.com.leorvergani.escalaici.model.ShiftType
 import br.com.leorvergani.escalaici.platform.TodayProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -120,6 +121,23 @@ class DemoPublicationResolverTest {
         assertEquals("member-demo-1", member.id)
         assertEquals("", member.teamId)
         assertEquals("team-demo-soc", memberships.single().teamId)
+    }
+
+    @Test
+    fun mapsCommercialRemoteWorkShiftAsWorkShiftIgnoringCase() {
+        listOf("Comercial", "comercial", "COMERCIAL").forEach { shiftName ->
+            val assignment = assignment(revision = 7, shiftName = shiftName).toDemoScheduleAssignment(revision = 7)
+
+            assertEquals(ShiftType.COMERCIAL, assignment.shiftType)
+            assertTrue(assignment.shiftType.isWorkShift)
+        }
+    }
+
+    @Test
+    fun keepsUnknownRemoteWorkShiftUndefined() {
+        val assignment = assignment(revision = 7, shiftName = "turno-inexistente-xyz").toDemoScheduleAssignment(revision = 7)
+
+        assertEquals(ShiftType.INDEFINIDO, assignment.shiftType)
     }
 
     @Test
@@ -418,7 +436,12 @@ private fun period(revision: Int, teamId: String, workspaceId: String = "demo-v1
     putField("endDate", "2026-07-31")
 }
 
-private fun assignment(revision: Int, teamId: String = "team-demo-soc", workspaceId: String = "demo-v1") = buildJsonObject {
+private fun assignment(
+    revision: Int,
+    teamId: String = "team-demo-soc",
+    workspaceId: String = "demo-v1",
+    shiftName: String = "manha"
+) = buildJsonObject {
     putField("id", "assignment-demo-1")
     putField("workspaceId", workspaceId)
     putField("publicationRevision", revision)
@@ -427,7 +450,7 @@ private fun assignment(revision: Int, teamId: String = "team-demo-soc", workspac
     putField("memberId", "member-demo-1")
     putField("date", "2026-07-01")
     putField("assignmentType", "WORK_SHIFT")
-    putField("shiftName", "manha")
+    putField("shiftName", shiftName)
 }
 
 private fun request(revision: Int, teamId: String, workspaceId: String = "demo-v1") = buildJsonObject {

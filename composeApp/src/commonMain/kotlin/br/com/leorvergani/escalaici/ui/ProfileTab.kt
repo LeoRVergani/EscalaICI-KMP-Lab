@@ -86,6 +86,9 @@ internal fun ProfileTab(
 ) {
     val corporateAuthState = corporateAuthRepository?.state?.collectAsState()?.value
     val criticalAlerts = remember(summary) { GenerateLabAlerts(summary).count { it.severity == LabAlert.Severity.CRITICO } }
+    val identityDecision = remember(selectedDemoPersona, organizationResolutionResult) {
+        decideProfileIdentityPresentation(selectedDemoPersona, organizationResolutionResult)
+    }
     var notificationPermission by remember(notificationService) { mutableStateOf(notificationService.capability().permissionState) }
     var requestingNotification by remember { mutableStateOf(false) }
     var notificationFeedback by remember { mutableStateOf<String?>(null) }
@@ -104,7 +107,7 @@ internal fun ProfileTab(
                         Text("Perfil selecionado", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelMedium)
                         Text(summary.member.displayName, color = LabColors.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            if (summary.isImported) "Escala salva apenas neste dispositivo" else "Nenhuma escala importada",
+                            profileScheduleStatusLine(summary),
                             color = LabColors.tertiary,
                             style = MaterialTheme.typography.labelMedium
                         )
@@ -112,7 +115,7 @@ internal fun ProfileTab(
                 }
                 Text("Período: ${summary.periodLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 Text(
-                    if (summary.isImported) "Arquivo importado: ${summary.sourceFileName}" else "Fonte: dados de demonstração",
+                    profileScheduleSourceLine(summary),
                     color = LabColors.onSurfaceMuted,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
@@ -143,9 +146,15 @@ internal fun ProfileTab(
                             is CorporateAuthState.Authenticated -> {
                                 Text("Nome: ${corporateAuthState.identity.displayName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                                 Text("Login: ${corporateAuthState.identity.username}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                                Text("Organização corporativa identificada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                                Text("Conta corporativa autenticada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                                OrganizationResolutionBody(organizationResolutionResult)
+                                if (identityDecision.showOrganizationResolutionBody) {
+                                    Text("Organização corporativa identificada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                                    Text("Conta corporativa autenticada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                                    OrganizationResolutionBody(organizationResolutionResult)
+                                } else {
+                                    identityDecision.demoSessionLabel?.let { label ->
+                                        Text(label, color = LabColors.tertiary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
                         }
                     }
@@ -154,11 +163,14 @@ internal fun ProfileTab(
                 // corporateAuthState (workspace demo-v1 é ortogonal à identidade
                 // corporativa, spec 56 seção 12 — mesma correção de alcançabilidade
                 // aplicada em LoginGateScreen).
-                if (selectedDemoPersona != null) {
+                if (selectedDemoPersona != null && identityDecision.showDemoPersonaResolutionSection) {
                     DemoPersonaResolutionSection(
                         selectedDemoPersona = selectedDemoPersona,
                         demoPersonaResolutionResult = demoPersonaResolutionResult
                     )
+                    identityDecision.demoModeExplanation?.let { message ->
+                        Text(message, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         }
@@ -232,8 +244,8 @@ internal fun ProfileTab(
         }
         item {
             LabCard(title = "Armazenamento local", icon = Icons.Default.Storage, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
-                Text("Arquivo salvo: ${summary.sourceFileName ?: "nenhuma escala importada"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Status: ${if (summary.isImported) "Escala lida na sessão Web/Android" else "Sem XLS aplicado"}", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
+                Text("Arquivo salvo: ${summary.sourceFileName ?: "nenhum arquivo XLS importado"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Status: ${if (summary.isImported) "Escala lida na sessão Web/Android" else "Sem XLS local aplicado"}", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
                 DisabledAction("Remover escala local")
             }
         }

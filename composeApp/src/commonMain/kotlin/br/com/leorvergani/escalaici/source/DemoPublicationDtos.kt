@@ -206,6 +206,7 @@ private fun shiftTypeFrom(assignmentType: String?, shiftName: String?): ShiftTyp
         "manhã", "manha", "morning" -> ShiftType.MANHA
         "tarde", "afternoon" -> ShiftType.TARDE
         "noite", "night" -> ShiftType.NOITE
+        "comercial" -> ShiftType.COMERCIAL
         else -> ShiftType.INDEFINIDO
     }
     else -> ShiftType.INDEFINIDO

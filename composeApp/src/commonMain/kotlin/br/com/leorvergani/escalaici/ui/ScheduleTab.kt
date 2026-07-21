@@ -83,7 +83,7 @@ internal fun ScheduleTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao
         item {
             LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
         }
-        if (!summary.isImported) {
+        if (!hasPublishedOrImportedSchedule(summary)) {
             item {
                 DemoCalendarCard()
             }
@@ -395,7 +395,7 @@ private fun CalendarDayDetailCard(day: ShiftDay) {
             Text(day.type.timeRange, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodyMedium)
         }
         Text(
-            if (day.teamMembers.isNotEmpty()) "Com: ${day.teamMembers.joinToString(", ")}" else "Equipe não localizada na escala",
+            if (day.teamMembers.isNotEmpty()) "Com: ${day.teamMembers.joinToString(", ")}" else "Nenhum colega escalado neste dia",
             color = LabColors.onSurfaceMuted,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 2,

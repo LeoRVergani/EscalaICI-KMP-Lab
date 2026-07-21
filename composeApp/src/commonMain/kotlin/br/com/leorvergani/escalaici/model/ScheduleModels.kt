@@ -13,6 +13,8 @@ enum class ShiftType(
     MANHA("Manhã", "M", "07:00 - 13:00", true, startMinute = 420, endMinute = 780),
     TARDE("Tarde", "T", "13:00 - 19:00", true, startMinute = 780, endMinute = 1140),
     NOITE("Noite", "N", "19:00 - 01:00", true, startMinute = 1140, endMinute = 60, crossesMidnight = true),
+    // Turno comercial da publicação Demo de Segurança.
+    COMERCIAL("Comercial", "Co", "08:00 - 18:00", true, startMinute = 480, endMinute = 1080),
     FOLGA("Folga", "F", "Descanso", false),
     FERIAS("Férias", "X", "Férias", false),
     BH("BH", "BH", "Banco de horas", false),
@@ -64,6 +66,7 @@ data class ScheduleSummary(
      *  ao `suggestedPauseTimes()` do app real. */
     val pauseSuggestions: List<String> = emptyList(),
     val sourceFileName: String? = null,
+    val remoteSourceLabel: String? = null,
     val sheetNames: List<String> = emptyList(),
     val collaborators: List<String> = emptyList(),
     val warnings: List<String> = emptyList(),

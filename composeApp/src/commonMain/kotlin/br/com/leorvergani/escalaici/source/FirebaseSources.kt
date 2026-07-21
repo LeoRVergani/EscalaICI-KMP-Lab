@@ -214,6 +214,7 @@ private fun FirebaseScheduleAssignmentDto.toShiftType(): ShiftType = when (assig
         "manhã", "manha" -> ShiftType.MANHA
         "tarde" -> ShiftType.TARDE
         "noite" -> ShiftType.NOITE
+        "comercial" -> ShiftType.COMERCIAL
         else -> error("Turno desconhecido.")
     }
     else -> error("Tipo de assignment desconhecido.")

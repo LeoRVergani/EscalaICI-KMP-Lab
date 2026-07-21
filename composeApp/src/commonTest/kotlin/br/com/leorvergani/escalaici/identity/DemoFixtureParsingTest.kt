@@ -1,8 +1,10 @@
 package br.com.leorvergani.escalaici.identity
 
+import br.com.leorvergani.escalaici.model.ShiftType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 import kotlinx.serialization.SerializationException
 
 class DemoFixtureParsingTest {
@@ -167,6 +169,10 @@ class DemoFixtureParsingTest {
         assertEquals(true, membership.isPrimary)
         assertEquals("demo-test", membership.workspaceId)
         assertEquals(7, membership.publicationRevision)
+
+        val assignments = pkg.toScheduleAssignments()
+        assertEquals(ShiftType.MANHA, assignments[0].shiftType)
+        assertEquals(ShiftType.FOLGA, assignments[1].shiftType)
     }
 
     @Test
@@ -174,6 +180,29 @@ class DemoFixtureParsingTest {
         val pkg = parseDemoFixturePackage(minimumFixtureJson)
 
         assertEquals(mapOf("member-test" to "member.test"), pkg.loginByMemberId())
+    }
+
+    @Test
+    fun mapsCommercialFixtureShiftAsWorkShiftIgnoringCase() {
+        listOf("Comercial", "comercial", "COMERCIAL").forEach { shiftName ->
+            val pkg = parseDemoFixturePackage(minimumFixtureJson.replace("\"shiftName\": \"Morning\"", "\"shiftName\": \"$shiftName\""))
+
+            val assignment = pkg.toScheduleAssignments().first()
+
+            assertEquals(ShiftType.COMERCIAL, assignment.shiftType)
+            assertTrue(assignment.shiftType.isWorkShift)
+        }
+    }
+
+    @Test
+    fun keepsUnknownFixtureWorkShiftUndefined() {
+        val pkg = parseDemoFixturePackage(
+            minimumFixtureJson.replace("\"shiftName\": \"Morning\"", "\"shiftName\": \"turno-inexistente-xyz\"")
+        )
+
+        val assignment = pkg.toScheduleAssignments().first()
+
+        assertEquals(ShiftType.INDEFINIDO, assignment.shiftType)
     }
 
     @Test

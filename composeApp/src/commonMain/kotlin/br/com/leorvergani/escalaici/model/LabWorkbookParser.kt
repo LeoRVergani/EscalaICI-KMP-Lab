@@ -279,6 +279,7 @@ object LabWorkbookParser {
         ShiftType.MANHA -> "08:00 - 08:15"
         ShiftType.TARDE -> "14:00 - 14:15"
         ShiftType.NOITE -> "20:00 - 20:15"
+        ShiftType.COMERCIAL -> "09:00 - 09:15"
         else -> "Pausa não calculada"
     }
 
@@ -290,6 +291,7 @@ object LabWorkbookParser {
         ShiftType.MANHA -> "09:00" to "11:45"
         ShiftType.TARDE -> "15:00" to "17:45"
         ShiftType.NOITE -> "21:00" to "23:45"
+        ShiftType.COMERCIAL -> "10:00" to "12:45"
         else -> null
     }
 
@@ -300,6 +302,7 @@ object LabWorkbookParser {
         ShiftType.MANHA -> listOf("09:00", "09:30", "10:00", "10:30", "11:00", "11:30")
         ShiftType.TARDE -> listOf("15:00", "15:30", "16:00", "16:30", "17:00", "17:30")
         ShiftType.NOITE -> listOf("21:00", "21:30", "22:00", "22:30", "23:00", "23:30")
+        ShiftType.COMERCIAL -> listOf("10:00", "10:30", "11:00", "11:30", "12:00", "12:30")
         else -> emptyList()
     }
 

@@ -19,9 +19,10 @@ object GenerateLabAlerts {
         if (days.isEmpty()) return emptyList()
 
         val alerts = mutableListOf<LabAlert>()
+        val sourceLabel = summary.remoteSourceLabel ?: summary.sourceFileName ?: "Dados de exemplo"
         alerts += LabAlert(
             title = "Fonte da escala",
-            message = "${summary.sourceFileName ?: "Dados de exemplo"} • ${summary.periodLabel} • ${summary.member.scaleName}",
+            message = "$sourceLabel • ${summary.periodLabel} • ${summary.member.scaleName}",
             severity = LabAlert.Severity.INFO,
             date = days.firstOrNull()?.date
         )
@@ -104,13 +105,32 @@ object GenerateLabAlerts {
     }
 
     private fun generateInconsistencyAlerts(days: List<ShiftDay>, alerts: MutableList<LabAlert>) {
-        days.filter { it.type == ShiftType.INCONSISTENCIA || it.type == ShiftType.INDEFINIDO }.forEach { day ->
+        days.filter { it.type == ShiftType.INCONSISTENCIA }.forEach { day ->
             alerts += LabAlert(
-                title = if (day.type == ShiftType.INCONSISTENCIA) "Inconsistência na escala" else "Turno indefinido",
+                title = "Inconsistência na escala",
                 message = "${day.dateLabel}: ${day.type.label}. ${day.note.orEmpty()}".trim(),
-                severity = if (day.type == ShiftType.INCONSISTENCIA) LabAlert.Severity.ATENCAO else LabAlert.Severity.INFO,
+                severity = LabAlert.Severity.ATENCAO,
                 date = day.date
             )
+        }
+
+        val undefinedDays = days.filter { it.type == ShiftType.INDEFINIDO }
+        if (undefinedDays.size > UndefinedShiftConsolidationThreshold) {
+            alerts += LabAlert(
+                title = "Turno indefinido em vários dias",
+                message = "${undefinedDays.size} dias sem turno reconhecido entre ${undefinedDays.first().dateLabel} e ${undefinedDays.last().dateLabel}. Provável causa estrutural na publicação; contate o administrador.",
+                severity = LabAlert.Severity.ATENCAO,
+                date = undefinedDays.first().date
+            )
+        } else {
+            undefinedDays.forEach { day ->
+                alerts += LabAlert(
+                    title = "Turno indefinido",
+                    message = "${day.dateLabel}: ${day.type.label}. ${day.note.orEmpty()}".trim(),
+                    severity = LabAlert.Severity.INFO,
+                    date = day.date
+                )
+            }
         }
     }
 
@@ -126,4 +146,5 @@ object GenerateLabAlerts {
     }
 
     private const val MinutesPerDay = 24 * 60
+    private const val UndefinedShiftConsolidationThreshold = 3
 }

@@ -232,18 +232,27 @@ suspend fun DemoPublicationRepository.scheduleSummaryForMember(memberId: String)
         .filter { it.memberId == memberId && it.teamId == team.teamId }
         .sortedBy { it.date }
     if (assignments.isEmpty()) return null
+    val membersById = data.members.associateBy { it.id }
+    val teamAssignmentsByDate = data.scheduleAssignments
+        .filter { it.teamId == team.teamId && it.shiftType.isWorkShift }
+        .groupBy { it.date }
     val period = data.schedulePeriods.firstOrNull { it.id == assignments.first().periodId }
     return ScheduleSummary(
         member = member,
         team = team,
         days = assignments.map { assignment ->
             val date = LabDate.parseIso(assignment.date)
+            val colleagueNames = teamAssignmentsByDate[assignment.date]
+                .orEmpty()
+                .filter { it.memberId != memberId }
+                .mapNotNull { colleague -> membersById[colleague.memberId]?.scaleName }
             ShiftDay(
                 dayLabel = date?.dayOfWeekShort() ?: "",
                 dateLabel = date?.dateLabel() ?: assignment.date,
                 fullDateLabel = date?.fullDateLabel() ?: assignment.date,
                 type = assignment.shiftType,
                 date = date,
+                teamMembers = colleagueNames,
                 note = assignment.notes,
                 label = assignment.shiftType.label
             )
@@ -251,9 +260,12 @@ suspend fun DemoPublicationRepository.scheduleSummaryForMember(memberId: String)
         periodLabel = period?.let { "${it.startDate} a ${it.endDate}" } ?: "",
         pauseLabel = "--:--",
         pauseOffsetLabel = "",
-        sourceFileName = data.state.message
+        sourceFileName = null,
+        remoteSourceLabel = data.state.message?.remoteSourceLabel()?.takeIf { it.isNotBlank() }
     )
 }
+
+private fun String.remoteSourceLabel(): String = removePrefix("Fonte:").trim()
 
 fun DemoPublicationData.toWorkspaceOverview(): DemoWorkspaceOverview {
     val memberIdsWithAssignments = scheduleAssignments.map { it.memberId }.toSet()

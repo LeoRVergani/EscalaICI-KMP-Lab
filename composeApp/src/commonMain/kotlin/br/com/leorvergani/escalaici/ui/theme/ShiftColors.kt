@@ -8,6 +8,7 @@ internal fun ShiftType.shiftColor(): Color = when (this) {
     ShiftType.MANHA -> Color(0xFFFACC15)
     ShiftType.TARDE -> Color(0xFFF97316)
     ShiftType.NOITE -> Color(0xFF1D4ED8)
+    ShiftType.COMERCIAL -> Color(0xFF0EA5E9)
     ShiftType.FOLGA -> Color(0xFF16A34A)
     ShiftType.FERIAS -> Color(0xFF14B8A6)
     ShiftType.BH -> Color(0xFFF59E0B)
@@ -29,6 +30,7 @@ internal fun ShiftType.shiftContainerColor(): Color = when (this) {
     ShiftType.TARDE -> Color(0xFF451A03).copy(alpha = 0.3f)
     ShiftType.NOITE -> LabColors.primaryContainer.copy(alpha = 0.3f)
     ShiftType.MADRUGADA -> Color(0xFF2E1065).copy(alpha = 0.3f)
+    ShiftType.COMERCIAL -> Color(0xFF075985).copy(alpha = 0.3f)
     ShiftType.FOLGA -> Color(0xFF064E3B).copy(alpha = 0.3f)
     ShiftType.FERIAS -> Color(0xFF134E4A).copy(alpha = 0.30f)
     ShiftType.BH -> Color(0xFF451A03).copy(alpha = 0.3f)
@@ -42,6 +44,7 @@ internal fun ShiftType.shiftOnColor(): Color = when (this) {
     ShiftType.TARDE -> Color(0xFFFEF3C7)
     ShiftType.NOITE -> LabColors.onPrimaryContainer
     ShiftType.MADRUGADA -> Color(0xFFEDE9FE)
+    ShiftType.COMERCIAL -> Color(0xFFE0F2FE)
     ShiftType.FOLGA -> Color(0xFFD1FAE5)
     ShiftType.FERIAS -> Color(0xFFCCFBF1)
     ShiftType.BH -> Color(0xFFFEF3C7)

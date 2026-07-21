@@ -104,7 +104,7 @@ private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportCli
         if (day == null) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("NENHUM PRÓXIMO TURNO", color = Color(0xFF93C5FD), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
-                Text(if (summary.isImported) "Sem turnos futuros neste período" else "Importe uma escala", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                Text(if (hasPublishedOrImportedSchedule(summary)) "Sem turnos futuros neste período" else "Importe uma escala", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                 Text(
                     "A análise local mantém os dados salvos no dispositivo.",
                     color = Color.White.copy(alpha = 0.76f),
@@ -135,7 +135,7 @@ private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportCli
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
             Text(
-                text = if (day.teamMembers.isNotEmpty()) heroMetaText("Com:", day.teamMembers.joinToString(", ")) else buildAnnotatedString { append("Equipe não localizada na escala") },
+                text = if (day.teamMembers.isNotEmpty()) heroMetaText("Com:", day.teamMembers.joinToString(", ")) else buildAnnotatedString { append("Nenhum colega escalado neste dia") },
                 color = Color.White.copy(alpha = 0.72f),
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2,
@@ -175,7 +175,7 @@ private fun WeekSummaryCard(summary: ScheduleSummary, today: LabDate) {
     val week = currentWeekWindow(summary.days, today)
     LabCard(
         title = "Resumo da semana",
-        badge = if (!summary.isImported) "não importada" else null,
+        badge = if (!hasPublishedOrImportedSchedule(summary)) "não importada" else null,
         icon = Icons.Default.CalendarMonth,
         gradient = listOf(Color(0xFF0B1B2C), Color(0xFF0D1A2D)),
         borderColor = LabColors.primary.copy(alpha = 0.42f)
@@ -303,18 +303,18 @@ private fun PeriodSummary(summary: ScheduleSummary) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text(
-                    if (summary.isImported) "RESUMO DO PERÍODO" else "RESUMO DA SEMANA",
+                    if (hasPublishedOrImportedSchedule(summary)) "RESUMO DO PERÍODO" else "RESUMO DA SEMANA",
                     color = LabColors.onSurfaceMuted,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Black
                 )
                 Text(
-                    if (summary.isImported) summary.periodLabel else "Nenhuma escala importada",
+                    if (hasPublishedOrImportedSchedule(summary)) summary.periodLabel else "Nenhuma escala importada",
                     color = LabColors.onSurfaceMuted,
                     style = MaterialTheme.typography.labelSmall
                 )
             }
-            if (!summary.isImported) DemoBadge()
+            if (!hasPublishedOrImportedSchedule(summary)) DemoBadge()
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             MetricCard("Trabalho", "${summary.workedDays}d", Icons.Default.Work, LabColors.primary, Modifier.weight(1f))

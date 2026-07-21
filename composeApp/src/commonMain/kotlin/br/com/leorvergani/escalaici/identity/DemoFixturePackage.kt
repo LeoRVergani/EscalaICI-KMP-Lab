@@ -234,6 +234,7 @@ private fun fixtureShiftType(assignmentType: String, shiftName: String?): ShiftT
         "manhã", "manha", "morning" -> ShiftType.MANHA
         "tarde", "afternoon" -> ShiftType.TARDE
         "noite", "night" -> ShiftType.NOITE
+        "comercial" -> ShiftType.COMERCIAL
         else -> ShiftType.INDEFINIDO
     }
     else -> ShiftType.INDEFINIDO
