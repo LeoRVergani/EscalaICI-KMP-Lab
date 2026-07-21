@@ -11,6 +11,17 @@ class ScheduleSyncCauseTest {
         assertEquals(ScheduleSyncCause.PERMISSION_DENIED, classifySyncFailure(RuntimeException("403 Forbidden")))
     }
 
+    @Test fun classifiesDisabledFirestoreApiBeforeGeneric403() {
+        assertEquals(
+            ScheduleSyncCause.FIRESTORE_DATABASE_DISABLED,
+            classifySyncFailure(RuntimeException("Firestore indisponível (403). Cloud Firestore API has not been used in project escala-ici-dev before or it is disabled. reason: SERVICE_DISABLED"))
+        )
+    }
+
+    @Test fun classifiesMissingConfigAsAuthRequiredWithoutFirestoreDisabledMessage() {
+        assertEquals(ScheduleSyncCause.AUTH_REQUIRED, classifySyncFailure(RuntimeException("Firebase not configured.")))
+    }
+
     @Test fun classifiesNetworkErrorFromMessageText() {
         assertEquals(ScheduleSyncCause.NETWORK_ERROR, classifySyncFailure(RuntimeException("UNAVAILABLE: The service is currently unavailable.")))
         assertEquals(ScheduleSyncCause.NETWORK_ERROR, classifySyncFailure(RuntimeException("Unable to resolve host (UnknownHostException)")))
@@ -37,6 +48,7 @@ class ScheduleSyncCauseTest {
         assertTrue(ScheduleSyncCause.NO_ASSIGNMENTS.isEmptyState())
         assertFalse(ScheduleSyncCause.NETWORK_ERROR.isEmptyState())
         assertFalse(ScheduleSyncCause.PERMISSION_DENIED.isEmptyState())
+        assertFalse(ScheduleSyncCause.FIRESTORE_DATABASE_DISABLED.isEmptyState())
         assertFalse(ScheduleSyncCause.UNKNOWN.isEmptyState())
     }
 

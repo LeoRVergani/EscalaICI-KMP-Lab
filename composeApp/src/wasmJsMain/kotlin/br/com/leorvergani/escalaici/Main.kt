@@ -14,6 +14,7 @@ import br.com.leorvergani.escalaici.identity.RemoteFirstDemoMemberRepository
 import br.com.leorvergani.escalaici.identity.RemoteFirstDemoMembershipRepository
 import br.com.leorvergani.escalaici.identity.RemoteFirstDemoTeamRepository
 import br.com.leorvergani.escalaici.identity.OrganizationWorkspace
+import br.com.leorvergani.escalaici.identity.isDemoAuthorizedForIdentity
 import br.com.leorvergani.escalaici.identity.scheduleSummaryForMember
 import br.com.leorvergani.escalaici.ui.EscalaIciLabApp
 import br.com.leorvergani.escalaici.repository.WebLocalDataCache
@@ -64,13 +65,22 @@ fun main() {
                 demoMembershipRepository = RemoteFirstDemoMembershipRepository(demoPublicationRepository),
                 demoMemberRepository = RemoteFirstDemoMemberRepository(demoPublicationRepository),
                 demoTeamRepository = RemoteFirstDemoTeamRepository(demoPublicationRepository),
+                corporateDataSourceStateProvider = { corporatePublicationRepository.state() },
                 demoDataSourceStateProvider = { demoPublicationRepository.state() }
             ),
+            corporateDataSourceStateProvider = { corporatePublicationRepository.state() },
             isDemoAuthorized = { identity ->
-                runCatching {
-                    demoResolver.loadActivePointer().allowedDeveloperObjectIds.contains(identity.objectId)
-                }.getOrDefault(false)
+                isDemoAuthorizedForIdentity(
+                    identity = identity,
+                    // O target Wasm deste projeto nao expoe BuildConfig.DEBUG
+                    // nem variante debug/release equivalente no codigo comum.
+                    isDevelopmentBuild = false,
+                    allowedDeveloperObjectIdsProvider = {
+                        demoResolver.loadActivePointer().allowedDeveloperObjectIds
+                    }
+                )
             },
+            loadDemoWorkspaceOverview = { demoPublicationRepository.workspaceOverview() },
             loadPublishedScheduleSummary = { workspaceId, memberId ->
                 when (workspaceId) {
                     OrganizationWorkspace.CORPORATE_WORKSPACE_ID -> corporatePublicationRepository.scheduleSummaryForMember(memberId)

@@ -123,6 +123,7 @@ class DemoPublicationResolver(
 
     private fun safeMessage(cause: ScheduleSyncCause): String = when (cause) {
         ScheduleSyncCause.AUTH_REQUIRED -> "Publicacao remota indisponivel."
+        ScheduleSyncCause.FIRESTORE_DATABASE_DISABLED -> "Banco Firestore remoto indisponivel."
         ScheduleSyncCause.PERMISSION_DENIED -> "Sem permissao para ler a publicacao remota."
         ScheduleSyncCause.NETWORK_ERROR -> "Nao foi possivel conectar ao Firebase."
         ScheduleSyncCause.INVALID_REMOTE_DATA -> "A publicacao remota esta em formato inesperado."

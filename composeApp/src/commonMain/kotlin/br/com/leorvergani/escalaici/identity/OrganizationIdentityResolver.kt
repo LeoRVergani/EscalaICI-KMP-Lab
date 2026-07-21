@@ -24,6 +24,7 @@ class DefaultOrganizationIdentityResolver(
     private val demoMembershipRepository: MembershipRepository = DemoMembershipRepository(),
     private val demoMemberRepository: MemberRepository = DemoMemberRepository(),
     private val demoTeamRepository: TeamRepository = DemoTeamRepository(),
+    private val corporateDataSourceStateProvider: (suspend () -> DemoDataSourceState?)? = null,
     private val demoDataSourceStateProvider: (suspend () -> DemoDataSourceState?)? = null,
     private val todayProvider: TodayProvider = SystemTodayProvider
 ) : OrganizationIdentityResolver {
@@ -37,6 +38,7 @@ class DefaultOrganizationIdentityResolver(
             )
         }
 
+        val dataSourceState = corporateDataSourceStateProvider?.invoke()
         return resolve(
             workspaceId = OrganizationWorkspace.CORPORATE_WORKSPACE_ID,
             identitySource = IdentitySource.CORPORATE_MSAL,
@@ -48,7 +50,7 @@ class DefaultOrganizationIdentityResolver(
             membershipRepository = corporateMembershipRepository,
             memberRepository = corporateMemberRepository,
             teamRepository = corporateTeamRepository,
-            dataSourceState = null
+            dataSourceState = dataSourceState
         )
     }
 

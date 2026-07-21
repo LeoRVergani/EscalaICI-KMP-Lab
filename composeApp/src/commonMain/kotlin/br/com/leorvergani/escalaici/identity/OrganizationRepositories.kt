@@ -162,6 +162,19 @@ data class DemoDataSourceState(
     val allowedDeveloperObjectIds: List<String> = emptyList()
 )
 
+const val DEMO_DEVELOPER_ROLE = "DEMO_DEVELOPER"
+
+data class DemoWorkspaceOverview(
+    val workspaceId: String,
+    val developerRole: String = DEMO_DEVELOPER_ROLE,
+    val state: DemoDataSourceState,
+    val teamNames: List<String>,
+    val memberCount: Int,
+    val activeMemberCount: Int,
+    val activePeriodLabel: String?,
+    val operationalPersonas: List<DemoPersona>
+)
+
 class DemoPublicationRepository(
     private val resolver: DemoPublicationResolver,
     private val fixtureProvider: (suspend () -> DemoFixturePackage)? = { DemoFixtureCache.get() }
@@ -196,6 +209,8 @@ class DemoPublicationRepository(
     }
 
     suspend fun state(): DemoDataSourceState = data().state
+
+    suspend fun workspaceOverview(): DemoWorkspaceOverview = data().toWorkspaceOverview()
 }
 
 data class DemoPublicationData(
@@ -240,6 +255,22 @@ suspend fun DemoPublicationRepository.scheduleSummaryForMember(memberId: String)
     )
 }
 
+fun DemoPublicationData.toWorkspaceOverview(): DemoWorkspaceOverview {
+    val memberIdsWithAssignments = scheduleAssignments.map { it.memberId }.toSet()
+    val operationalPersonas = DemoPersonaCatalog.personas.filter { it.memberId in memberIdsWithAssignments }
+    val activePeriod = schedulePeriods.minByOrNull { it.startDate }
+
+    return DemoWorkspaceOverview(
+        workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+        state = state,
+        teamNames = teams.map { it.displayName }.sorted(),
+        memberCount = members.size,
+        activeMemberCount = members.count { it.active },
+        activePeriodLabel = activePeriod?.let { "${it.startDate} a ${it.endDate}" },
+        operationalPersonas = operationalPersonas
+    )
+}
+
 class RemoteFirstDemoMemberDirectoryRepository(
     private val publicationRepository: DemoPublicationRepository,
     private val workspaceId: String = OrganizationWorkspace.DEMO_WORKSPACE_ID
@@ -255,7 +286,7 @@ class RemoteFirstDemoMemberDirectoryRepository(
             members = data.members,
             workspaceId = workspaceId,
             loginByMemberId = data.loginByMemberId
-        ).findActiveMemberIds(normalizedEmail, normalizedLogin)
+        ).findActiveMemberIds(normalizedEmail, normalizedLogin, entraTenantId, entraObjectId)
     }
 }
 

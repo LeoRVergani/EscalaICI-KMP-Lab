@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.remember
+import br.com.leorvergani.escalaici.BuildConfig
 import br.com.leorvergani.escalaici.auth.MsalCorporateAuthRepository
 import br.com.leorvergani.escalaici.identity.DefaultOrganizationIdentityResolver
 import br.com.leorvergani.escalaici.identity.DemoPublicationRepository
@@ -16,6 +17,7 @@ import br.com.leorvergani.escalaici.identity.RemoteFirstDemoMemberRepository
 import br.com.leorvergani.escalaici.identity.RemoteFirstDemoMembershipRepository
 import br.com.leorvergani.escalaici.identity.RemoteFirstDemoTeamRepository
 import br.com.leorvergani.escalaici.identity.OrganizationWorkspace
+import br.com.leorvergani.escalaici.identity.isDemoAuthorizedForIdentity
 import br.com.leorvergani.escalaici.identity.scheduleSummaryForMember
 import br.com.leorvergani.escalaici.platform.PlatformCapabilities
 import br.com.leorvergani.escalaici.ui.EscalaIciLabApp
@@ -59,13 +61,20 @@ class MainActivity : ComponentActivity() {
                     demoMembershipRepository = RemoteFirstDemoMembershipRepository(demoPublicationRepository),
                     demoMemberRepository = RemoteFirstDemoMemberRepository(demoPublicationRepository),
                     demoTeamRepository = RemoteFirstDemoTeamRepository(demoPublicationRepository),
+                    corporateDataSourceStateProvider = { corporatePublicationRepository.state() },
                     demoDataSourceStateProvider = { demoPublicationRepository.state() }
                 ),
+                corporateDataSourceStateProvider = { corporatePublicationRepository.state() },
                 isDemoAuthorized = { identity ->
-                    runCatching {
-                        demoResolver.loadActivePointer().allowedDeveloperObjectIds.contains(identity.objectId)
-                    }.getOrDefault(false)
+                    isDemoAuthorizedForIdentity(
+                        identity = identity,
+                        isDevelopmentBuild = BuildConfig.DEBUG,
+                        allowedDeveloperObjectIdsProvider = {
+                            demoResolver.loadActivePointer().allowedDeveloperObjectIds
+                        }
+                    )
                 },
+                loadDemoWorkspaceOverview = { demoPublicationRepository.workspaceOverview() },
                 loadPublishedScheduleSummary = { workspaceId, memberId ->
                     when (workspaceId) {
                         OrganizationWorkspace.CORPORATE_WORKSPACE_ID -> corporatePublicationRepository.scheduleSummaryForMember(memberId)

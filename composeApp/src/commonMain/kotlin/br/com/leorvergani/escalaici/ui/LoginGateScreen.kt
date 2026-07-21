@@ -105,14 +105,14 @@ internal fun LoginGateScreen(
                         Text("Login: ${corporateAuthState.identity.username}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                     }
                     EntryButton(
-                        text = "LOGIN",
+                        text = "MINHA ESCALA",
                         loading = isAuthenticating,
                         enabled = !isAuthenticating,
                         onClick = { signInCorporate(onLogin) }
                     )
                     Spacer(Modifier.height(12.dp))
                     EntryButton(
-                        text = "DEMO",
+                        text = "AMBIENTE DEMO",
                         loading = false,
                         enabled = !isAuthenticating,
                         tertiary = true,

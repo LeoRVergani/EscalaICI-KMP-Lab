@@ -50,8 +50,10 @@ import br.com.leorvergani.escalaici.auth.CorporateAuthConfigurationState
 import br.com.leorvergani.escalaici.auth.CorporateAuthRepository
 import br.com.leorvergani.escalaici.auth.CorporateAuthState
 import br.com.leorvergani.escalaici.auth.CorporateIdentity
+import br.com.leorvergani.escalaici.identity.DemoDataOrigin
+import br.com.leorvergani.escalaici.identity.DemoDataSourceState
 import br.com.leorvergani.escalaici.identity.DemoPersona
-import br.com.leorvergani.escalaici.identity.DemoPersonaCatalog
+import br.com.leorvergani.escalaici.identity.DemoWorkspaceOverview
 import br.com.leorvergani.escalaici.identity.OrganizationIdentityResolver
 import br.com.leorvergani.escalaici.identity.OrganizationResolutionResult
 import br.com.leorvergani.escalaici.model.ImportedWorkbook
@@ -127,7 +129,9 @@ fun EscalaIciLabApp(
     firebaseCache: FirebaseSourceCache? = null,
     corporateAuthRepository: CorporateAuthRepository? = null,
     organizationIdentityResolver: OrganizationIdentityResolver? = null,
+    corporateDataSourceStateProvider: (suspend () -> DemoDataSourceState?)? = null,
     isDemoAuthorized: (suspend (CorporateIdentity) -> Boolean)? = null,
+    loadDemoWorkspaceOverview: (suspend () -> DemoWorkspaceOverview)? = null,
     loadPublishedScheduleSummary: (suspend (String, String) -> ScheduleSummary?)? = null
 ) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
@@ -136,8 +140,11 @@ fun EscalaIciLabApp(
         var sessionMemberId by remember { mutableStateOf<String?>(null) }
         val corporateAuthState = corporateAuthRepository?.state?.collectAsState()?.value
         var organizationResolutionResult by remember { mutableStateOf<OrganizationResolutionResult?>(null) }
+        var corporateDataSourceState by remember { mutableStateOf<DemoDataSourceState?>(null) }
+        var demoWorkspaceSession by remember { mutableStateOf<DemoWorkspaceOverviewSession?>(null) }
         var selectedDemoPersona by remember { mutableStateOf<DemoPersona?>(null) }
         var demoPersonaResolutionResult by remember { mutableStateOf<OrganizationResolutionResult?>(null) }
+        var demoPersonaLoading by remember { mutableStateOf(false) }
         var requestedEntryContext by remember { mutableStateOf<EntryContext?>(null) }
         var gateErrorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -174,52 +181,76 @@ fun EscalaIciLabApp(
             val state = corporateAuthState
             if (state is CorporateAuthState.Authenticated && resolver != null) {
                 organizationResolutionResult = null
-                organizationResolutionResult = resolver.resolveCorporateIdentity(state.identity)
+                corporateDataSourceState = null
+                val resolvedIdentity = resolver.resolveCorporateIdentity(state.identity)
+                organizationResolutionResult = resolvedIdentity
+                corporateDataSourceState = corporateDataSourceStateProvider?.let { provider ->
+                    runCatching { provider() }.getOrNull()
+                }
                 when (requestedEntryContext) {
                     EntryContext.LOGIN -> {
                         gateErrorMessage = null
-                        when (val result = organizationResolutionResult) {
+                        demoWorkspaceSession = null
+                        selectedDemoPersona = null
+                        demoPersonaResolutionResult = null
+                        when (val result = resolvedIdentity) {
                             is OrganizationResolutionResult.Resolved -> {
-                                sessionMemberId = result.context.memberId
-                                summary = loadPublishedScheduleSummary?.invoke(
+                                val publishedSummary = loadPublishedScheduleSummary?.invoke(
                                     result.context.workspaceId,
                                     result.context.memberId
-                                ) ?: summary.copy(
-                                    member = summary.member.copy(
-                                        id = result.context.memberId,
-                                        displayName = result.context.memberDisplayName,
-                                        scaleName = result.context.memberDisplayName
-                                    ),
-                                    team = summary.team.copy(
-                                        teamId = result.context.primaryTeamId ?: summary.team.teamId,
-                                        name = result.context.primaryTeamName ?: summary.team.name,
-                                        displayName = result.context.primaryTeamName ?: summary.team.displayName
-                                    )
                                 )
-                            }
-                            is OrganizationResolutionResult.MemberNotFound -> {
-                                gateErrorMessage = "Publicação corporativa indisponível ou cadastro não localizado."
+                                val decision = decideResolvedScheduleSummary(
+                                    currentSummary = summary,
+                                    resolvedContext = result.context,
+                                    loadPublishedScheduleSummaryAvailable = loadPublishedScheduleSummary != null,
+                                    publishedSummary = publishedSummary
+                                )
+                                gateErrorMessage = decision.errorMessage
+                                if (decision.summary != null) {
+                                    sessionMemberId = result.context.memberId
+                                    summary = decision.summary
+                                } else {
+                                    sessionMemberId = null
+                                }
                             }
                             else -> {
-                                gateErrorMessage = "Não foi possível confirmar seu vínculo organizacional no momento."
+                                gateErrorMessage = loginGateErrorMessage(result, corporateDataSourceState)
                             }
                         }
                     }
                     EntryContext.DEMO -> {
                         val authorized = isDemoAuthorized?.invoke(state.identity) == true
-                        if (authorized) {
-                            gateErrorMessage = null
-                            selectedDemoPersona = DemoPersonaCatalog.personas[2]
-                        } else {
+                        if (!authorized) {
+                            demoWorkspaceSession = null
                             selectedDemoPersona = null
                             demoPersonaResolutionResult = null
                             gateErrorMessage = "Esta conta não possui acesso ao modo Demo."
+                        } else if (demoWorkspaceSession == null && selectedDemoPersona == null && sessionMemberId == null) {
+                            val overview = loadDemoWorkspaceOverview?.invoke()
+                            if (overview == null) {
+                                gateErrorMessage = "Ambiente Demo indisponível neste momento."
+                            } else {
+                                when (val decision = decideDemoWorkspaceEntry(state.identity, authorized = true, overview)) {
+                                    is DemoWorkspaceEntryDecision.ShowOverview -> {
+                                        gateErrorMessage = null
+                                        demoWorkspaceSession = decision.session
+                                        demoPersonaResolutionResult = null
+                                    }
+                                    is DemoWorkspaceEntryDecision.Denied -> {
+                                        demoWorkspaceSession = null
+                                        selectedDemoPersona = null
+                                        demoPersonaResolutionResult = null
+                                        gateErrorMessage = decision.message
+                                    }
+                                }
+                            }
                         }
                     }
                     null -> Unit
                 }
             } else {
                 organizationResolutionResult = null
+                corporateDataSourceState = null
             }
             // Nao limpa selectedDemoPersona aqui: workspace Demo e ortogonal ao
             // CorporateAuthState (spec 56 secao 12), entao uma transicao generica
@@ -233,29 +264,35 @@ fun EscalaIciLabApp(
             val resolver = organizationIdentityResolver
             val persona = selectedDemoPersona
             if (resolver != null && persona != null) {
+                demoPersonaLoading = true
                 demoPersonaResolutionResult = null
                 demoPersonaResolutionResult = resolver.resolveDemoPersona(persona)
                 val result = demoPersonaResolutionResult
                 if (result is OrganizationResolutionResult.Resolved && requestedEntryContext == EntryContext.DEMO) {
-                    sessionMemberId = result.context.memberId
-                    summary = loadPublishedScheduleSummary?.invoke(
+                    val publishedSummary = loadPublishedScheduleSummary?.invoke(
                         result.context.workspaceId,
                         result.context.memberId
-                    ) ?: summary.copy(
-                        member = summary.member.copy(
-                            id = result.context.memberId,
-                            displayName = result.context.memberDisplayName,
-                            scaleName = result.context.memberDisplayName
-                        ),
-                        team = summary.team.copy(
-                            teamId = result.context.primaryTeamId ?: summary.team.teamId,
-                            name = result.context.primaryTeamName ?: summary.team.name,
-                            displayName = result.context.primaryTeamName ?: summary.team.displayName
-                        )
                     )
+                    val decision = decideResolvedScheduleSummary(
+                        currentSummary = summary,
+                        resolvedContext = result.context,
+                        loadPublishedScheduleSummaryAvailable = loadPublishedScheduleSummary != null,
+                        publishedSummary = publishedSummary
+                    )
+                    gateErrorMessage = decision.errorMessage
+                    if (decision.summary != null) {
+                        sessionMemberId = result.context.memberId
+                        summary = decision.summary
+                    } else {
+                        sessionMemberId = null
+                    }
+                } else if (result != null && requestedEntryContext == EntryContext.DEMO) {
+                    gateErrorMessage = loginGateErrorMessage(result, null)
                 }
+                demoPersonaLoading = false
             } else {
                 demoPersonaResolutionResult = null
+                demoPersonaLoading = false
             }
         }
 
@@ -313,13 +350,32 @@ fun EscalaIciLabApp(
 
         val onOpenPlantao: () -> Unit = { stackedScreen = StackedScreen.PLANTAO }
 
-        if (sessionMemberId == null) {
+        val activeDemoWorkspaceSession = demoWorkspaceSession
+        if (sessionMemberId == null && activeDemoWorkspaceSession == null) {
             LoginGateScreen(
                 supportsCorporateAuth = platformCapabilities.supportsCorporateAuth,
                 corporateAuthRepository = corporateAuthRepository,
                 errorMessage = gateErrorMessage,
                 onLogin = { requestedEntryContext = EntryContext.LOGIN },
                 onDemo = { requestedEntryContext = EntryContext.DEMO }
+            )
+        } else if (sessionMemberId == null && activeDemoWorkspaceSession != null) {
+            DemoWorkspaceOverviewScreen(
+                session = activeDemoWorkspaceSession,
+                selectedPersona = selectedDemoPersona,
+                isResolvingPersona = demoPersonaLoading,
+                errorMessage = gateErrorMessage,
+                onViewAsPersona = { persona ->
+                    gateErrorMessage = null
+                    selectedDemoPersona = persona
+                },
+                onBack = {
+                    demoWorkspaceSession = null
+                    selectedDemoPersona = null
+                    demoPersonaResolutionResult = null
+                    gateErrorMessage = null
+                    requestedEntryContext = null
+                }
             )
         } else {
             LabPremiumBackground {
@@ -446,6 +502,64 @@ fun EscalaIciLabApp(
         }
     }
 }
+
+private fun loginGateErrorMessage(
+    result: OrganizationResolutionResult,
+    dataSourceState: DemoDataSourceState?
+): String {
+    // Granularidade real atual: ScheduleSyncCause nao separa ponteiro do
+    // workspace ausente de revisao ausente, e MemberNotFound nao separa link
+    // de usuario ausente de membro removido apos o lookup do diretorio.
+    if (dataSourceState?.origin == DemoDataOrigin.REMOTE_UNAVAILABLE) {
+        return corporatePublicationUnavailableMessage(dataSourceState)
+    }
+
+    return when (result) {
+        is OrganizationResolutionResult.Resolved -> ""
+        is OrganizationResolutionResult.MemberNotFound ->
+            "Cadastro corporativo não localizado na publicação oficial."
+        is OrganizationResolutionResult.MemberInactive ->
+            "Seu cadastro corporativo está inativo no momento. Contate o administrador."
+        is OrganizationResolutionResult.MemberIdentityAmbiguous ->
+            "Foram encontrados cadastros duplicados para esta identidade. Contate o administrador."
+        is OrganizationResolutionResult.MembershipNotFound ->
+            "Seu cadastro foi localizado, mas ainda não possui vínculo de equipe ativo."
+        is OrganizationResolutionResult.TeamNotFound ->
+            "Seu vínculo de equipe foi localizado, mas a equipe correspondente não está disponível."
+        is OrganizationResolutionResult.MemberFoundNoActiveTeam ->
+            "Seu cadastro foi localizado, mas não há equipe ativa vinculada."
+        is OrganizationResolutionResult.MultipleActiveTeams ->
+            "Há mais de uma equipe ativa vinculada a esta conta. Contate o administrador."
+        is OrganizationResolutionResult.WorkspaceMismatch ->
+            "A publicação oficial retornou dados de outro ambiente. Contate o administrador."
+        is OrganizationResolutionResult.DataSourceUnavailable ->
+            result.message.ifBlank { "Não foi possível confirmar seu vínculo organizacional no momento." }
+    }
+}
+
+private fun corporatePublicationUnavailableMessage(state: DemoDataSourceState): String =
+    when (state.fallbackCause) {
+        ScheduleSyncCause.AUTH_REQUIRED ->
+            "Firebase não configurado para leitura da publicação oficial neste ambiente."
+        ScheduleSyncCause.FIRESTORE_DATABASE_DISABLED ->
+            "O banco de dados Firebase deste ambiente ainda não foi ativado."
+        ScheduleSyncCause.PERMISSION_DENIED ->
+            "Sem permissão para ler a publicação oficial neste ambiente."
+        ScheduleSyncCause.NETWORK_ERROR ->
+            "Não foi possível conectar ao Firebase. Verifique sua internet e tente novamente."
+        ScheduleSyncCause.INVALID_REMOTE_DATA ->
+            "A publicação oficial está incompleta ou inválida neste ambiente."
+        ScheduleSyncCause.TEAM_NOT_FOUND,
+        ScheduleSyncCause.NO_ACTIVE_PERIOD,
+        ScheduleSyncCause.NO_ASSIGNMENTS ->
+            "A escala oficial ainda não possui dados ativos para esta conta."
+        ScheduleSyncCause.CACHE_AVAILABLE ->
+            "Mostrando a última publicação oficial salva localmente."
+        ScheduleSyncCause.IDENTITY_NOT_LINKED,
+        ScheduleSyncCause.UNKNOWN,
+        null ->
+            "A escala oficial ainda não foi publicada neste ambiente."
+    }
 
 @Composable
 private fun FirebaseStatusBar(

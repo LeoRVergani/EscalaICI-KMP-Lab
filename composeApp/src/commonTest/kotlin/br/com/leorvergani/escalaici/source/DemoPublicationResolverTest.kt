@@ -1,12 +1,31 @@
 package br.com.leorvergani.escalaici.source
 
+import br.com.leorvergani.escalaici.auth.CorporateIdentity
 import br.com.leorvergani.escalaici.identity.DemoDataOrigin
+import br.com.leorvergani.escalaici.identity.DefaultOrganizationIdentityResolver
+import br.com.leorvergani.escalaici.identity.DemoFixtureMember
+import br.com.leorvergani.escalaici.identity.DemoFixtureMembership
 import br.com.leorvergani.escalaici.identity.DemoFixturePackage
+import br.com.leorvergani.escalaici.identity.DemoFixtureScheduleAssignment
+import br.com.leorvergani.escalaici.identity.DemoFixtureSchedulePeriod
+import br.com.leorvergani.escalaici.identity.DemoFixtureTeam
 import br.com.leorvergani.escalaici.identity.DemoFixtureWorkspace
+import br.com.leorvergani.escalaici.identity.DemoPersona
+import br.com.leorvergani.escalaici.identity.DemoPersonaCatalog
 import br.com.leorvergani.escalaici.identity.DemoPublicationRepository
+import br.com.leorvergani.escalaici.identity.InMemoryMemberDirectoryRepository
+import br.com.leorvergani.escalaici.identity.InMemoryMemberRepository
+import br.com.leorvergani.escalaici.identity.InMemoryMembershipRepository
+import br.com.leorvergani.escalaici.identity.InMemoryTeamRepository
+import br.com.leorvergani.escalaici.identity.OrganizationResolutionResult
+import br.com.leorvergani.escalaici.identity.OrganizationWorkspace
+import br.com.leorvergani.escalaici.identity.RemoteFirstDemoMemberDirectoryRepository
 import br.com.leorvergani.escalaici.identity.RemoteFirstDemoMemberRepository
 import br.com.leorvergani.escalaici.identity.RemoteFirstDemoMembershipRepository
-import br.com.leorvergani.escalaici.model.ScheduleSourceType
+import br.com.leorvergani.escalaici.identity.RemoteFirstDemoTeamRepository
+import br.com.leorvergani.escalaici.identity.isDemoAuthorizedForIdentity
+import br.com.leorvergani.escalaici.model.LabDate
+import br.com.leorvergani.escalaici.platform.TodayProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -167,6 +186,51 @@ class DemoPublicationResolverTest {
         assertEquals(ScheduleSyncCause.PERMISSION_DENIED, data.state.fallbackCause)
     }
 
+    @Test
+    fun authorizedDemoResolutionUsesLocalFixtureWhenRemotePointerIsUnavailable() = runTest {
+        val persona = DemoPersonaCatalog.personas[0]
+        val repository = DemoPublicationRepository(
+            resolver = DemoPublicationResolver(
+                FakeDemoGateway(failDocument = true, failMessage = "404 Not Found")
+            ),
+            fixtureProvider = { fixtureForPersona(persona, revision = 9) }
+        )
+        val authorized = isDemoAuthorizedForIdentity(
+            identity = CorporateIdentity(
+                tenantId = "tenant",
+                objectId = "object-not-allowed",
+                username = "lvergani",
+                displayName = "Leandro Vergani",
+                email = "lvergani@ici.tec.br",
+                accountId = "account"
+            ),
+            isDevelopmentBuild = true,
+            allowedDeveloperObjectIdsProvider = { error("Firestore pointer unavailable") }
+        )
+
+        assertTrue(authorized)
+        val result = DefaultOrganizationIdentityResolver(
+            corporateMemberDirectoryRepository = InMemoryMemberDirectoryRepository(emptyList()),
+            corporateMembershipRepository = InMemoryMembershipRepository(emptyList()),
+            corporateMemberRepository = InMemoryMemberRepository(emptyList()),
+            corporateTeamRepository = InMemoryTeamRepository(emptyList()),
+            demoMemberDirectoryRepository = RemoteFirstDemoMemberDirectoryRepository(repository),
+            demoMembershipRepository = RemoteFirstDemoMembershipRepository(repository),
+            demoMemberRepository = RemoteFirstDemoMemberRepository(repository),
+            demoTeamRepository = RemoteFirstDemoTeamRepository(repository),
+            demoDataSourceStateProvider = { repository.state() },
+            todayProvider = TodayProvider { LabDate(2026, 7, 18) }
+        ).resolveDemoPersona(persona)
+        val state = repository.state()
+
+        assertIs<OrganizationResolutionResult.Resolved>(result)
+        assertEquals(persona.memberId, result.context.memberId)
+        assertEquals("Equipe Demo Fixture", result.context.primaryTeamName)
+        assertEquals(DemoDataOrigin.LOCAL_FIXTURE, state.origin)
+        assertEquals(9, state.publicationRevision)
+        assertEquals(ScheduleSyncCause.UNKNOWN, state.fallbackCause)
+    }
+
     private fun revisionCollections(
         revision: Int,
         teamId: String = "team-demo-soc",
@@ -191,6 +255,84 @@ class DemoPublicationResolverTest {
         scheduleChangeRequests = emptyList(),
         schedulePeriods = emptyList(),
         scheduleAssignments = emptyList(),
+        publicationRecords = emptyList()
+    )
+
+    private fun fixtureForPersona(persona: DemoPersona, revision: Int) = DemoFixturePackage(
+        schemaVersion = 1,
+        workspace = DemoFixtureWorkspace(
+            workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+            workspaceType = "DEMO",
+            scenarioId = "fallback-test",
+            seedVersion = 1,
+            publicationRevision = revision,
+            externalEffectsAllowed = false,
+            notificationsEnabled = false
+        ),
+        teams = listOf(
+            DemoFixtureTeam(
+                id = "team-demo-fixture",
+                workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+                name = "Equipe Demo Fixture",
+                acronym = "FIX",
+                active = true,
+                schemaVersion = 1
+            )
+        ),
+        members = listOf(
+            DemoFixtureMember(
+                id = persona.memberId,
+                workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+                displayName = persona.displayName,
+                corporateLogin = persona.fictitiousLogin,
+                emailNormalized = persona.fictitiousEmail,
+                active = true,
+                schemaVersion = 1
+            )
+        ),
+        memberTeamMemberships = listOf(
+            DemoFixtureMembership(
+                id = "membership-demo-fixture",
+                workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+                memberId = persona.memberId,
+                teamId = "team-demo-fixture",
+                startDate = "2020-01-01",
+                endDate = null,
+                active = true,
+                isPrimary = true,
+                schemaVersion = 1
+            )
+        ),
+        teamManagerAssignments = emptyList(),
+        scheduleChangeRequests = emptyList(),
+        schedulePeriods = listOf(
+            DemoFixtureSchedulePeriod(
+                id = "period-demo-fixture",
+                workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+                teamId = "team-demo-fixture",
+                name = "Julho 2026",
+                startDate = "2026-07-01",
+                endDate = "2026-07-31",
+                active = true,
+                publicationRevision = revision,
+                schemaVersion = 1
+            )
+        ),
+        scheduleAssignments = listOf(
+            DemoFixtureScheduleAssignment(
+                id = "assignment-demo-fixture",
+                workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
+                periodId = "period-demo-fixture",
+                teamId = "team-demo-fixture",
+                memberId = persona.memberId,
+                date = "2026-07-18",
+                assignmentType = "WORK_SHIFT",
+                shiftName = "manha",
+                startTime = null,
+                endTime = null,
+                schemaVersion = 1
+            )
+        ),
         publicationRecords = emptyList()
     )
 }

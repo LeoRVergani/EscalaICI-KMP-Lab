@@ -63,14 +63,14 @@ class FirestoreRestGateway(
     private suspend fun documentAtPath(path: String): JsonObject {
         val url = "https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/$path"
         val response = getWithOptionalAuth(url)
-        if (!response.status.isSuccess()) error("Firestore indisponível (${response.status.value}).")
+        if (!response.status.isSuccess()) error(firestoreUnavailableMessage(path, response))
         return json.parseToJsonElement(response.body<String>()).jsonObject
     }
 
     private suspend fun documentsAtPath(path: String): List<JsonObject> {
         val url = "https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/$path?pageSize=1000"
         val response = getWithOptionalAuth(url)
-        if (!response.status.isSuccess()) error("Firestore indisponível (${response.status.value}).")
+        if (!response.status.isSuccess()) error(firestoreUnavailableMessage(path, response))
         val root = json.parseToJsonElement(response.body<String>()).jsonObject
         if (root["nextPageToken"]?.jsonPrimitive?.content?.isNotBlank() == true) {
             error("A coleção excede o limite seguro de leitura desta versão.")
@@ -94,6 +94,12 @@ class FirestoreRestGateway(
         return client.get(url) {
             if (token != null) header(HttpHeaders.Authorization, "Bearer $token")
         }
+    }
+
+    private suspend fun firestoreUnavailableMessage(path: String, response: HttpResponse): String {
+        val body = runCatching { response.body<String>() }.getOrDefault("")
+        val detail = body.take(500).replace('\n', ' ')
+        return "Firestore indisponível (${response.status.value}) em $path. $detail"
     }
 
     private fun fields(document: JsonObject): JsonObject = document["fields"]?.jsonObject ?: JsonObject(emptyMap())
