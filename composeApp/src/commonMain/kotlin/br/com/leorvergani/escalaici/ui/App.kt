@@ -67,6 +67,7 @@ import br.com.leorvergani.escalaici.platform.SystemTodayProvider
 import br.com.leorvergani.escalaici.platform.TodayProvider
 import br.com.leorvergani.escalaici.platform.CurrentTimeProvider
 import br.com.leorvergani.escalaici.platform.PlatformCapabilities
+import br.com.leorvergani.escalaici.platform.PlatformBackHandler
 import br.com.leorvergani.escalaici.platform.WebNotificationService
 import br.com.leorvergani.escalaici.platform.UnsupportedWebNotificationService
 import br.com.leorvergani.escalaici.model.LabDateTime
@@ -351,6 +352,42 @@ fun EscalaIciLabApp(
         val onOpenPlantao: () -> Unit = { stackedScreen = StackedScreen.PLANTAO }
 
         val activeDemoWorkspaceSession = demoWorkspaceSession
+        fun returnToEntryGateFromDemoWorkspace() {
+            demoWorkspaceSession = null
+            selectedDemoPersona = null
+            demoPersonaResolutionResult = null
+            gateErrorMessage = null
+            requestedEntryContext = null
+        }
+
+        fun returnToDemoWorkspaceFromPersona() {
+            sessionMemberId = null
+            selectedDemoPersona = null
+            demoPersonaResolutionResult = null
+            gateErrorMessage = null
+            activeTab = LabTab.Hoje
+            stackedScreen = null
+        }
+
+        when (decideDemoBackNavigation(
+            requestedEntryIsDemo = requestedEntryContext == EntryContext.DEMO,
+            hasDemoWorkspaceSession = activeDemoWorkspaceSession != null,
+            hasSelectedDemoPersona = selectedDemoPersona != null,
+            hasSessionMemberId = sessionMemberId != null
+        )) {
+            DemoBackNavigationTarget.ENTRY_GATE -> PlatformBackHandler(
+                onBack = ::returnToEntryGateFromDemoWorkspace
+            )
+            DemoBackNavigationTarget.DEMO_WORKSPACE_OVERVIEW -> PlatformBackHandler(
+                enabled = stackedScreen == null,
+                onBack = ::returnToDemoWorkspaceFromPersona
+            )
+            null -> Unit
+        }
+        PlatformBackHandler(enabled = sessionMemberId != null && stackedScreen != null) {
+            stackedScreen = null
+        }
+
         if (sessionMemberId == null && activeDemoWorkspaceSession == null) {
             LoginGateScreen(
                 supportsCorporateAuth = platformCapabilities.supportsCorporateAuth,
@@ -369,13 +406,7 @@ fun EscalaIciLabApp(
                     gateErrorMessage = null
                     selectedDemoPersona = persona
                 },
-                onBack = {
-                    demoWorkspaceSession = null
-                    selectedDemoPersona = null
-                    demoPersonaResolutionResult = null
-                    gateErrorMessage = null
-                    requestedEntryContext = null
-                }
+                onBack = ::returnToEntryGateFromDemoWorkspace
             )
         } else {
             LabPremiumBackground {
@@ -484,8 +515,12 @@ fun EscalaIciLabApp(
                                         selectedDemoPersona = selectedDemoPersona,
                                         notificationService = notificationService,
                                         onLogout = {
-                                            scope.launch { authRepository.signOut() }
-                                            sessionMemberId = null
+                                            if (requestedEntryContext == EntryContext.DEMO && selectedDemoPersona != null) {
+                                                returnToDemoWorkspaceFromPersona()
+                                            } else {
+                                                scope.launch { authRepository.signOut() }
+                                                sessionMemberId = null
+                                            }
                                         },
                                         onOpenPlantao = onOpenPlantao,
                                         onOpenSwap = { stackedScreen = StackedScreen.SWAP }

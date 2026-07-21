@@ -94,6 +94,32 @@ class DemoWorkspaceOverviewDecisionTest {
         assertFalse(decision.session.overview.operationalPersonas.any { it.fictitiousLogin == decision.session.authenticatedLogin })
     }
 
+    @Test
+    fun demoOverviewBackReturnsToEntryGate() {
+        assertEquals(
+            DemoBackNavigationTarget.ENTRY_GATE,
+            decideDemoBackNavigation(
+                requestedEntryIsDemo = true,
+                hasDemoWorkspaceSession = true,
+                hasSelectedDemoPersona = false,
+                hasSessionMemberId = false
+            )
+        )
+    }
+
+    @Test
+    fun demoPersonaBackReturnsToAdministrativeOverview() {
+        assertEquals(
+            DemoBackNavigationTarget.DEMO_WORKSPACE_OVERVIEW,
+            decideDemoBackNavigation(
+                requestedEntryIsDemo = true,
+                hasDemoWorkspaceSession = true,
+                hasSelectedDemoPersona = true,
+                hasSessionMemberId = true
+            )
+        )
+    }
+
     private fun demoRepository(revision: Int = 12) = DemoPublicationRepository(
         resolver = DemoPublicationResolver(UnavailableDemoGateway()),
         fixtureProvider = { demoOverviewFixture(revision) }
