@@ -95,7 +95,8 @@ data class MemberTeamMembership(
     val endDate: String? = null,
     val active: Boolean = true,
     val isPrimary: Boolean = false,
-    val workspaceId: String? = null
+    val workspaceId: String? = null,
+    val publicationRevision: Int? = null
 )
 
 enum class ScheduleProfileType {

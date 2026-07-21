@@ -24,6 +24,7 @@ class DefaultOrganizationIdentityResolver(
     private val demoMembershipRepository: MembershipRepository = DemoMembershipRepository(),
     private val demoMemberRepository: MemberRepository = DemoMemberRepository(),
     private val demoTeamRepository: TeamRepository = DemoTeamRepository(),
+    private val demoDataSourceStateProvider: (suspend () -> DemoDataSourceState?)? = null,
     private val todayProvider: TodayProvider = SystemTodayProvider
 ) : OrganizationIdentityResolver {
 
@@ -41,37 +42,48 @@ class DefaultOrganizationIdentityResolver(
             identitySource = IdentitySource.CORPORATE_MSAL,
             normalizedEmail = normalizedEmail,
             normalizedLogin = normalizedLogin,
+            entraTenantId = identity.tenantId.takeIf { it.isNotBlank() },
+            entraObjectId = identity.objectId.takeIf { it.isNotBlank() },
             memberDirectoryRepository = corporateMemberDirectoryRepository,
             membershipRepository = corporateMembershipRepository,
             memberRepository = corporateMemberRepository,
-            teamRepository = corporateTeamRepository
+            teamRepository = corporateTeamRepository,
+            dataSourceState = null
         )
     }
 
-    override suspend fun resolveDemoPersona(persona: DemoPersona): OrganizationResolutionResult =
-        resolve(
+    override suspend fun resolveDemoPersona(persona: DemoPersona): OrganizationResolutionResult {
+        val dataSourceState = demoDataSourceStateProvider?.invoke()
+        return resolve(
             workspaceId = OrganizationWorkspace.DEMO_WORKSPACE_ID,
             identitySource = IdentitySource.DEMO_PERSONA,
             normalizedEmail = normalizeIdentity(persona.fictitiousEmail),
             normalizedLogin = normalizeIdentity(persona.fictitiousLogin),
+            entraTenantId = null,
+            entraObjectId = null,
             memberDirectoryRepository = demoMemberDirectoryRepository,
             membershipRepository = demoMembershipRepository,
             memberRepository = demoMemberRepository,
-            teamRepository = demoTeamRepository
+            teamRepository = demoTeamRepository,
+            dataSourceState = dataSourceState
         )
+    }
 
     private suspend fun resolve(
         workspaceId: String,
         identitySource: IdentitySource,
         normalizedEmail: String?,
         normalizedLogin: String?,
+        entraTenantId: String?,
+        entraObjectId: String?,
         memberDirectoryRepository: MemberDirectoryRepository,
         membershipRepository: MembershipRepository,
         memberRepository: MemberRepository,
-        teamRepository: TeamRepository
+        teamRepository: TeamRepository,
+        dataSourceState: DemoDataSourceState?
     ): OrganizationResolutionResult {
         val candidateIds = memberDirectoryRepository
-            .findActiveMemberIds(normalizedEmail, normalizedLogin)
+            .findActiveMemberIds(normalizedEmail, normalizedLogin, entraTenantId, entraObjectId)
             .distinct()
 
         if (candidateIds.isEmpty()) {
@@ -106,7 +118,9 @@ class DefaultOrganizationIdentityResolver(
                     primaryTeamId = null,
                     primaryTeamName = null,
                     roleDisplayName = null,
-                    activeMemberships = emptyList()
+                    activeMemberships = emptyList(),
+                    dataSourceMessage = dataSourceState?.message,
+                    publicationRevision = dataSourceState?.publicationRevision
                 )
             )
         }
@@ -142,7 +156,9 @@ class DefaultOrganizationIdentityResolver(
                         roleDisplayName = roleDisplayNameFor(membership),
                         isPrimary = membership.id == primary.id
                     )
-                }
+                },
+                dataSourceMessage = dataSourceState?.message,
+                publicationRevision = dataSourceState?.publicationRevision
             )
         )
     }

@@ -4,7 +4,10 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -15,10 +18,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 class FirestoreRestGateway(
-    private val projectId: String = "escalaici",
+    internal val projectId: String = "escalaici",
     private val client: HttpClient = HttpClient(CIO),
-    private val json: Json = Json { ignoreUnknownKeys = true }
-) : FirebaseScheduleGateway {
+    private val json: Json = Json { ignoreUnknownKeys = true },
+    private val authTokenProvider: FirebaseAuthTokenProvider? = null
+) : FirebaseScheduleGateway, DemoPublicationGateway {
     override suspend fun loadTeam(teamId: String): FirebaseTeamDto? =
         documents("teams").mapNotNull(::team).firstOrNull { it.teamId == teamId && it.active }
 
@@ -46,15 +50,50 @@ class FirestoreRestGateway(
     override suspend fun checkRemoteUpdatedAt(teamId: String, onCall: Boolean): String? =
         if (onCall) loadActiveOnCallPeriod(teamId)?.updatedAt else loadActiveSchedulePeriod(teamId)?.updatedAt
 
+    override suspend fun loadDocumentFields(path: String): JsonObject =
+        fields(documentAtPath(path))
+
+    override suspend fun loadCollectionDocuments(path: String): List<JsonObject> =
+        documentsAtPath(path).map(::fields)
+
     private suspend fun documents(collection: String): List<JsonObject> {
-        val url = "https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/$collection?pageSize=1000"
-        val response: HttpResponse = client.get(url)
+        return documentsAtPath(collection)
+    }
+
+    private suspend fun documentAtPath(path: String): JsonObject {
+        val url = "https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/$path"
+        val response = getWithOptionalAuth(url)
+        if (!response.status.isSuccess()) error("Firestore indisponível (${response.status.value}).")
+        return json.parseToJsonElement(response.body<String>()).jsonObject
+    }
+
+    private suspend fun documentsAtPath(path: String): List<JsonObject> {
+        val url = "https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/$path?pageSize=1000"
+        val response = getWithOptionalAuth(url)
         if (!response.status.isSuccess()) error("Firestore indisponível (${response.status.value}).")
         val root = json.parseToJsonElement(response.body<String>()).jsonObject
         if (root["nextPageToken"]?.jsonPrimitive?.content?.isNotBlank() == true) {
             error("A coleção excede o limite seguro de leitura desta versão.")
         }
         return root["documents"]?.jsonArray?.map { it.jsonObject } ?: emptyList()
+    }
+
+    private suspend fun getWithOptionalAuth(url: String): HttpResponse {
+        val first = authenticatedGet(url)
+        if (first.status != HttpStatusCode.Unauthorized || authTokenProvider == null) return first
+        authTokenProvider.invalidate()
+        return authenticatedGet(url)
+    }
+
+    private suspend fun authenticatedGet(url: String): HttpResponse {
+        val token = when (val result = authTokenProvider?.idToken()) {
+            null -> null
+            is FirebaseAuthTokenResult.Success -> result.idToken
+            is FirebaseAuthTokenResult.Failure -> error(result.message)
+        }
+        return client.get(url) {
+            if (token != null) header(HttpHeaders.Authorization, "Bearer $token")
+        }
     }
 
     private fun fields(document: JsonObject): JsonObject = document["fields"]?.jsonObject ?: JsonObject(emptyMap())

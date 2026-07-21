@@ -12,7 +12,7 @@ class OrganizationIdentityCacheTest {
     fun cacheSavesAndLoadsByWorkspaceIdentityKey() = runTest {
         val storage = InMemoryOrganizationIdentityCacheStorage()
         val entry = entry(memberId = "member-1")
-        val key = organizationIdentityCacheKey(workspaceId = "ici", memberId = "member-1")
+        val key = organizationIdentityCacheKey(workspaceId = "ici-dev", memberId = "member-1")
 
         storage.save(entry)
 
@@ -22,7 +22,7 @@ class OrganizationIdentityCacheTest {
     @Test
     fun cacheKeyFromOtherWorkspaceDoesNotInterfere() = runTest {
         val storage = InMemoryOrganizationIdentityCacheStorage()
-        val entry = entry(workspaceId = "ici", memberId = "member-1")
+        val entry = entry(workspaceId = "ici-dev", memberId = "member-1")
 
         storage.save(entry)
 
@@ -32,19 +32,19 @@ class OrganizationIdentityCacheTest {
     @Test
     fun clearingOneKeyDoesNotRemoveOtherWorkspace() = runTest {
         val storage = InMemoryOrganizationIdentityCacheStorage()
-        val corporate = entry(workspaceId = "ici", memberId = "member-1")
+        val corporate = entry(workspaceId = "ici-dev", memberId = "member-1")
         val demo = entry(workspaceId = "demo-v1", memberId = "member-1", source = IdentitySource.DEMO_PERSONA)
 
         storage.save(corporate)
         storage.save(demo)
-        storage.clear(organizationIdentityCacheKey(workspaceId = "ici", memberId = "member-1"))
+        storage.clear(organizationIdentityCacheKey(workspaceId = "ici-dev", memberId = "member-1"))
 
-        assertNull(storage.load(organizationIdentityCacheKey(workspaceId = "ici", memberId = "member-1")))
+        assertNull(storage.load(organizationIdentityCacheKey(workspaceId = "ici-dev", memberId = "member-1")))
         assertEquals(demo, storage.load(organizationIdentityCacheKey(workspaceId = "demo-v1", memberId = "member-1")))
     }
 
     private fun entry(
-        workspaceId: String = "ici",
+        workspaceId: String = "ici-dev",
         memberId: String,
         source: IdentitySource = IdentitySource.CORPORATE_MSAL
     ) = OrganizationIdentityCacheEntry(

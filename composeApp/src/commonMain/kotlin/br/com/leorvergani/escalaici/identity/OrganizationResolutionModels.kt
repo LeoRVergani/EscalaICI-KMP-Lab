@@ -17,5 +17,7 @@ data class ResolvedOrganizationContext(
     val primaryTeamId: String?,
     val primaryTeamName: String?,
     val roleDisplayName: String?,
-    val activeMemberships: List<ResolvedTeamMembership>
+    val activeMemberships: List<ResolvedTeamMembership>,
+    val dataSourceMessage: String? = null,
+    val publicationRevision: Int? = null
 )

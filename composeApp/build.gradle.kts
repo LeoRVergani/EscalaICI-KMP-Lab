@@ -50,6 +50,7 @@ kotlin {
 
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.ktor.client.mock)
             implementation(libs.kotlinx.coroutines.test)
         }
 
@@ -136,6 +137,94 @@ val msalBaseConfigured = msalTenantId.isNotBlank() && msalClientId.isNotBlank()
 val msalConfiguredDebug = msalBaseConfigured && msalRedirectUriDebug.isNotBlank()
 val msalConfiguredRelease = msalBaseConfigured && msalRedirectUriRelease.isNotBlank()
 
+// Config Firebase Demo: lida de composeApp/google-services.json (Android) ou
+// web-config.local.json (Web/Wasm), ambos gitignorados. Como no auth-config,
+// nunca quebra build local/CI quando ausente ou preenchido com placeholders.
+val googleServicesFile = project.file("google-services.json")
+val webConfigFile = rootProject.file("web-config.local.json")
+
+@Suppress("UNCHECKED_CAST")
+fun parseJsonMap(file: File): Map<String, Any?>? =
+    runCatching {
+        if (file.exists()) JsonSlurper().parse(file) as? Map<String, Any?> else null
+    }.getOrNull()
+
+val googleServicesConfig = parseJsonMap(googleServicesFile)
+val webConfig = parseJsonMap(webConfigFile)
+
+@Suppress("UNCHECKED_CAST")
+fun firebaseProjectIdFromGoogleServices(config: Map<String, Any?>?): String =
+    realValue((config?.get("project_info") as? Map<String, Any?>)?.get("project_id")) ?: ""
+
+@Suppress("UNCHECKED_CAST")
+fun firebaseApiKeyFromGoogleServices(config: Map<String, Any?>?): String {
+    val clients = config?.get("client") as? List<Map<String, Any?>>
+    val firstClient = clients?.firstOrNull()
+    val keys = firstClient?.get("api_key") as? List<Map<String, Any?>>
+    return realValue(keys?.firstOrNull()?.get("current_key")) ?: ""
+}
+
+@Suppress("UNCHECKED_CAST")
+fun firebaseProjectIdFromWebConfig(config: Map<String, Any?>?): String {
+    val firebase = config?.get("firebase") as? Map<String, Any?>
+    val demoFirebase = config?.get("demo_firebase") as? Map<String, Any?>
+    return realValue(demoFirebase?.get("project_id"))
+        ?: realValue(firebase?.get("project_id"))
+        ?: realValue(config?.get("firebase_project_id"))
+        ?: ""
+}
+
+@Suppress("UNCHECKED_CAST")
+fun firebaseApiKeyFromWebConfig(config: Map<String, Any?>?): String {
+    val firebase = config?.get("firebase") as? Map<String, Any?>
+    val demoFirebase = config?.get("demo_firebase") as? Map<String, Any?>
+    return realValue(demoFirebase?.get("api_key"))
+        ?: realValue(demoFirebase?.get("current_key"))
+        ?: realValue(firebase?.get("api_key"))
+        ?: realValue(firebase?.get("current_key"))
+        ?: realValue(config?.get("firebase_api_key"))
+        ?: ""
+}
+
+fun buildConfigString(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+val demoFirebaseAndroidProjectId = firebaseProjectIdFromGoogleServices(googleServicesConfig)
+val demoFirebaseWebProjectId = firebaseProjectIdFromWebConfig(webConfig)
+    .ifBlank { demoFirebaseAndroidProjectId }
+
+val generatedWasmFirebaseConfigDir = layout.buildDirectory.dir("generated/source/demoFirebaseConfig/wasmJsMain")
+val generateWasmFirebaseConfig by tasks.registering {
+    val outputFile = generatedWasmFirebaseConfigDir.map {
+        it.file("br/com/leorvergani/escalaici/source/DemoFirebaseConfig.wasmJs.generated.kt")
+    }
+    outputs.file(outputFile)
+    inputs.property("demoFirebaseWebProjectId", demoFirebaseWebProjectId)
+
+    doLast {
+        val file = outputFile.get().asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            package br.com.leorvergani.escalaici.source
+
+            actual fun platformDemoFirebaseConfig(): DemoFirebaseConfig =
+                DemoFirebaseConfig(
+                    projectId = ${buildConfigString(demoFirebaseWebProjectId)}
+                )
+            """.trimIndent() + "\n"
+        )
+    }
+}
+
+kotlin.sourceSets.named("wasmJsMain") {
+    kotlin.srcDir(generatedWasmFirebaseConfigDir)
+}
+
+tasks.matching { it.name.contains("compileKotlinWasmJs", ignoreCase = true) }.configureEach {
+    dependsOn(generateWasmFirebaseConfig)
+}
+
 extensions.configure<ApplicationExtension>("android") {
     namespace = "br.com.leorvergani.escalaici"
     compileSdk = 36
@@ -144,13 +233,14 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = androidApplicationId
         minSdk = 28
         targetSdk = 36
-        versionCode = 21
-        versionName = "0.7.7"
+        versionCode = 22
+        versionName = "0.7.8"
 
         buildConfigField("String", "MSAL_TENANT_ID", "\"$msalTenantId\"")
         buildConfigField("String", "MSAL_CLIENT_ID", "\"$msalClientId\"")
         buildConfigField("String", "MSAL_REDIRECT_URI_DEBUG", "\"$msalRedirectUriDebug\"")
         buildConfigField("String", "MSAL_REDIRECT_URI_RELEASE", "\"$msalRedirectUriRelease\"")
+        buildConfigField("String", "DEMO_FIREBASE_PROJECT_ID", buildConfigString(demoFirebaseAndroidProjectId))
     }
 
     buildFeatures {

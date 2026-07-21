@@ -132,7 +132,10 @@ data class Member(
     val teamId: String = "",
     val role: MemberRole = MemberRole.ANALYST,
     val active: Boolean = true,
-    val workspaceId: String? = null
+    val workspaceId: String? = null,
+    val publicationRevision: Int? = null,
+    val entraTenantId: String? = null,
+    val entraObjectId: String? = null
 )
 
 data class Team(
@@ -141,7 +144,8 @@ data class Team(
     val id: String = teamId,
     val displayName: String = name,
     val members: List<Member> = emptyList(),
-    val workspaceId: String? = null
+    val workspaceId: String? = null,
+    val publicationRevision: Int? = null
 )
 
 data class LabDate(

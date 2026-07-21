@@ -15,7 +15,7 @@ class OrganizationResolutionStatusTest {
         assertEquals(OrganizationResolutionStatus.TEAM_NOT_FOUND, OrganizationResolutionResult.TeamNotFound("member", "team").toStatus())
         assertEquals(OrganizationResolutionStatus.MULTIPLE_ACTIVE_TEAMS, OrganizationResolutionResult.MultipleActiveTeams("member", listOf("a", "b")).toStatus())
         assertEquals(OrganizationResolutionStatus.ERROR, OrganizationResolutionResult.MembershipNotFound("member").toStatus())
-        assertEquals(OrganizationResolutionStatus.ERROR, OrganizationResolutionResult.WorkspaceMismatch("ici", "demo-v1").toStatus())
+        assertEquals(OrganizationResolutionStatus.ERROR, OrganizationResolutionResult.WorkspaceMismatch("ici-dev", "demo-v1").toStatus())
         assertEquals(OrganizationResolutionStatus.ERROR, OrganizationResolutionResult.DataSourceUnavailable("missing").toStatus())
     }
 
@@ -29,7 +29,7 @@ class OrganizationResolutionStatusTest {
         primaryTeamId: String? = "team",
         primaryTeamName: String? = "Team"
     ) = ResolvedOrganizationContext(
-        workspaceId = "ici",
+        workspaceId = "ici-dev",
         identitySource = IdentitySource.CORPORATE_MSAL,
         memberId = "member",
         memberDisplayName = "Member",

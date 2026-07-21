@@ -1,6 +1,7 @@
 package br.com.leorvergani.escalaici.source
 
 import android.content.Context
+import br.com.leorvergani.escalaici.BuildConfig
 
 private lateinit var applicationContext: Context
 
@@ -9,6 +10,13 @@ fun initializeFirebasePlatform(context: Context) {
 }
 
 actual fun createFirebaseScheduleGateway(): FirebaseScheduleGateway = FirestoreRestGateway()
+
+actual fun createDemoPublicationGateway(): DemoPublicationGateway = createConfiguredDemoPublicationGateway()
+
+actual fun platformDemoFirebaseConfig(): DemoFirebaseConfig =
+    DemoFirebaseConfig(
+        projectId = BuildConfig.DEMO_FIREBASE_PROJECT_ID
+    )
 
 actual fun createFirebaseRawCacheStore(): FirebaseRawCacheStore {
     check(::applicationContext.isInitialized) { "Firebase platform não inicializada." }

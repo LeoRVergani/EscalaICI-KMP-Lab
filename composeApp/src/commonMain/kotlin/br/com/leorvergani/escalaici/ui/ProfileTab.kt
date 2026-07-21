@@ -307,6 +307,9 @@ private fun OrganizationResolutionBody(result: OrganizationResolutionResult?) {
             result.context.roleDisplayName?.let { role ->
                 Text("Função: $role", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
             }
+            result.context.dataSourceMessage?.let { message ->
+                Text(message, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+            }
         }
         is OrganizationResolutionResult.MemberFoundNoActiveTeam ->
             Text("Seu cadastro foi encontrado, mas ainda não possui uma equipe ativa vinculada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
@@ -355,7 +358,10 @@ private fun DemoPersonaResolutionSection(
 
 private fun demoPersonaResolutionLine(result: OrganizationResolutionResult?): String = when (result) {
     null -> "Equipe: buscando vínculo de demonstração..."
-    is OrganizationResolutionResult.Resolved -> "Equipe: ${result.context.primaryTeamName ?: "equipe principal não informada"}"
+    is OrganizationResolutionResult.Resolved -> buildString {
+        append("Equipe: ${result.context.primaryTeamName ?: "equipe principal não informada"}")
+        result.context.dataSourceMessage?.let { append(" · ").append(it) }
+    }
     is OrganizationResolutionResult.MemberFoundNoActiveTeam -> "Seu cadastro foi encontrado, mas ainda não possui uma equipe ativa vinculada."
     is OrganizationResolutionResult.MemberNotFound -> "Conta corporativa autenticada, mas seu cadastro ainda não foi localizado na organização."
     is OrganizationResolutionResult.MemberInactive -> "Seu cadastro na organização está inativo no momento. Contate o administrador."

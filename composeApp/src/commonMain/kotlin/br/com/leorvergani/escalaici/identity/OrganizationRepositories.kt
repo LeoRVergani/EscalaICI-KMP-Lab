@@ -2,12 +2,28 @@ package br.com.leorvergani.escalaici.identity
 
 import br.com.leorvergani.escalaici.model.Member
 import br.com.leorvergani.escalaici.model.MemberTeamMembership
+import br.com.leorvergani.escalaici.model.LabDate
+import br.com.leorvergani.escalaici.model.ScheduleAssignment
+import br.com.leorvergani.escalaici.model.SchedulePeriod
+import br.com.leorvergani.escalaici.model.ScheduleSummary
+import br.com.leorvergani.escalaici.model.ShiftDay
 import br.com.leorvergani.escalaici.model.Team
 import br.com.leorvergani.escalaici.repository.MemberRepository
 import br.com.leorvergani.escalaici.repository.TeamRepository
+import br.com.leorvergani.escalaici.source.DemoPublicationLoadResult
+import br.com.leorvergani.escalaici.source.DemoPublicationResolver
+import br.com.leorvergani.escalaici.source.DemoPublicationSnapshot
+import br.com.leorvergani.escalaici.source.ScheduleSyncCause
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 interface MemberDirectoryRepository {
-    suspend fun findActiveMemberIds(normalizedEmail: String?, normalizedLogin: String?): List<String>
+    suspend fun findActiveMemberIds(
+        normalizedEmail: String?,
+        normalizedLogin: String?,
+        entraTenantId: String? = null,
+        entraObjectId: String? = null
+    ): List<String>
 }
 
 interface MembershipRepository {
@@ -24,11 +40,29 @@ class InMemoryMemberDirectoryRepository(
     // para que o resolver (nao este diretorio) classifique corretamente como
     // MemberInactive em vez de MemberNotFound (achado da revisao independente
     // desta fase - filtrar aqui tornava MemberInactive inalcancavel).
-    override suspend fun findActiveMemberIds(normalizedEmail: String?, normalizedLogin: String?): List<String> {
-        if (normalizedEmail == null && normalizedLogin == null) return emptyList()
-        return members
+    override suspend fun findActiveMemberIds(
+        normalizedEmail: String?,
+        normalizedLogin: String?,
+        entraTenantId: String?,
+        entraObjectId: String?
+    ): List<String> {
+        val scopedMembers = members
             .asSequence()
             .filter { it.workspaceId == null || it.workspaceId == workspaceId }
+            .toList()
+
+        val entraMatches = if (!entraTenantId.isNullOrBlank() && !entraObjectId.isNullOrBlank()) {
+            scopedMembers.filter { member ->
+                member.entraTenantId == entraTenantId && member.entraObjectId == entraObjectId
+            }
+        } else {
+            emptyList()
+        }
+        if (entraMatches.isNotEmpty()) return entraMatches.map { it.id }.distinct()
+
+        if (normalizedEmail == null && normalizedLogin == null) return emptyList()
+        return scopedMembers
+            .asSequence()
             .filter { member ->
                 val memberEmail = normalizeIdentity(member.email)
                 val memberLogin = normalizeIdentity(loginByMemberId[member.id] ?: member.scaleName)
@@ -68,7 +102,12 @@ class InMemoryTeamRepository(
 }
 
 class DemoMemberDirectoryRepository : MemberDirectoryRepository {
-    override suspend fun findActiveMemberIds(normalizedEmail: String?, normalizedLogin: String?): List<String> {
+    override suspend fun findActiveMemberIds(
+        normalizedEmail: String?,
+        normalizedLogin: String?,
+        entraTenantId: String?,
+        entraObjectId: String?
+    ): List<String> {
         val pkg = DemoFixtureCache.get()
         return InMemoryMemberDirectoryRepository(
             members = pkg.toMembers(),
@@ -108,3 +147,177 @@ class DemoTeamRepository : TeamRepository {
         return InMemoryTeamRepository(pkg.toTeams()).getTeams()
     }
 }
+
+enum class DemoDataOrigin {
+    REMOTE_PUBLICATION,
+    LOCAL_FIXTURE,
+    REMOTE_UNAVAILABLE
+}
+
+data class DemoDataSourceState(
+    val origin: DemoDataOrigin,
+    val publicationRevision: Int?,
+    val fallbackCause: ScheduleSyncCause? = null,
+    val message: String? = null,
+    val allowedDeveloperObjectIds: List<String> = emptyList()
+)
+
+class DemoPublicationRepository(
+    private val resolver: DemoPublicationResolver,
+    private val fixtureProvider: (suspend () -> DemoFixturePackage)? = { DemoFixtureCache.get() }
+) {
+    private val mutex = Mutex()
+    private var cached: DemoPublicationData? = null
+
+    suspend fun data(): DemoPublicationData = mutex.withLock {
+        cached?.let { return@withLock it }
+        val loaded = when (val remote = resolver.loadActiveSnapshot()) {
+            is DemoPublicationLoadResult.Success -> remote.snapshot.toData()
+            is DemoPublicationLoadResult.Failure -> fixtureProvider
+                ?.invoke()
+                ?.toData(fallbackCause = remote.cause, message = remote.message)
+                ?: DemoPublicationData(
+                    members = emptyList(),
+                    teams = emptyList(),
+                    memberships = emptyList(),
+                    schedulePeriods = emptyList(),
+                    scheduleAssignments = emptyList(),
+                    loginByMemberId = emptyMap(),
+                    state = DemoDataSourceState(
+                        origin = DemoDataOrigin.REMOTE_UNAVAILABLE,
+                        publicationRevision = null,
+                        fallbackCause = remote.cause,
+                        message = remote.message
+                    )
+                )
+        }
+        cached = loaded
+        loaded
+    }
+
+    suspend fun state(): DemoDataSourceState = data().state
+}
+
+data class DemoPublicationData(
+    val members: List<Member>,
+    val teams: List<Team>,
+    val memberships: List<MemberTeamMembership>,
+    val schedulePeriods: List<SchedulePeriod>,
+    val scheduleAssignments: List<ScheduleAssignment>,
+    val loginByMemberId: Map<String, String>,
+    val state: DemoDataSourceState
+)
+
+suspend fun DemoPublicationRepository.scheduleSummaryForMember(memberId: String): ScheduleSummary? {
+    val data = data()
+    val member = data.members.firstOrNull { it.id == memberId } ?: return null
+    val membership = data.memberships.firstOrNull { it.memberId == memberId && it.active } ?: return null
+    val team = data.teams.firstOrNull { it.teamId == membership.teamId } ?: return null
+    val assignments = data.scheduleAssignments
+        .filter { it.memberId == memberId && it.teamId == team.teamId }
+        .sortedBy { it.date }
+    if (assignments.isEmpty()) return null
+    val period = data.schedulePeriods.firstOrNull { it.id == assignments.first().periodId }
+    return ScheduleSummary(
+        member = member,
+        team = team,
+        days = assignments.map { assignment ->
+            val date = LabDate.parseIso(assignment.date)
+            ShiftDay(
+                dayLabel = date?.dayOfWeekShort() ?: "",
+                dateLabel = date?.dateLabel() ?: assignment.date,
+                fullDateLabel = date?.fullDateLabel() ?: assignment.date,
+                type = assignment.shiftType,
+                date = date,
+                note = assignment.notes,
+                label = assignment.shiftType.label
+            )
+        },
+        periodLabel = period?.let { "${it.startDate} a ${it.endDate}" } ?: "",
+        pauseLabel = "--:--",
+        pauseOffsetLabel = "",
+        sourceFileName = data.state.message
+    )
+}
+
+class RemoteFirstDemoMemberDirectoryRepository(
+    private val publicationRepository: DemoPublicationRepository,
+    private val workspaceId: String = OrganizationWorkspace.DEMO_WORKSPACE_ID
+) : MemberDirectoryRepository {
+    override suspend fun findActiveMemberIds(
+        normalizedEmail: String?,
+        normalizedLogin: String?,
+        entraTenantId: String?,
+        entraObjectId: String?
+    ): List<String> {
+        val data = publicationRepository.data()
+        return InMemoryMemberDirectoryRepository(
+            members = data.members,
+            workspaceId = workspaceId,
+            loginByMemberId = data.loginByMemberId
+        ).findActiveMemberIds(normalizedEmail, normalizedLogin)
+    }
+}
+
+class RemoteFirstDemoMembershipRepository(
+    private val publicationRepository: DemoPublicationRepository
+) : MembershipRepository {
+    override suspend fun getMemberships(memberId: String): List<MemberTeamMembership> =
+        InMemoryMembershipRepository(publicationRepository.data().memberships).getMemberships(memberId)
+}
+
+class RemoteFirstDemoMemberRepository(
+    private val publicationRepository: DemoPublicationRepository
+) : MemberRepository {
+    override suspend fun getMember(memberId: String): Member? =
+        InMemoryMemberRepository(publicationRepository.data().members).getMember(memberId)
+
+    override suspend fun getMembersByTeam(teamId: String): List<Member> {
+        val data = publicationRepository.data()
+        val memberIds = data.memberships.filter { it.teamId == teamId && it.active }.map { it.memberId }.toSet()
+        return data.members.filter { it.id in memberIds }
+    }
+}
+
+class RemoteFirstDemoTeamRepository(
+    private val publicationRepository: DemoPublicationRepository
+) : TeamRepository {
+    override suspend fun getTeam(teamId: String): Team? =
+        InMemoryTeamRepository(publicationRepository.data().teams).getTeam(teamId)
+
+    override suspend fun getTeams(): List<Team> =
+        InMemoryTeamRepository(publicationRepository.data().teams).getTeams()
+}
+
+private fun DemoPublicationSnapshot.toData() = DemoPublicationData(
+    members = members,
+    teams = teams,
+    memberships = memberships,
+    schedulePeriods = schedulePeriods,
+    scheduleAssignments = scheduleAssignments,
+    loginByMemberId = emptyMap(),
+    state = DemoDataSourceState(
+        origin = DemoDataOrigin.REMOTE_PUBLICATION,
+        publicationRevision = pointer.activeRevision,
+        message = "Fonte: publicacao remota rev. ${pointer.activeRevision}",
+        allowedDeveloperObjectIds = pointer.allowedDeveloperObjectIds
+    )
+)
+
+private fun DemoFixturePackage.toData(
+    fallbackCause: ScheduleSyncCause?,
+    message: String?
+) = DemoPublicationData(
+    members = toMembers(),
+    teams = toTeams(),
+    memberships = toMemberships(),
+    schedulePeriods = toSchedulePeriods(),
+    scheduleAssignments = toScheduleAssignments(),
+    loginByMemberId = loginByMemberId(),
+    state = DemoDataSourceState(
+        origin = DemoDataOrigin.LOCAL_FIXTURE,
+        publicationRevision = workspace.publicationRevision,
+        fallbackCause = fallbackCause,
+        message = message ?: "Fonte: fixture Demo local rev. ${workspace.publicationRevision}"
+    )
+)

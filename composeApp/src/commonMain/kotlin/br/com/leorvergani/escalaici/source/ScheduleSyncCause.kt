@@ -58,10 +58,12 @@ fun ScheduleSyncCause.defaultMessage(teamId: String? = null): String = when (thi
 fun classifySyncFailure(throwable: Throwable): ScheduleSyncCause {
     val text = "${throwable::class.simpleName.orEmpty()} ${throwable.message.orEmpty()}".lowercase()
     val permissionMarkers = listOf("permission_denied", "permission denied", "forbidden", "unauthenticated", "403", "permissão negada", "não autorizado")
+    val authMarkers = listOf("not configured", "missing idtoken", "401")
     val networkMarkers = listOf("unavailable", "timeout", "timed out", "network", "unknownhost", "no address associated", "failed to connect", "econnrefused", "socket", "indisponível", "sem conexão", "sem internet")
-    val invalidDataMarkers = listOf("invalid", "malformed", "parse", "unexpected", "serializ", "inválid", "formato inesperado")
+    val invalidDataMarkers = listOf("invalid", "malformed", "parse", "unexpected", "serializ", "inválid", "formato inesperado", "divergente", "sem publicationrevision", "sem workspaceid", "status nao ativo", "revisao ativa positiva")
     return when {
         permissionMarkers.any { it in text } -> ScheduleSyncCause.PERMISSION_DENIED
+        authMarkers.any { it in text } -> ScheduleSyncCause.AUTH_REQUIRED
         networkMarkers.any { it in text } -> ScheduleSyncCause.NETWORK_ERROR
         invalidDataMarkers.any { it in text } -> ScheduleSyncCause.INVALID_REMOTE_DATA
         else -> ScheduleSyncCause.UNKNOWN

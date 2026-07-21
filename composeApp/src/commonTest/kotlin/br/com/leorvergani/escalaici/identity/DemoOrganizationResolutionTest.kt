@@ -83,7 +83,7 @@ class DemoOrganizationResolutionTest {
         )
 
         assertTrue(result is OrganizationResolutionResult.Resolved)
-        assertEquals("ici", result.context.workspaceId)
+        assertEquals("ici-dev", result.context.workspaceId)
         assertEquals(IdentitySource.CORPORATE_MSAL, result.context.identitySource)
     }
 

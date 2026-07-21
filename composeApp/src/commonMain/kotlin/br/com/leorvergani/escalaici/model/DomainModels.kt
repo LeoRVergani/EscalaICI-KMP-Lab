@@ -63,7 +63,8 @@ data class SchedulePeriod(
     val startDate: String,
     val endDate: String,
     val source: ScheduleSourceType,
-    val updatedAt: String
+    val updatedAt: String,
+    val publicationRevision: Int? = null
 )
 
 data class ScheduleAssignment(
@@ -77,7 +78,67 @@ data class ScheduleAssignment(
     val startTime: String? = null,
     val endTime: String? = null,
     val source: AssignmentSource = AssignmentSource.MANUAL,
-    val notes: String? = null
+    val notes: String? = null,
+    val publicationRevision: Int? = null
+)
+
+enum class TeamManagerRole {
+    PRIMARY_MANAGER,
+    PRIMARY_APPROVER,
+    OTHER
+}
+
+data class TeamManagerPermissions(
+    val viewTeamSchedule: Boolean = false,
+    val viewTeamMembers: Boolean = false,
+    val editTeamSchedule: Boolean = false,
+    val approveScheduleChanges: Boolean = false,
+    val publishSchedule: Boolean = false,
+    val manageTeamAssignments: Boolean = false
+)
+
+data class TeamManagerAssignment(
+    val id: String,
+    val workspaceId: String,
+    val publicationRevision: Int,
+    val teamId: String,
+    val memberId: String,
+    val role: TeamManagerRole,
+    val permissions: TeamManagerPermissions = TeamManagerPermissions(),
+    val active: Boolean = true,
+    val validFrom: String,
+    val validTo: String? = null,
+    val createdAt: String = "",
+    val updatedAt: String = "",
+    val createdBy: String = ""
+)
+
+data class ScheduleChangeRequest(
+    val id: String,
+    val workspaceId: String,
+    val publicationRevision: Int,
+    val memberId: String,
+    val teamId: String,
+    val periodId: String,
+    val assignmentId: String? = null,
+    val status: String,
+    val assignedManagerMemberId: String,
+    val requestType: String,
+    val reason: String,
+    val createdAt: String,
+    val resolvedAt: String? = null,
+    val resolvedByMemberId: String? = null,
+    val resolutionNote: String? = null
+)
+
+data class WorkspacePublicationPointer(
+    val workspaceId: String,
+    val activeRevision: Int,
+    val status: String? = null,
+    val workspaceType: String? = null,
+    val scenarioId: String? = null,
+    val seedVersion: Int? = null,
+    val allowedDeveloperObjectIds: List<String> = emptyList()
 )
 
 data class OnCallPeriod(

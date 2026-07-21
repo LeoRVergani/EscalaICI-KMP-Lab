@@ -1,6 +1,5 @@
 package br.com.leorvergani.escalaici.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,21 +12,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.clip
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -38,37 +31,35 @@ import br.com.leorvergani.escalaici.auth.CorporateAuthRepository
 import br.com.leorvergani.escalaici.auth.CorporateAuthState
 import br.com.leorvergani.escalaici.auth.defaultMessage
 import br.com.leorvergani.escalaici.auth.rememberCorporateAuthHost
-import br.com.leorvergani.escalaici.identity.DemoPersona
-import br.com.leorvergani.escalaici.identity.DemoPersonaCatalog
-import br.com.leorvergani.escalaici.model.Member
 import br.com.leorvergani.escalaici.ui.components.LabPremiumBackground
 import br.com.leorvergani.escalaici.ui.theme.LabColors
 import br.com.leorvergani.escalaici.ui.theme.LabShapes
 import kotlinx.coroutines.launch
 
 /**
- * Porte fiel de `ui/auth/LoginScreen.kt` (app Android real), preservando o
- * seletor de colaboradores de demonstração como fluxo independente.
+ * Entrada do MVP: LOGIN corporativo e DEMO protegido pela mesma sessão MSAL.
  */
 @Composable
 internal fun LoginGateScreen(
-    members: List<Member>,
     supportsCorporateAuth: Boolean,
     corporateAuthRepository: CorporateAuthRepository?,
-    selectedDemoPersona: DemoPersona?,
-    onSelectDemoPersona: (DemoPersona) -> Unit,
-    onSelectMember: (Member) -> Unit
+    errorMessage: String?,
+    onLogin: () -> Unit,
+    onDemo: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    var showDemoOptions by remember { mutableStateOf(false) }
-    var showConfigurationInstructions by remember { mutableStateOf(false) }
     val host = rememberCorporateAuthHost()
     val corporateAuthState = corporateAuthRepository?.state?.collectAsState()?.value
     val isAuthenticating = corporateAuthState == CorporateAuthState.Authenticating
 
-    fun signInCorporate() {
+    fun signInCorporate(afterAuthenticated: () -> Unit) {
         val repository = corporateAuthRepository ?: return
-        scope.launch { repository.signInInteractive(host) }
+        if (corporateAuthState is CorporateAuthState.Authenticated) {
+            afterAuthenticated()
+        } else {
+            scope.launch { repository.signInInteractive(host) }
+            afterAuthenticated()
+        }
     }
 
     LabPremiumBackground {
@@ -93,7 +84,7 @@ internal fun LoginGateScreen(
 
             when {
                 !supportsCorporateAuth -> Text(
-                    text = "Login corporativo Web ainda não configurado.",
+                    text = "Login corporativo indisponível neste ambiente.",
                     color = LabColors.onSurfaceMuted,
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
@@ -106,208 +97,72 @@ internal fun LoginGateScreen(
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center
                     )
-                    TextButton(onClick = { showConfigurationInstructions = true }) {
-                        Text("Ver instruções de configuração", color = LabColors.primary)
-                    }
-                    TextButton(onClick = {
-                        corporateAuthRepository?.enterDemoMode()
-                        showDemoOptions = true
-                    }) {
-                        Text("Entrar no modo demonstração", color = LabColors.primary)
-                    }
                 }
                 else -> {
                     if (corporateAuthState is CorporateAuthState.Authenticated) {
                         Text("Conta corporativa autenticada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                         Text("Nome: ${corporateAuthState.identity.displayName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                         Text("Login: ${corporateAuthState.identity.username}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                        Text(
-                            "O vínculo com membro e time será feito na próxima fase.",
-                            color = LabColors.onSurfaceMuted,
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center
-                        )
-                        TextButton(onClick = { scope.launch { corporateAuthRepository.signOut() } }) {
-                            Text("Sair da conta corporativa", color = LabColors.primary)
-                        }
-                        TextButton(onClick = { showDemoOptions = true }) {
-                            Text("Continuar em modo demonstração", color = LabColors.primary)
-                        }
-                    } else {
-                        if (corporateAuthState == CorporateAuthState.Demo) {
-                            Text("Modo demonstração corporativo ativo", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                            Spacer(Modifier.height(18.dp))
-                        }
-                        Button(
-                            onClick = ::signInCorporate,
-                            enabled = !isAuthenticating,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                            shape = LabShapes.button,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = LabColors.primary,
-                                disabledContainerColor = LabColors.primary,
-                                disabledContentColor = LabColors.onSurface
-                            )
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("Entrar com conta corporativa", color = LabColors.onSurface.copy(alpha = if (isAuthenticating) 0f else 1f))
-                                if (isAuthenticating) {
-                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = LabColors.onSurface, strokeWidth = 2.dp)
-                                }
-                            }
-                        }
+                    }
+                    EntryButton(
+                        text = "LOGIN",
+                        loading = isAuthenticating,
+                        enabled = !isAuthenticating,
+                        onClick = { signInCorporate(onLogin) }
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    EntryButton(
+                        text = "DEMO",
+                        loading = false,
+                        enabled = !isAuthenticating,
+                        tertiary = true,
+                        onClick = { signInCorporate(onDemo) }
+                    )
+                    (corporateAuthState as? CorporateAuthState.Failed)?.let { failed ->
                         Spacer(Modifier.height(12.dp))
-                        Text(
-                            text = "Será aberta a autenticação Microsoft corporativa",
-                            color = LabColors.onSurfaceMuted,
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center
-                        )
-                        (corporateAuthState as? CorporateAuthState.Failed)?.let { failed ->
-                            Spacer(Modifier.height(12.dp))
-                            Text(failed.error.defaultMessage(), color = LabColors.red, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                            TextButton(onClick = ::signInCorporate) { Text("Tentar novamente", color = LabColors.primary) }
-                        }
+                        Text(failed.error.defaultMessage(), color = LabColors.red, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                     }
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            TextButton(onClick = { showDemoOptions = true }) {
-                Text("Login de teste (demonstração)", color = LabColors.primary)
-            }
-
-            // Sempre visível, independente do estado/configuração do MSAL corporativo
-            // (workspace demo-v1 é um conceito ortogonal à identidade corporativa,
-            // spec 56 seção 12 — nunca deve ficar inalcançável num dispositivo já
-            // configurado, como o teste manual desta fase confirmou).
-            Spacer(Modifier.height(24.dp))
-            DemoPersonaSelector(
-                selectedDemoPersona = selectedDemoPersona,
-                onSelectDemoPersona = onSelectDemoPersona
-            )
-        }
-    }
-
-    if (showConfigurationInstructions) {
-        AlertDialog(
-            onDismissRequest = { showConfigurationInstructions = false },
-            containerColor = LabColors.background,
-            titleContentColor = LabColors.onSurface,
-            textContentColor = LabColors.onSurfaceMuted,
-            title = { Text("Configuração da autenticação") },
-            text = { Text("Peça ao administrador do Entra o tenant_id, client_id, redirect URIs e o signature hash do app. Preencha esses valores em auth-config.json (raiz do projeto, fora do Git) — veja auth-config.example.json e docs/setup/00-CHECKLIST-CONFIGURACAO-AMANHA.md para o passo a passo completo.") },
-            confirmButton = {
-                TextButton(onClick = { showConfigurationInstructions = false }) { Text("Fechar", color = LabColors.primary) }
-            },
-            shape = LabShapes.cardMedium,
-            tonalElevation = 6.dp
-        )
-    }
-
-    if (showDemoOptions) {
-        AlertDialog(
-            onDismissRequest = { showDemoOptions = false },
-            containerColor = LabColors.background,
-            titleContentColor = LabColors.onSurface,
-            textContentColor = LabColors.onSurfaceMuted,
-            title = { Text("Login de teste") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    members.getOrNull(0)?.let { member ->
-                        DemoOptionButton("Teste SOC A") {
-                            onSelectMember(member)
-                            showDemoOptions = false
-                        }
-                    }
-                    members.getOrNull(1)?.let { member ->
-                        DemoOptionButton("Teste SOC B") {
-                            onSelectMember(member)
-                            showDemoOptions = false
-                        }
-                    }
-                    members.getOrNull(2)?.let { member ->
-                        DemoOptionButton("Aprovador SOC") {
-                            onSelectMember(member)
-                            showDemoOptions = false
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showDemoOptions = false }) {
-                    Text("Cancelar", color = LabColors.primary)
-                }
-            },
-            shape = LabShapes.cardMedium,
-            tonalElevation = 6.dp
-        )
-    }
-}
-
-@Composable
-private fun DemoOptionButton(text: String, onClick: () -> Unit) {
-    TextButton(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
-        Text(text, color = LabColors.primary)
-    }
-}
-
-@Composable
-private fun DemoPersonaSelector(
-    selectedDemoPersona: DemoPersona?,
-    onSelectDemoPersona: (DemoPersona) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(LabShapes.cardSmall)
-            .background(LabColors.surfaceElevated.copy(alpha = 0.72f))
-            .padding(14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "AMBIENTE DE DEMONSTRAÇÃO",
-            color = LabColors.tertiary,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = "Testar como:",
-            color = LabColors.onSurfaceMuted,
-            style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.Center
-        )
-        DemoPersonaCatalog.personas.forEach { persona ->
-            val selected = selectedDemoPersona?.personaId == persona.personaId
-            Button(
-                onClick = { onSelectDemoPersona(persona) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                shape = LabShapes.button,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (selected) LabColors.tertiary else LabColors.surface,
-                    contentColor = LabColors.onSurface
+            errorMessage?.let {
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = it,
+                    color = LabColors.red,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
                 )
-            ) {
-                Text(persona.displayName, textAlign = TextAlign.Center)
             }
-        }
-        selectedDemoPersona?.let { persona ->
-            Text(
-                text = "Personagem selecionado: ${persona.displayName}",
-                color = LabColors.onSurface,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = "As alterações realizadas aqui não afetam equipes reais.",
-                color = LabColors.onSurfaceMuted,
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center
-            )
+                }
+    }
+}
+
+@Composable
+private fun EntryButton(
+    text: String,
+    loading: Boolean,
+    enabled: Boolean,
+    tertiary: Boolean = false,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        shape = LabShapes.button,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (tertiary) LabColors.tertiary else LabColors.primary,
+            disabledContainerColor = if (tertiary) LabColors.tertiary else LabColors.primary,
+            disabledContentColor = LabColors.onSurface
+        )
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(text, color = LabColors.onSurface.copy(alpha = if (loading) 0f else 1f))
+            if (loading) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = LabColors.onSurface, strokeWidth = 2.dp)
+            }
         }
     }
 }

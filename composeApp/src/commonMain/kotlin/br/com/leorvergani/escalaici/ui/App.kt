@@ -49,13 +49,15 @@ import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.auth.CorporateAuthConfigurationState
 import br.com.leorvergani.escalaici.auth.CorporateAuthRepository
 import br.com.leorvergani.escalaici.auth.CorporateAuthState
+import br.com.leorvergani.escalaici.auth.CorporateIdentity
 import br.com.leorvergani.escalaici.identity.DemoPersona
+import br.com.leorvergani.escalaici.identity.DemoPersonaCatalog
 import br.com.leorvergani.escalaici.identity.OrganizationIdentityResolver
 import br.com.leorvergani.escalaici.identity.OrganizationResolutionResult
 import br.com.leorvergani.escalaici.model.ImportedWorkbook
 import br.com.leorvergani.escalaici.model.LabWorkbookParser
-import br.com.leorvergani.escalaici.model.Member
 import br.com.leorvergani.escalaici.model.ScheduleImportPreview
+import br.com.leorvergani.escalaici.model.ScheduleSummary
 import br.com.leorvergani.escalaici.model.WorkbookImportResult
 import br.com.leorvergani.escalaici.model.mockScheduleSummary
 import br.com.leorvergani.escalaici.platform.rememberWorkbookImportLauncher
@@ -71,7 +73,6 @@ import br.com.leorvergani.escalaici.repository.InMemoryAuthSessionRepository
 import br.com.leorvergani.escalaici.repository.CacheRead
 import br.com.leorvergani.escalaici.repository.CachedSchedule
 import br.com.leorvergani.escalaici.repository.LocalDataCache
-import br.com.leorvergani.escalaici.repository.MockMemberRepository
 import br.com.leorvergani.escalaici.repository.UnavailableLocalDataCache
 import br.com.leorvergani.escalaici.ui.components.LabPremiumBackground
 import br.com.leorvergani.escalaici.ui.theme.LabColorScheme
@@ -91,7 +92,6 @@ import br.com.leorvergani.escalaici.source.OnCallSourceData
 import br.com.leorvergani.escalaici.source.ScheduleSourceData
 import br.com.leorvergani.escalaici.source.SourceMetadata
 import br.com.leorvergani.escalaici.source.SourceQuery
-import br.com.leorvergani.escalaici.source.toMember
 
 private enum class LabTab(
     val label: String,
@@ -111,6 +111,11 @@ private enum class StackedScreen(val title: String) {
     SWAP("Trocas de escala")
 }
 
+private enum class EntryContext {
+    LOGIN,
+    DEMO
+}
+
 @Composable
 fun EscalaIciLabApp(
     todayProvider: TodayProvider = SystemTodayProvider,
@@ -121,27 +126,26 @@ fun EscalaIciLabApp(
     firebaseGateway: FirebaseScheduleGateway? = null,
     firebaseCache: FirebaseSourceCache? = null,
     corporateAuthRepository: CorporateAuthRepository? = null,
-    organizationIdentityResolver: OrganizationIdentityResolver? = null
+    organizationIdentityResolver: OrganizationIdentityResolver? = null,
+    isDemoAuthorized: (suspend (CorporateIdentity) -> Boolean)? = null,
+    loadPublishedScheduleSummary: (suspend (String, String) -> ScheduleSummary?)? = null
 ) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
-        val memberRepository = remember { MockMemberRepository() }
         val scope = rememberCoroutineScope()
         var sessionMemberId by remember { mutableStateOf<String?>(null) }
-        var demoMembers by remember { mutableStateOf<List<Member>>(emptyList()) }
         val corporateAuthState = corporateAuthRepository?.state?.collectAsState()?.value
         var organizationResolutionResult by remember { mutableStateOf<OrganizationResolutionResult?>(null) }
         var selectedDemoPersona by remember { mutableStateOf<DemoPersona?>(null) }
         var demoPersonaResolutionResult by remember { mutableStateOf<OrganizationResolutionResult?>(null) }
+        var requestedEntryContext by remember { mutableStateOf<EntryContext?>(null) }
+        var gateErrorMessage by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(Unit) {
             corporateAuthRepository
                 ?.takeIf { it.configurationState == CorporateAuthConfigurationState.CONFIGURED }
                 ?.restoreSession()
             sessionMemberId = authRepository.currentMemberId()
-            demoMembers = runCatching { firebaseGateway?.loadMembers("soc")?.map { it.toMember() } }.getOrNull()
-                ?.takeIf { it.isNotEmpty() }
-                ?: memberRepository.getMembersByTeam("soc")
         }
 
         var activeTab by remember { mutableStateOf(LabTab.Hoje) }
@@ -165,12 +169,55 @@ fun EscalaIciLabApp(
             }
         }
 
-        LaunchedEffect(corporateAuthState) {
+        LaunchedEffect(corporateAuthState, requestedEntryContext) {
             val resolver = organizationIdentityResolver
             val state = corporateAuthState
             if (state is CorporateAuthState.Authenticated && resolver != null) {
                 organizationResolutionResult = null
                 organizationResolutionResult = resolver.resolveCorporateIdentity(state.identity)
+                when (requestedEntryContext) {
+                    EntryContext.LOGIN -> {
+                        gateErrorMessage = null
+                        when (val result = organizationResolutionResult) {
+                            is OrganizationResolutionResult.Resolved -> {
+                                sessionMemberId = result.context.memberId
+                                summary = loadPublishedScheduleSummary?.invoke(
+                                    result.context.workspaceId,
+                                    result.context.memberId
+                                ) ?: summary.copy(
+                                    member = summary.member.copy(
+                                        id = result.context.memberId,
+                                        displayName = result.context.memberDisplayName,
+                                        scaleName = result.context.memberDisplayName
+                                    ),
+                                    team = summary.team.copy(
+                                        teamId = result.context.primaryTeamId ?: summary.team.teamId,
+                                        name = result.context.primaryTeamName ?: summary.team.name,
+                                        displayName = result.context.primaryTeamName ?: summary.team.displayName
+                                    )
+                                )
+                            }
+                            is OrganizationResolutionResult.MemberNotFound -> {
+                                gateErrorMessage = "Publicação corporativa indisponível ou cadastro não localizado."
+                            }
+                            else -> {
+                                gateErrorMessage = "Não foi possível confirmar seu vínculo organizacional no momento."
+                            }
+                        }
+                    }
+                    EntryContext.DEMO -> {
+                        val authorized = isDemoAuthorized?.invoke(state.identity) == true
+                        if (authorized) {
+                            gateErrorMessage = null
+                            selectedDemoPersona = DemoPersonaCatalog.personas[2]
+                        } else {
+                            selectedDemoPersona = null
+                            demoPersonaResolutionResult = null
+                            gateErrorMessage = "Esta conta não possui acesso ao modo Demo."
+                        }
+                    }
+                    null -> Unit
+                }
             } else {
                 organizationResolutionResult = null
             }
@@ -188,6 +235,25 @@ fun EscalaIciLabApp(
             if (resolver != null && persona != null) {
                 demoPersonaResolutionResult = null
                 demoPersonaResolutionResult = resolver.resolveDemoPersona(persona)
+                val result = demoPersonaResolutionResult
+                if (result is OrganizationResolutionResult.Resolved && requestedEntryContext == EntryContext.DEMO) {
+                    sessionMemberId = result.context.memberId
+                    summary = loadPublishedScheduleSummary?.invoke(
+                        result.context.workspaceId,
+                        result.context.memberId
+                    ) ?: summary.copy(
+                        member = summary.member.copy(
+                            id = result.context.memberId,
+                            displayName = result.context.memberDisplayName,
+                            scaleName = result.context.memberDisplayName
+                        ),
+                        team = summary.team.copy(
+                            teamId = result.context.primaryTeamId ?: summary.team.teamId,
+                            name = result.context.primaryTeamName ?: summary.team.name,
+                            displayName = result.context.primaryTeamName ?: summary.team.displayName
+                        )
+                    )
+                }
             } else {
                 demoPersonaResolutionResult = null
             }
@@ -202,34 +268,13 @@ fun EscalaIciLabApp(
         }
 
         fun refreshFirebase() {
-            val memberId = sessionMemberId ?: return
-            val gateway = firebaseGateway ?: return
-            val cache = firebaseCache ?: return
-            if (firebaseLoading) return
-            scope.launch {
-                firebaseLoading = true
-                firebaseError = null
-                firebaseSyncCause = null
-                val timestamp = "${todayProvider.today().year.toString().padStart(4, '0')}-${todayProvider.today().month.toString().padStart(2, '0')}-${todayProvider.today().day.toString().padStart(2, '0')}"
-                val query = SourceQuery(memberId = memberId, teamId = "soc")
-                when (val result = FirebaseScheduleSource(gateway, cache) { timestamp }.loadActive(query)) {
-                    is DataLoadResult.Success -> { summary = result.data.summary; firebaseMetadata = result.metadata }
-                    is DataLoadResult.OfflineCache -> { summary = result.data.summary; firebaseMetadata = result.metadata }
-                    is DataLoadResult.RecoverableError -> { firebaseError = result.message; firebaseSyncCause = result.cause }
-                    is DataLoadResult.Empty -> { firebaseError = result.metadata.userMessage; firebaseSyncCause = result.cause }
-                    is DataLoadResult.FatalError -> { firebaseError = result.message; firebaseSyncCause = result.cause }
-                }
-                when (val result = FirebaseOnCallSource(gateway, cache) { timestamp }.loadActive(query)) {
-                    is DataLoadResult.Success -> firebaseOnCall = result.data
-                    is DataLoadResult.OfflineCache -> firebaseOnCall = result.data
-                    else -> Unit
-                }
-                firebaseLoading = false
-            }
+            // MVP Firebase dev: a leitura Firestore permitida e revisionada por
+            // workspace. A sincronizacao legada abaixo consulta colecoes raiz e
+            // fica desativada ate ser religada ao snapshot revisionado.
         }
 
         LaunchedEffect(sessionMemberId, firebaseGateway, firebaseCache) {
-            if (sessionMemberId != null) refreshFirebase()
+            Unit
         }
 
         fun handleWorkbookImportResult(result: WorkbookImportResult) {
@@ -270,18 +315,11 @@ fun EscalaIciLabApp(
 
         if (sessionMemberId == null) {
             LoginGateScreen(
-                members = demoMembers,
                 supportsCorporateAuth = platformCapabilities.supportsCorporateAuth,
                 corporateAuthRepository = corporateAuthRepository,
-                selectedDemoPersona = selectedDemoPersona,
-                onSelectDemoPersona = { selectedDemoPersona = it },
-                onSelectMember = { member ->
-                    scope.launch {
-                        authRepository.signIn(member.id)
-                        sessionMemberId = member.id
-                    }
-                    summary = summary.copy(member = member)
-                }
+                errorMessage = gateErrorMessage,
+                onLogin = { requestedEntryContext = EntryContext.LOGIN },
+                onDemo = { requestedEntryContext = EntryContext.DEMO }
             )
         } else {
             LabPremiumBackground {
@@ -320,9 +358,6 @@ fun EscalaIciLabApp(
                                 )
                                 null -> {
                                 Column(modifier = Modifier.fillMaxSize()) {
-                                if (firebaseGateway != null) {
-                                    FirebaseStatusBar(firebaseMetadata, firebaseError, firebaseSyncCause, firebaseLoading, ::refreshFirebase)
-                                }
                                 Box(modifier = Modifier.weight(1f)) {
                                 when (activeTab) {
                                     LabTab.Hoje -> TodayTab(

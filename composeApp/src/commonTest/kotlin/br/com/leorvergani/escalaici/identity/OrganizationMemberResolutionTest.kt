@@ -25,7 +25,7 @@ class OrganizationMemberResolutionTest {
 
         assertTrue(result is OrganizationResolutionResult.Resolved)
         assertEquals("member-1", result.context.memberId)
-        assertEquals("ici", result.context.workspaceId)
+        assertEquals("ici-dev", result.context.workspaceId)
     }
 
     @Test
@@ -40,6 +40,35 @@ class OrganizationMemberResolutionTest {
 
         assertTrue(result is OrganizationResolutionResult.Resolved)
         assertEquals("member-1", result.context.memberId)
+    }
+
+    @Test
+    fun corporateIdentity_prioritizesTenantAndObjectIdBeforeEmailFallback() = runTest {
+        val resolver = resolver(
+            members = listOf(
+                member(id = "member-email", email = "ana@example.invalid"),
+                member(
+                    id = "member-entra",
+                    email = "outra@example.invalid",
+                    entraTenantId = "tenant-1",
+                    entraObjectId = "object-1"
+                )
+            ),
+            memberships = listOf(membership(memberId = "member-entra")),
+            teams = listOf(team())
+        )
+
+        val result = resolver.resolveCorporateIdentity(
+            identity(
+                email = "ana@example.invalid",
+                username = "ana.login",
+                tenantId = "tenant-1",
+                objectId = "object-1"
+            )
+        )
+
+        assertTrue(result is OrganizationResolutionResult.Resolved)
+        assertEquals("member-entra", result.context.memberId)
     }
 
     @Test
@@ -103,7 +132,7 @@ class OrganizationMemberResolutionTest {
 
         val result = resolver.resolveCorporateIdentity(identity(email = "ana@example.invalid", username = "ana.login"))
 
-        assertEquals(OrganizationResolutionResult.WorkspaceMismatch("ici", "demo-v1"), result)
+        assertEquals(OrganizationResolutionResult.WorkspaceMismatch("ici-dev", "demo-v1"), result)
     }
 
     private fun resolver(
@@ -124,9 +153,14 @@ class OrganizationMemberResolutionTest {
         todayProvider = TodayProvider { LabDate(2026, 7, 18) }
     )
 
-    private fun identity(email: String?, username: String) = CorporateIdentity(
-        tenantId = "tenant",
-        objectId = "object",
+    private fun identity(
+        email: String?,
+        username: String,
+        tenantId: String = "tenant",
+        objectId: String = "object"
+    ) = CorporateIdentity(
+        tenantId = tenantId,
+        objectId = objectId,
         username = username,
         displayName = "Ana",
         email = email,
@@ -138,8 +172,19 @@ class OrganizationMemberResolutionTest {
         email: String = "ana@example.invalid",
         login: String = "ana.login",
         active: Boolean = true,
-        workspaceId: String? = null
-    ) = Member(email = email, scaleName = login, displayName = "Ana", id = id, active = active, workspaceId = workspaceId)
+        workspaceId: String? = null,
+        entraTenantId: String? = null,
+        entraObjectId: String? = null
+    ) = Member(
+        email = email,
+        scaleName = login,
+        displayName = "Ana",
+        id = id,
+        active = active,
+        workspaceId = workspaceId,
+        entraTenantId = entraTenantId,
+        entraObjectId = entraObjectId
+    )
 
     private fun membership(memberId: String, teamId: String = "team-1") =
         MemberTeamMembership(id = "membership-$memberId-$teamId", memberId = memberId, teamId = teamId, startDate = "2020-01-01")
@@ -147,12 +192,22 @@ class OrganizationMemberResolutionTest {
     private fun team(teamId: String = "team-1") = Team(teamId = teamId, name = "Team 1")
 
     private class FixedMemberDirectoryRepository(private val memberId: String) : MemberDirectoryRepository {
-        override suspend fun findActiveMemberIds(normalizedEmail: String?, normalizedLogin: String?) = listOf(memberId)
+        override suspend fun findActiveMemberIds(
+            normalizedEmail: String?,
+            normalizedLogin: String?,
+            entraTenantId: String?,
+            entraObjectId: String?
+        ) = listOf(memberId)
     }
 
     private class CountingMemberDirectoryRepository : MemberDirectoryRepository {
         var calls = 0
-        override suspend fun findActiveMemberIds(normalizedEmail: String?, normalizedLogin: String?): List<String> {
+        override suspend fun findActiveMemberIds(
+            normalizedEmail: String?,
+            normalizedLogin: String?,
+            entraTenantId: String?,
+            entraObjectId: String?
+        ): List<String> {
             calls += 1
             return emptyList()
         }

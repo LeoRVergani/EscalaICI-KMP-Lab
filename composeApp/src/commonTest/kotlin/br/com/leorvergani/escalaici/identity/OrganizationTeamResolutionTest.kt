@@ -32,7 +32,7 @@ class OrganizationTeamResolutionTest {
     fun teamWorkspaceMismatchStopsResolution() = runTest {
         val result = resolver(teams = listOf(team(workspaceId = "demo-v1"))).resolveCorporateIdentity(identity())
 
-        assertEquals(OrganizationResolutionResult.WorkspaceMismatch("ici", "demo-v1"), result)
+        assertEquals(OrganizationResolutionResult.WorkspaceMismatch("ici-dev", "demo-v1"), result)
     }
 
     @Test

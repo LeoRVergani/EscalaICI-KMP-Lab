@@ -7,6 +7,31 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14c-5A — Leitura somente-leitura da publicacao Demo ativa
+
+- **Status:** DONE — implementacao KMP comum, testes com fakes, Web/Wasm
+  compilado e fallback local preservado.
+- Novo contrato remoto Demo: o app resolve `workspaces/demo-v1`, le somente
+  `workspaces/demo-v1/revisions/{publicationRevision}/{collection}` e valida
+  `workspaceId`/`publicationRevision` em todas as entidades antes de montar
+  um snapshot de dominio.
+- `DemoPublicationResolver` descarta qualquer leitura parcial, reconsulta o
+  ponteiro no fim e faz retry unico se a revisao mudar durante a leitura. Uma
+  segunda mudanca retorna erro controlado.
+- `DemoPublicationRepository` compoe leitura remota com `DemoFixtureCache`:
+  qualquer erro de rede, permissao ou formato cai para a fixture local sem
+  apagar snapshot consistente. A origem exibida no contexto Demo passa a ser
+  "Demo remoto rev. N" ou fixture local.
+- Modelos puros receberam `publicationRevision` aditivo; novos modelos puros
+  representam ponteiro de publicacao, vinculo de gestor e solicitacao de
+  alteracao.
+- Limitacao conhecida: as regras reais deste repo ainda negam `workspaces/**`,
+  portanto a leitura remota real deve cair em `PERMISSION_DENIED` ate uma fase
+  externa atualizar/deployar regras. Esta fase nao altera
+  `firebase/firestore.rules`.
+- `versionCode`/`versionName`: `21`/`0.7.7` → `22`/`0.7.8`.
+- Detalhe completo: `docs/spec/61-ESCALAICI-LEITURA-DEMO-PUBLICACAO-ATIVA.md`.
+
 ## FASE 14c-2 — Fixtures oficiais do workspace demo-v1
 
 - **Status:** DONE — geração determinística, integração Kotlin, revisão

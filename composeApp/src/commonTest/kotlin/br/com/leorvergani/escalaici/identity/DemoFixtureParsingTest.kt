@@ -147,12 +147,14 @@ class DemoFixtureParsingTest {
         assertEquals("member-test", member.id)
         assertEquals(true, member.active)
         assertEquals("demo-test", member.workspaceId)
+        assertEquals(7, member.publicationRevision)
 
         val team = pkg.toTeams().single()
         assertEquals("team-test", team.teamId)
         assertEquals("Team Test", team.name)
         assertEquals("Team Test", team.displayName)
         assertEquals("demo-test", team.workspaceId)
+        assertEquals(7, team.publicationRevision)
 
         val membership = pkg.toMemberships().single()
         assertEquals("membership-test", membership.id)
@@ -164,6 +166,7 @@ class DemoFixtureParsingTest {
         assertEquals(true, membership.active)
         assertEquals(true, membership.isPrimary)
         assertEquals("demo-test", membership.workspaceId)
+        assertEquals(7, membership.publicationRevision)
     }
 
     @Test

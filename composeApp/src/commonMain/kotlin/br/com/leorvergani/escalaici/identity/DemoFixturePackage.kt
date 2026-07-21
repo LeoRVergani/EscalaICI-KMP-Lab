@@ -2,6 +2,11 @@ package br.com.leorvergani.escalaici.identity
 
 import br.com.leorvergani.escalaici.model.Member
 import br.com.leorvergani.escalaici.model.MemberTeamMembership
+import br.com.leorvergani.escalaici.model.AssignmentSource
+import br.com.leorvergani.escalaici.model.ScheduleAssignment
+import br.com.leorvergani.escalaici.model.SchedulePeriod
+import br.com.leorvergani.escalaici.model.ScheduleSourceType
+import br.com.leorvergani.escalaici.model.ShiftType
 import br.com.leorvergani.escalaici.model.Team
 import kotlinx.serialization.Serializable
 
@@ -160,7 +165,8 @@ fun DemoFixturePackage.toMembers(): List<Member> = members.map { member ->
         displayName = member.displayName,
         id = member.id,
         active = member.active,
-        workspaceId = member.workspaceId
+        workspaceId = member.workspaceId,
+        publicationRevision = workspace.publicationRevision
     )
 }
 
@@ -169,7 +175,8 @@ fun DemoFixturePackage.toTeams(): List<Team> = teams.map { team ->
         teamId = team.id,
         name = team.name,
         displayName = team.name,
-        workspaceId = team.workspaceId
+        workspaceId = team.workspaceId,
+        publicationRevision = workspace.publicationRevision
     )
 }
 
@@ -183,9 +190,51 @@ fun DemoFixturePackage.toMemberships(): List<MemberTeamMembership> = memberTeamM
         endDate = membership.endDate,
         active = membership.active,
         isPrimary = membership.isPrimary,
-        workspaceId = membership.workspaceId
+        workspaceId = membership.workspaceId,
+        publicationRevision = workspace.publicationRevision
+    )
+}
+
+fun DemoFixturePackage.toSchedulePeriods(): List<SchedulePeriod> = schedulePeriods.map { period ->
+    SchedulePeriod(
+        id = period.id,
+        teamId = period.teamId,
+        startDate = period.startDate,
+        endDate = period.endDate,
+        source = ScheduleSourceType.DEMO,
+        updatedAt = "",
+        publicationRevision = period.publicationRevision
+    )
+}
+
+fun DemoFixturePackage.toScheduleAssignments(): List<ScheduleAssignment> = scheduleAssignments.map { assignment ->
+    ScheduleAssignment(
+        id = assignment.id,
+        periodId = assignment.periodId,
+        teamId = assignment.teamId,
+        memberId = assignment.memberId,
+        memberName = members.firstOrNull { it.id == assignment.memberId }?.displayName ?: assignment.memberId,
+        date = assignment.date,
+        shiftType = fixtureShiftType(assignment.assignmentType, assignment.shiftName),
+        startTime = assignment.startTime,
+        endTime = assignment.endTime,
+        source = AssignmentSource.FIREBASE_SYNC,
+        publicationRevision = workspace.publicationRevision
     )
 }
 
 fun DemoFixturePackage.loginByMemberId(): Map<String, String> =
     members.associate { it.id to it.corporateLogin }
+
+private fun fixtureShiftType(assignmentType: String, shiftName: String?): ShiftType = when (assignmentType) {
+    "OFF" -> ShiftType.FOLGA
+    "VACATION" -> ShiftType.FERIAS
+    "WORK_SHIFT" -> when (shiftName?.lowercase()) {
+        "madrugada" -> ShiftType.MADRUGADA
+        "manhã", "manha", "morning" -> ShiftType.MANHA
+        "tarde", "afternoon" -> ShiftType.TARDE
+        "noite", "night" -> ShiftType.NOITE
+        else -> ShiftType.INDEFINIDO
+    }
+    else -> ShiftType.INDEFINIDO
+}
