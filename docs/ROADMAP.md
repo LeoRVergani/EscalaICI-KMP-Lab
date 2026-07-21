@@ -7,6 +7,98 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14c-5B — LOGIN/DEMO: causas de erro separadas, autorizacao lvergani e visao administrativa Demo
+
+- **Status:** DONE (local) — codigo, testes automatizados e validacao manual
+  no emulador concluidos. Integracao real com `workspaces/ici-dev` continua
+  **bloqueada externamente**: o projeto Firebase `escala-ici-dev` retorna
+  `403 SERVICE_DISABLED` (Cloud Firestore API/banco `(default)` ainda nao
+  ativado no projeto). Confirmado por leitura somente-leitura direta contra
+  `workspaces/ici-dev` e `workspaces/demo-v1` no inicio e no fim desta fase,
+  sem qualquer mudanca no resultado.
+- Teste manual anterior a esta fase (sessao MSAL ja restaurada, conta
+  `lvergani@ici.tec.br`) mostrou os dois botoes falhando **depois** da
+  autenticacao MSAL, na etapa de autorizacao/resolucao de dados — LOGIN:
+  "Publicação corporativa indisponível ou cadastro não localizado."; DEMO:
+  "Esta conta não possui acesso ao modo Demo.". Nao era falha de MSAL.
+- `ScheduleSyncCause` ganhou o valor `FIRESTORE_DATABASE_DISABLED`, separado
+  de `AUTH_REQUIRED`: `classifySyncFailure` detecta os marcadores reais do
+  erro (`SERVICE_DISABLED`, "api has not been used", "Cloud Firestore API")
+  antes de cair no 403 generico. Mensagem exclusiva ao usuario: "O banco de
+  dados Firebase deste ambiente ainda não foi ativado." — nunca misturada com
+  cadastro ausente, escala ausente ou acesso negado.
+- `LoginGateScreen`/`App.kt` separam as causas antes agrupadas na mensagem
+  generica de LOGIN: cadastro nao localizado, membro inativo, identidade
+  ambigua, membership sem equipe ativa, equipe nao encontrada, multiplas
+  equipes ativas, workspace divergente, Firestore desativado, permissao
+  negada, rede indisponivel, dados invalidos, escala/periodo/atribuicoes
+  ausentes, publicacao nunca feita neste ambiente.
+- `DemoAuthorization.kt` (`isDemoAuthorizedForIdentity`): autoriza por
+  `allowedDeveloperObjectIds` (path preferencial, ponteiro remoto) ou, **so
+  em build de desenvolvimento**, por e-mail exato normalizado (trim +
+  lowercase, sem `contains`/prefixo/dominio) igual a `lvergani@ici.tec.br`.
+  No alvo Web/Wasm o fallback de e-mail fica desligado (`isDevelopmentBuild =
+  false`), porque o codigo comum nao expõe uma flag debug/release equivalente
+  a `BuildConfig.DEBUG` — limitacao documentada, nao e bug.
+- Removido o fallback silencioso que, quando a resolucao remota falhava,
+  reaproveitava `mockScheduleSummary()` (dados fake de 06–12/07) como se
+  fosse uma escala real carregada. `ResolvedScheduleSummaryDecision.kt`
+  centraliza essa decisao (usada por LOGIN e DEMO): sem publicacao real,
+  mostra erro honesto ("Escala ativa não encontrada para esta conta."), nunca
+  dado inventado.
+- **Mudanca de produto no DEMO**: a conta autenticada (`lvergani`) deixou de
+  ser resolvida direto para a persona fixa `DemoPersonaCatalog.personas[2]`
+  ("Gestor de Segurança Demo", que nunca tem `scheduleAssignments` na fixture
+  — so aparece em `team_manager_assignments`). "AMBIENTE DEMO" agora abre uma
+  visao administrativa minima do workspace `demo-v1` (`DemoWorkspaceOverviewScreen`,
+  papel `DEMO_DEVELOPER`): mostra a identidade autenticada separada da
+  persona, origem da publicacao (remoto/fixture) + revisao + causa de
+  fallback, contagem de membros, periodo ativo e as equipes. A partir dela,
+  o usuario escolhe internamente uma persona operacional **com**
+  `scheduleAssignments` (hoje: Analista SOC Demo 1, Analista de Segurança
+  Demo 1) para "ver como" — a persona gestora, sem atribuicoes, nao aparece
+  nessa lista.
+- Textos dos botoes trocados para reduzir a impressao de "logar de novo":
+  LOGIN → "MINHA ESCALA", DEMO → "AMBIENTE DEMO". A tela ja mostra a conta
+  corporativa autenticada acima dos botoes.
+- `versionCode`/`versionName`: `22`/`0.7.8` → `23`/`0.7.9`.
+- Testes novos/ajustados: `ScheduleSyncCauseTest` (causa dedicada +
+  regressao garantindo que "not configured" generico continua
+  `AUTH_REQUIRED`), `DemoAuthorizationTest` (e-mail exato normalizado
+  autorizado/rejeitado, objectId autorizado, fallback desligado fora de
+  debug), `RemoteFirstDemoMemberDirectoryRepositoryTest` (parametros
+  Entra propagados), `DemoPublicationResolverTest` (autorizacao com
+  ponteiro remoto indisponivel cai em fixture, nao em acesso negado),
+  `ResolvedScheduleSummaryDecisionTest` e `DemoWorkspaceOverviewDecisionTest`
+  (visao administrativa nunca finaliza em mock nem em erro de escala pessoal
+  da persona gestora; identidade `lvergani`/papel `DEMO_DEVELOPER` nunca e
+  tratada como persona).
+- `testDebugUnitTest`, `compileKotlinWasmJs`, `wasmJsTest` (Chromium
+  headless), `wasmJsBrowserDistribution`, `assembleDebug`, `assembleRelease`
+  e os 6 testes de regras Firestore (`firebase/test/firestore.rules.test.mjs`,
+  regras nao alteradas nesta fase): todos `BUILD SUCCESSFUL`/verde.
+- Validacao manual no emulador (`EscalaSOC_API_37`), com a sessao MSAL ja
+  restaurada preservada (nenhum logout/reinstall destrutivo): LOGIN mostra a
+  mensagem dedicada de Firestore desativado; DEMO abre a visao
+  administrativa (origem "fixture local", causa `FIRESTORE_DATABASE_DISABLED`)
+  e "Ver como" carrega a escala real da persona (periodo 26/07–25/08/2026,
+  turnos reais) — nao mais o mock antigo de 06–12/07. Sem crash, sem
+  travamento, logcat sem erro.
+- Achado de processo (nao e bug do app): o Kotlin Language Server 1.3.13 do
+  VS Code (extensao `fwcd.kotlin`) ficou com uso de memoria descontrolado
+  (8+ GB, 200%+ CPU) durante indexacao e foi apontado como fator relevante
+  no encerramento inesperado do VS Code por OOM killer na sessao anterior.
+  Nao e falha do Gradle/app — `testDebugUnitTest` e `assembleDebug` passam
+  normalmente fora do VS Code.
+- Bloqueio externo desta fase (Codex): a ferramenta `codex exec` usada como
+  executor de codigo atingiu o limite de uso da conta durante a rodada de
+  correcao de 3 erros de compilacao (retomar somente em 25/07/2026); esses 3
+  erros — todos de tipagem/nulidade, sem decisao de arquitetura — foram
+  corrigidos diretamente, com resultado revisado e validado pela mesma
+  suite de testes acima.
+- Detalhe completo: `docs/spec/61-ESCALAICI-LEITURA-DEMO-PUBLICACAO-ATIVA.md`
+  (secao FASE 14c-5B).
+
 ## FASE 14c-5A — Leitura somente-leitura da publicacao Demo ativa
 
 - **Status:** DONE — implementacao KMP comum, testes com fakes, Web/Wasm
