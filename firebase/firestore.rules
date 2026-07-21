@@ -1,213 +1,45 @@
 rules_version = '2';
 
-// REGRA TRANSITORIA — FASE 14a.1 (docs/spec/51-ESCALAICI-FIRESTORE-HARDENING-TRANSITORIO.md).
-// Objetivo: eliminar toda escrita anonima e restringir leitura anonima ao
-// minimo hoje usado pelo KMP (teams, members, schedule_periods,
-// schedule_assignments, oncall_periods, oncall_assignments), sem quebrar o
-// modelo de autorizacao ja usado pelo Dashboard (system_admins/isTeamAdmin).
-// NAO SUBSTITUI Firebase Authentication no KMP. NAO IMPLANTAR SEM VALIDAR
-// DASHBOARD E APPS NO EMULATOR E, DEPOIS, EM AMBIENTE NAO PRODUTIVO.
-
+// MVP Firebase dev transitorio:
+// - leitura REST sem Firebase Auth apenas dos workspaces publicados permitidos;
+// - nenhuma escrita do cliente;
+// - Admin SDK do backend continua publicando porque ignora regras de cliente.
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null && request.auth.token.email is string;
+    function allowedWorkspace(workspaceId) {
+      return workspaceId in ['demo-v1', 'ici-dev'];
     }
 
-    function email() {
-      return request.auth.token.email.lower();
-    }
+    match /workspaces/{workspaceId} {
+      allow read: if allowedWorkspace(workspaceId);
+      allow write: if false;
 
-    function isSystemAdmin() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/system_admins/$(email()))
-        && get(/databases/$(database)/documents/system_admins/$(email())).data.active != false;
-    }
-
-    function isTeamAdmin(teamId) {
-      return signedIn()
-        && teamId is string
-        && exists(/databases/$(database)/documents/teams/$(teamId))
-        && email() in get(/databases/$(database)/documents/teams/$(teamId)).data.adminEmails;
-    }
-
-    function validTeamCreate(teamId) {
-      return request.resource.data.teamId is string
-        && request.resource.data.teamId == teamId;
-    }
-
-    function validTeamScopedCreate() {
-      return request.resource.data.teamId is string;
-    }
-
-    function teamIdUnchanged() {
-      return request.resource.data.teamId == resource.data.teamId;
-    }
-
-    function canWriteTeamScoped(teamId) {
-      return isSystemAdmin() || isTeamAdmin(teamId);
-    }
-
-    // --- Coleções com leitura anônima mínima e temporária ---
-    // Cada uma corresponde exatamente ao que FirestoreRestGateway.kt lê hoje
-    // sem nenhuma sessão Firebase Auth. Nenhuma outra coleção recebe esta
-    // exceção.
-    //
-    // RISCO RESIDUAL DOCUMENTADO E APROVADO PELO USUÁRIO (spec 51, não
-    // resolvido nesta fase): o cliente KMP lê essas 6 coleções via `GET
-    // .../documents/{collection}?pageSize=1000` — uma LISTAGEM sem nenhum
-    // `where`. Testado neste Emulator: uma regra que restrinja a leitura a
-    // `resource.data.active == true` (ou equivalente) faz o Firestore
-    // REJEITAR A LISTAGEM INTEIRA com `permission-denied` para requisições
-    // anônimas, em vez de apenas ocultar os documentos que não passam —
-    // porque a consulta do cliente não tem um `where` correspondente que
-    // prove a condição para o conjunto todo. Como esta fase não pode alterar
-    // Kotlin (a consulta do cliente não pode ganhar um filtro
-    // `where("active","==",true)` agora), a única forma de manter a leitura
-    // anônima mínima funcionando é liberá-la de forma incondicional para
-    // estas 6 coleções — idêntico ao acesso de leitura que já existe hoje sob
-    // o modo de teste totalmente aberto, sem ampliá-lo. Isso inclui
-    // documentos inativos/rascunho, que continuam visíveis a leitores
-    // anônimos até a FASE 14e (quando a consulta ganhar `where` real) ou a
-    // FASE 14d (quando o KMP tiver Firebase Auth e não precisar mais de
-    // leitura anônima). Esta troca foi apresentada explicitamente ao usuário,
-    // que confirmou manter a exposição de leitura no nível atual em troca de
-    // eliminar 100% da escrita anônima — não foi uma decisão silenciosa desta
-    // sessão.
-
-    match /teams/{teamId} {
-      allow read: if signedIn() || true;
-      allow create: if isSystemAdmin() && validTeamCreate(teamId);
-      allow update: if isSystemAdmin()
-        || (isTeamAdmin(teamId)
-          && request.resource.data.teamId == resource.data.teamId
-          && request.resource.data.adminEmails == resource.data.adminEmails);
-      allow delete: if isSystemAdmin();
-    }
-
-    match /members/{memberId} {
-      // Risco residual adicional (spec 51): Firestore Rules não fazem
-      // redação por campo — se um documento tiver `email`, ele é exposto por
-      // inteiro a qualquer leitor anônimo junto com os demais campos, mesmo
-      // que o KMP não use esse campo hoje (FirebaseMemberDto não o inclui).
-      allow read: if signedIn() || true;
-      allow create: if validTeamScopedCreate() && canWriteTeamScoped(request.resource.data.teamId);
-      allow update: if teamIdUnchanged() && canWriteTeamScoped(resource.data.teamId);
-      allow delete: if canWriteTeamScoped(resource.data.teamId);
-    }
-
-    match /schedule_periods/{periodId} {
-      allow read: if signedIn() || true;
-      allow create: if validTeamScopedCreate() && canWriteTeamScoped(request.resource.data.teamId);
-      allow update: if teamIdUnchanged() && canWriteTeamScoped(resource.data.teamId);
-      allow delete: if canWriteTeamScoped(resource.data.teamId);
-    }
-
-    match /schedule_assignments/{assignmentId} {
-      allow read: if signedIn() || true;
-      allow create: if validTeamScopedCreate() && canWriteTeamScoped(request.resource.data.teamId);
-      allow update: if teamIdUnchanged() && canWriteTeamScoped(resource.data.teamId);
-      allow delete: if canWriteTeamScoped(resource.data.teamId);
-    }
-
-    match /oncall_periods/{periodId} {
-      allow read: if signedIn() || true;
-      allow create: if validTeamScopedCreate() && canWriteTeamScoped(request.resource.data.teamId);
-      allow update: if teamIdUnchanged() && canWriteTeamScoped(resource.data.teamId);
-      allow delete: if canWriteTeamScoped(resource.data.teamId);
-    }
-
-    match /oncall_assignments/{onCallId} {
-      allow read: if signedIn() || true;
-      allow create: if validTeamScopedCreate() && canWriteTeamScoped(request.resource.data.teamId);
-      allow update: if teamIdUnchanged() && canWriteTeamScoped(resource.data.teamId);
-      allow delete: if canWriteTeamScoped(resource.data.teamId);
-    }
-
-    // --- Coleções operacionais restantes: sem leitura anônima ---
-    // Nenhuma delas é lida hoje pelo FirestoreRestGateway.kt anônimo.
-
-    match /work_patterns/{id} {
-      allow read: if signedIn();
-      allow create: if validTeamScopedCreate() && canWriteTeamScoped(request.resource.data.teamId);
-      allow update: if teamIdUnchanged() && canWriteTeamScoped(resource.data.teamId);
-      allow delete: if canWriteTeamScoped(resource.data.teamId);
-    }
-
-    match /shift_definitions/{id} {
-      allow read: if signedIn();
-      allow create: if validTeamScopedCreate() && canWriteTeamScoped(request.resource.data.teamId);
-      allow update: if teamIdUnchanged() && canWriteTeamScoped(resource.data.teamId);
-      allow delete: if canWriteTeamScoped(resource.data.teamId);
-    }
-
-    match /source_files/{fileId} {
-      allow read: if signedIn();
-      allow create: if validTeamScopedCreate() && canWriteTeamScoped(request.resource.data.teamId);
-      allow update: if teamIdUnchanged() && canWriteTeamScoped(resource.data.teamId);
-      allow delete: if canWriteTeamScoped(resource.data.teamId);
-    }
-
-    match /import_jobs/{jobId} {
-      allow read: if signedIn();
-      allow create: if validTeamScopedCreate() && canWriteTeamScoped(request.resource.data.teamId);
-      allow update: if teamIdUnchanged() && canWriteTeamScoped(resource.data.teamId);
-      allow delete: if canWriteTeamScoped(resource.data.teamId);
-    }
-
-    match /shift_swap_requests/{requestId} {
-      allow read: if signedIn();
-      allow create: if validTeamScopedCreate() && canWriteTeamScoped(request.resource.data.teamId);
-      allow update: if teamIdUnchanged() && canWriteTeamScoped(resource.data.teamId);
-      allow delete: if canWriteTeamScoped(resource.data.teamId);
-    }
-
-    // --- Coleções administrativas e sensíveis: nunca públicas ---
-
-    match /system_admins/{adminId} {
-      allow read: if signedIn();
-      allow create, update, delete: if isSystemAdmin();
-    }
-
-    match /user_links/{firebaseUid} {
-      // Reservado para a FASE 14c (spec 47) — ainda sem dados reais. Regra
-      // já endurecida preventivamente: nunca pública; um usuário só lê o
-      // próprio vínculo (por firebaseUid == uid), administrador gerencia.
-      allow read: if signedIn() && (isSystemAdmin() || request.auth.uid == firebaseUid);
-      allow create, update, delete: if isSystemAdmin();
-    }
-
-    // --- Cadastros universais/globais: somente administrador do sistema ---
-
-    match /{collectionName}/{documentId} {
-      allow read: if signedIn()
-        && collectionName in [
-          'organizations', 'org_units', 'member_team_memberships', 'roles',
-          'schedule_profiles', 'activity_codes', 'dashboard_permissions',
-          'app_user_preferences'
-        ];
-      allow create, update, delete: if isSystemAdmin()
-        && collectionName in [
-          'organizations', 'org_units', 'member_team_memberships', 'roles',
-          'schedule_profiles', 'activity_codes', 'dashboard_permissions',
-          'app_user_preferences'
-        ];
-    }
-
-    // --- Coleção histórica do protótipo de Dashboard ---
-
-    match /escalas/{periodId} {
-      allow read: if signedIn();
-      allow create, update, delete: if isSystemAdmin();
-
-      match /dias/{dateId} {
-        allow read: if signedIn();
-        allow create, update, delete: if isSystemAdmin();
+      match /revisions/{revision}/{document=**} {
+        allow read: if allowedWorkspace(workspaceId);
+        allow write: if false;
       }
     }
 
-    // Negação padrão: qualquer coleção não listada explicitamente acima,
-    // para leitura E escrita, autenticada ou não.
+    match /system_admins/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /user_links/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /source_files/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /import_jobs/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /credentials/{document=**} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
