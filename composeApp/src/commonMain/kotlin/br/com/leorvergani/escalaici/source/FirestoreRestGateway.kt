@@ -2,7 +2,6 @@ package br.com.leorvergani.escalaici.source
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
@@ -19,7 +18,12 @@ import kotlinx.serialization.json.jsonPrimitive
 
 class FirestoreRestGateway(
     internal val projectId: String = "escalaici",
-    private val client: HttpClient = HttpClient(CIO),
+    // Sem engine explicito: cada plataforma resolve o unico engine Ktor disponivel no seu
+    // classpath (CIO em androidMain, Js/fetch em wasmJsMain - ver build.gradle.kts). CIO
+    // fixo aqui quebrava toda leitura Firestore em um navegador real ("Node.js net module
+    // is not available"), só nao dava erro nos nossos testes automatizados porque o gate
+    // MSAL Web nunca deixava esse código rodar antes de existir login real no navegador.
+    private val client: HttpClient = HttpClient(),
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val authTokenProvider: FirebaseAuthTokenProvider? = null
 ) : FirebaseScheduleGateway, DemoPublicationGateway {

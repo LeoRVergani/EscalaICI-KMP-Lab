@@ -26,6 +26,7 @@ enum class ScheduleSyncCause {
     TEAM_NOT_FOUND,
     NO_ACTIVE_PERIOD,
     NO_ASSIGNMENTS,
+    WORKSPACE_NOT_PUBLISHED,
     PERMISSION_DENIED,
     NETWORK_ERROR,
     INVALID_REMOTE_DATA,
@@ -33,9 +34,10 @@ enum class ScheduleSyncCause {
     UNKNOWN,
 }
 
-/** É um estado de "nada para mostrar ainda" (equipe/período/turnos), não uma falha — nunca deve ser exibido como erro em vermelho. */
+/** É um estado de "nada para mostrar ainda" (equipe/período/turnos/workspace), não uma falha — nunca deve ser exibido como erro em vermelho. */
 fun ScheduleSyncCause.isEmptyState(): Boolean =
-    this == ScheduleSyncCause.TEAM_NOT_FOUND || this == ScheduleSyncCause.NO_ACTIVE_PERIOD || this == ScheduleSyncCause.NO_ASSIGNMENTS
+    this == ScheduleSyncCause.TEAM_NOT_FOUND || this == ScheduleSyncCause.NO_ACTIVE_PERIOD ||
+        this == ScheduleSyncCause.NO_ASSIGNMENTS || this == ScheduleSyncCause.WORKSPACE_NOT_PUBLISHED
 
 fun ScheduleSyncCause.defaultMessage(teamId: String? = null): String = when (this) {
     ScheduleSyncCause.AUTH_REQUIRED -> "É necessário fazer login para ver a escala."
@@ -44,6 +46,7 @@ fun ScheduleSyncCause.defaultMessage(teamId: String? = null): String = when (thi
     ScheduleSyncCause.TEAM_NOT_FOUND -> "Equipe${teamId?.let { " \"$it\"" } ?: ""} não encontrada no Firebase."
     ScheduleSyncCause.NO_ACTIVE_PERIOD -> "Esta equipe não tem um período de escala ativo no momento."
     ScheduleSyncCause.NO_ASSIGNMENTS -> "O período ativo desta equipe ainda não tem nenhum turno cadastrado."
+    ScheduleSyncCause.WORKSPACE_NOT_PUBLISHED -> "A escala oficial ainda não foi publicada neste ambiente."
     ScheduleSyncCause.PERMISSION_DENIED -> "Sem permissão para acessar esta escala no Firebase."
     ScheduleSyncCause.NETWORK_ERROR -> "Não foi possível conectar ao Firebase. Verifique sua internet e tente novamente."
     ScheduleSyncCause.INVALID_REMOTE_DATA -> "Os dados recebidos do Firebase estão em um formato inesperado."
@@ -68,6 +71,11 @@ fun classifySyncFailure(throwable: Throwable): ScheduleSyncCause {
     return when {
         firestoreDisabledMarkers.any { it in text } ||
             ("firestore api" in text && "disabled" in text) -> ScheduleSyncCause.FIRESTORE_DATABASE_DISABLED
+        // 404 no documento-ponteiro do workspace (ex.: "(404) em workspaces/ici-dev") significa
+        // "nenhuma publicação existe ainda" - checado ANTES dos marcadores de rede porque a
+        // mensagem genérica de erro HTTP ("Firestore indisponível (...)") contém a palavra
+        // "indisponível", que por coincidência também é um marcador de NETWORK_ERROR.
+        "(404)" in text && "workspaces/" in text -> ScheduleSyncCause.WORKSPACE_NOT_PUBLISHED
         firebaseConfigMarkers.any { it in text } -> ScheduleSyncCause.AUTH_REQUIRED
         permissionMarkers.any { it in text } -> ScheduleSyncCause.PERMISSION_DENIED
         authMarkers.any { it in text } -> ScheduleSyncCause.AUTH_REQUIRED

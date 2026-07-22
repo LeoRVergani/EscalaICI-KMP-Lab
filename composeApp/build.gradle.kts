@@ -38,7 +38,6 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.cio)
             implementation(libs.kotlinx.serialization.json)
         }
 
@@ -46,6 +45,18 @@ kotlin {
             implementation("androidx.activity:activity-compose:1.12.0")
             implementation("org.apache.poi:poi:5.2.5")
             implementation("org.apache.poi:poi-ooxml:5.2.5")
+            // CIO so funciona em JVM/Native (usa java.net/kotlinx-io de socket real) - nao
+            // funciona em navegador. O alvo wasmJs usa ktor-client-js (fetch), ver abaixo.
+            implementation(libs.ktor.client.cio)
+        }
+
+        wasmJsMain.dependencies {
+            // ktor-client-cio tenta usar o modulo "net" do Node.js e falha em um navegador
+            // real de verdade ("Node.js net module is not available") - so "funcionava" nos
+            // nossos testes automatizados porque o Chromium headless via CDP nunca chegou a
+            // exercitar essa chamada de rede antes do MSAL Web existir. ktor-client-js usa
+            // fetch/XMLHttpRequest do navegador, o engine correto para este alvo.
+            implementation(libs.ktor.client.js)
         }
 
         commonTest.dependencies {
@@ -278,8 +289,8 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = androidApplicationId
         minSdk = 28
         targetSdk = 36
-        versionCode = 25
-        versionName = "0.7.11"
+        versionCode = 26
+        versionName = "0.7.12"
 
         buildConfigField("String", "MSAL_TENANT_ID", "\"$msalTenantId\"")
         buildConfigField("String", "MSAL_CLIENT_ID", "\"$msalClientId\"")

@@ -28,8 +28,33 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   funcionando identicamente.
 - Versao: `versionCode` 24->25, `versionName` 0.7.10->0.7.11.
 - Pendente (gate externo, fora do escopo desta fase): confirmar cadastro da
-  redirect URI de producao HTTPS no Entra (sem dominio definitivo ainda);
-  conclusao de um login interativo real ponta a ponta por um humano.
+  redirect URI de producao HTTPS no Entra (sem dominio definitivo ainda).
+
+## FASE 14f-2 — Correcao pos-validacao humana do MSAL Web (Ktor engine + mensagem)
+
+- **Status:** DONE (local) — spec 63, secao "Validacao humana".
+- Login MSAL Web validado por humano real em 2026-07-22 (conta
+  `lvergani@ici.tec.br`, redirect URI `http://localhost:8080/` ja cadastrada
+  no Entra). Duas falhas reais encontradas nessa primeira validacao (nunca
+  exercitadas antes porque, sem MSAL Web, nenhuma leitura remota rodava no
+  navegador):
+  1. `FirestoreRestGateway` usava `HttpClient(CIO)` fixo em `commonMain` -
+     CIO so funciona em JVM/Android, quebrando toda leitura Firestore em
+     navegador real (`Node.js net module is not available`). Corrigido:
+     `HttpClient()` sem engine explicito, `ktor-client-cio` movido para
+     `androidMain`, `ktor-client-js` adicionado a `wasmJsMain`.
+  2. 404 no ponteiro do workspace (publicacao oficial ainda inexistente)
+     era classificado como `NETWORK_ERROR` por coincidencia textual
+     ("indisponivel"), mostrando "verifique sua internet" em vez de "ainda
+     nao foi publicada". Corrigido com novo `ScheduleSyncCause.WORKSPACE_NOT_PUBLISHED`.
+- Apos a correcao: Ambiente Demo confirmado funcionando no navegador real
+  pelo usuario (revisao 3, `objectId` batendo com `allowedDeveloperObjectIds`);
+  "Minha Escala" mostra a mensagem correta ("A escala oficial ainda nao foi
+  publicada neste ambiente") tanto no Web quanto no Android (emulador).
+- Regressao completa: 211 testes unitarios (0 falhas), Android smoke test
+  no emulador sem crash, sem alteracao em `identity`/`androidMain` alem do
+  necessario para o novo valor do enum compartilhado.
+- Versao: `versionCode` 25->26, `versionName` 0.7.11->0.7.12.
 
 ## FASE 14E — Estabilizacao Android/Web do Ambiente Demo (insets, dados, alertas, identidade)
 

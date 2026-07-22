@@ -590,6 +590,7 @@ private fun corporatePublicationUnavailableMessage(state: DemoDataSourceState): 
             "A escala oficial ainda não possui dados ativos para esta conta."
         ScheduleSyncCause.CACHE_AVAILABLE ->
             "Mostrando a última publicação oficial salva localmente."
+        ScheduleSyncCause.WORKSPACE_NOT_PUBLISHED,
         ScheduleSyncCause.IDENTITY_NOT_LINKED,
         ScheduleSyncCause.UNKNOWN,
         null ->

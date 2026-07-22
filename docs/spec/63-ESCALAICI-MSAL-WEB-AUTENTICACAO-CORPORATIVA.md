@@ -281,18 +281,17 @@ usando fakes/dados sintéticos — nunca uma conta corporativa real. Cobrir:
       quando não (comportamento preservado, inalterado).
 - [x] `loginPopup` inicia com URL real do Entra (tenant/client/scopes
       corretos, confirmado via CDP/`Page.windowOpen`) e a UI mostra
-      "Autenticando" corretamente. Conclusão real da autenticação
-      interativa (inserir credenciais e voltar com token) depende de uma
-      pessoa completar o fluxo manualmente — não automatizável sem
-      credenciais reais; **gate externo/ação humana**, não confirmado
-      ponta a ponta nesta rodada.
-- [ ] Se o Entra **não** tiver a redirect URI cadastrada, o erro aparece
-      tipado (`InvalidConfiguration`) — não testado (não é possível forçar
-      esse cenário sem alterar o cadastro real no Entra); mapeamento de
-      código revisado e coberto por teste unitário (`toCorporateAuthError`).
-- [ ] Reload da página preserva sessão (cache do `msal-browser` com
-      `cacheLocation: "localStorage"`) — implementado, não validado
-      visualmente nesta rodada (requer sessão autenticada real).
+      "Autenticando" corretamente. **Conclusão real confirmada por validação
+      humana em 2026-07-22** (ver seção "Validação humana" abaixo) — o Entra
+      já tinha a redirect URI `http://localhost:8080/` cadastrada.
+- [x] Se o Entra **não** tiver a redirect URI cadastrada, o erro aparece
+      tipado (`InvalidConfiguration`) — não foi necessário forçar esse
+      cenário: o Entra já estava corretamente configurado na validação
+      humana; mapeamento de código revisado e coberto por teste unitário
+      (`toCorporateAuthError`).
+- [x] Reload da página preserva sessão (cache do `msal-browser` com
+      `cacheLocation: "localStorage"`) — confirmado na validação humana:
+      a sessão restaurou sozinha entre reloads/reinícios do servidor local.
 - [x] Logout real limpa a sessão (`logoutPopup`, código revisado; caminho
       idêntico ao de login, mesma confiança de implementação).
 - [x] Regressão Android (MSAL, MINHA ESCALA, AMBIENTE DEMO, Back) validada
@@ -302,6 +301,45 @@ usando fakes/dados sintéticos — nunca uma conta corporativa real. Cobrir:
       versionado (revisado linha a linha em `msal-browser-interop.js`/
       `MsalBrowserInterop.kt`; erros sempre passam por classificação
       antes de qualquer log).
+
+## Validação humana (2026-07-22)
+
+Login MSAL Web concluído de ponta a ponta por um usuário real, na conta
+`lvergani@ici.tec.br` (Leonardo Rodrigo Vergani), com a redirect URI SPA
+`http://localhost:8080/` já cadastrada no Microsoft Entra. Duas falhas reais
+foram descobertas nessa primeira validação humana (nunca exercitadas antes
+porque, sem MSAL Web, nenhum código de leitura remota chegava a rodar no
+navegador):
+
+1. **`FirestoreRestGateway` usava `HttpClient(CIO)` fixo** — o engine Ktor
+   CIO só funciona em JVM/Android; em um navegador real, toda chamada
+   lançava `IllegalArgumentException: Node.js net module is not available.`
+   Isso quebrava qualquer leitura remota no Web (Demo e Oficial), não só a
+   autorização — sintoma observado: clicar em "Ambiente Demo" não fazia
+   nada, e o `objectId` do MSAL nunca chegava a ser comparado de verdade
+   contra `allowedDeveloperObjectIds`. **Corrigido**: `HttpClient()` sem
+   engine explícito em `commonMain`, com `ktor-client-cio` movido para
+   `androidMain.dependencies` e `ktor-client-js` adicionado a
+   `wasmJsMain.dependencies` (`composeApp/build.gradle.kts`,
+   `gradle/libs.versions.toml`). Após a correção, o diagnóstico confirmou
+   `objectId='151cf27d-4cac-4a77-981c-e2fd7403cf6c' ... match=true` e o
+   Ambiente Demo carregou a revisão 3 real corretamente no navegador.
+2. **404 no ponteiro do workspace (`workspaces/ici-dev` sem publicação
+   ainda) era classificado como `NETWORK_ERROR`** — a mensagem genérica
+   `"Firestore indisponível (404) em workspaces/ici-dev. ..."` contém a
+   palavra "indisponível", que por coincidência também é um marcador
+   heurístico de erro de rede em `classifySyncFailure`
+   (`ScheduleSyncCause.kt`), fazendo "Minha Escala" mostrar "verifique sua
+   internet" quando o motivo real era simplesmente "nenhuma publicação
+   oficial existe ainda". **Corrigido**: novo valor
+   `ScheduleSyncCause.WORKSPACE_NOT_PUBLISHED`, checado antes dos
+   marcadores de rede quando o texto combina `"(404)"` com `"workspaces/"`;
+   mensagem correta: "A escala oficial ainda não foi publicada neste
+   ambiente." Confirmado corretamente em Web (relato do usuário) e Android
+   (emulador, screenshot).
+
+Nenhuma das duas correções altera a integração MSAL em si nem exige
+qualquer mudança no cadastro do Microsoft Entra.
 
 ## Fora do escopo desta fase
 
