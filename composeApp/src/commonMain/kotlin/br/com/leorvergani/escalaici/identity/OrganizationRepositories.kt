@@ -246,6 +246,11 @@ suspend fun DemoPublicationRepository.scheduleSummaryForMember(memberId: String)
                 .orEmpty()
                 .filter { it.memberId != memberId }
                 .mapNotNull { colleague -> membersById[colleague.memberId]?.scaleName }
+            val colleagueNamesByShift = teamAssignmentsByDate[assignment.date]
+                .orEmpty()
+                .filter { it.memberId != memberId }
+                .groupBy { it.shiftType }
+                .mapValues { (_, values) -> values.mapNotNull { membersById[it.memberId]?.scaleName } }
             ShiftDay(
                 dayLabel = date?.dayOfWeekShort() ?: "",
                 dateLabel = date?.dateLabel() ?: assignment.date,
@@ -253,6 +258,7 @@ suspend fun DemoPublicationRepository.scheduleSummaryForMember(memberId: String)
                 type = assignment.shiftType,
                 date = date,
                 teamMembers = colleagueNames,
+                membersByShift = colleagueNamesByShift,
                 note = assignment.notes,
                 label = assignment.shiftType.label
             )
