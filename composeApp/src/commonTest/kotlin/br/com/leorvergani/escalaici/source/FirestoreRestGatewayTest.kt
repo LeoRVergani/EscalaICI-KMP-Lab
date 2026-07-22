@@ -81,6 +81,49 @@ class FirestoreRestGatewayTest {
     }
 
     @Test
+    fun onCallGroupsAreReadFromFirestoreCollection() = runTest {
+        val gateway = FirestoreRestGateway(
+            projectId = "escala-ici-dev",
+            client = HttpClient(MockEngine) { engine {
+                addHandler {
+                    respond(
+                        content = """
+                            {
+                              "documents": [
+                                {
+                                  "fields": {
+                                    "groupId": {"stringValue": "cosi"},
+                                    "teamId": {"stringValue": "soc"},
+                                    "name": {"stringValue": "COSI"},
+                                    "active": {"booleanValue": true}
+                                  }
+                                },
+                                {
+                                  "fields": {
+                                    "groupId": {"stringValue": "noc"},
+                                    "teamId": {"stringValue": "noc"},
+                                    "name": {"stringValue": "NOC"},
+                                    "active": {"booleanValue": true}
+                                  }
+                                }
+                              ]
+                            }
+                        """.trimIndent(),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                }
+            } }
+        )
+
+        val groups = gateway.loadOnCallGroups("soc")
+
+        assertEquals(1, groups.size)
+        assertEquals("cosi", groups.single().id)
+        assertEquals("COSI", groups.single().name)
+    }
+
+    @Test
     fun missingDemoConfigCreatesUnavailableGatewayForFixtureFallback() = runTest {
         val gateway = createConfiguredDemoPublicationGateway(DemoFirebaseConfig(projectId = ""))
         val repository = br.com.leorvergani.escalaici.identity.DemoPublicationRepository(

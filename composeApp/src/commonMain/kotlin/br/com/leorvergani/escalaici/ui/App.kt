@@ -58,6 +58,7 @@ import br.com.leorvergani.escalaici.identity.OrganizationIdentityResolver
 import br.com.leorvergani.escalaici.identity.OrganizationResolutionResult
 import br.com.leorvergani.escalaici.model.ImportedWorkbook
 import br.com.leorvergani.escalaici.model.LabWorkbookParser
+import br.com.leorvergani.escalaici.model.OnCallGroup
 import br.com.leorvergani.escalaici.model.ScheduleImportPreview
 import br.com.leorvergani.escalaici.model.ScheduleSummary
 import br.com.leorvergani.escalaici.model.WorkbookImportResult
@@ -165,6 +166,7 @@ fun EscalaIciLabApp(
         var firebaseSyncCause by remember { mutableStateOf<ScheduleSyncCause?>(null) }
         var firebaseLoading by remember { mutableStateOf(false) }
         var firebaseOnCall by remember { mutableStateOf<OnCallSourceData?>(null) }
+        var firebaseOnCallGroups by remember { mutableStateOf<List<OnCallGroup>>(emptyList()) }
         var importPreview by remember { mutableStateOf<ScheduleImportPreview?>(null) }
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
         var isFetchingFromCloud by remember { mutableStateOf(false) }
@@ -305,10 +307,49 @@ fun EscalaIciLabApp(
             }
         }
 
+        fun refreshFirebaseOnCall(groupId: String? = null) {
+            val gateway = firebaseGateway ?: return
+            val cache = firebaseCache ?: return
+            val teamId = summary.team.teamId
+            if (teamId.isBlank()) return
+            scope.launch {
+                val source = FirebaseOnCallSource(gateway, cache) { now.firebaseTimestamp() }
+                val groups = runCatching { source.loadOnCallGroups(teamId) }.getOrElse {
+                    firebaseError = "Não foi possível carregar grupos de plantão."
+                    emptyList()
+                }
+                firebaseOnCallGroups = groups
+                val selectedGroupId = groupId ?: groups.singleOrNull()?.id
+                if (selectedGroupId == null) {
+                    firebaseOnCall = null
+                    return@launch
+                }
+                when (val result = source.loadActive(SourceQuery(memberId = sessionMemberId, teamId = teamId, groupId = selectedGroupId))) {
+                    is DataLoadResult.Success -> {
+                        firebaseOnCall = result.data
+                        firebaseError = null
+                    }
+                    is DataLoadResult.OfflineCache -> {
+                        firebaseOnCall = result.data
+                        firebaseError = null
+                    }
+                    is DataLoadResult.Empty -> {
+                        firebaseOnCall = null
+                        firebaseSyncCause = result.cause
+                        firebaseError = result.metadata.userMessage
+                    }
+                    is DataLoadResult.RecoverableError -> {
+                        firebaseError = result.message
+                    }
+                    is DataLoadResult.FatalError -> {
+                        firebaseError = result.message
+                    }
+                }
+            }
+        }
+
         fun refreshFirebase() {
-            // MVP Firebase dev: a leitura Firestore permitida e revisionada por
-            // workspace. A sincronizacao legada abaixo consulta colecoes raiz e
-            // fica desativada ate ser religada ao snapshot revisionado.
+            refreshFirebaseOnCall(firebaseOnCall?.period?.groupId)
         }
 
         LaunchedEffect(sessionMemberId, firebaseGateway, firebaseCache) {
@@ -349,7 +390,10 @@ fun EscalaIciLabApp(
             importedWorkbook = null
         }
 
-        val onOpenPlantao: () -> Unit = { stackedScreen = StackedScreen.PLANTAO }
+        val onOpenPlantao: () -> Unit = {
+            stackedScreen = StackedScreen.PLANTAO
+            refreshFirebaseOnCall()
+        }
 
         val activeDemoWorkspaceSession = demoWorkspaceSession
         fun returnToEntryGateFromDemoWorkspace() {
@@ -437,7 +481,10 @@ fun EscalaIciLabApp(
                                     now = now,
                                     localDataCache = localDataCache,
                                     firebaseData = firebaseOnCall,
-                                    onRetryFirebase = ::refreshFirebase
+                                    onCallGroups = firebaseOnCallGroups,
+                                    teamId = summary.team.teamId,
+                                    onRetryFirebase = ::refreshFirebase,
+                                    onGroupSelected = { group -> refreshFirebaseOnCall(group.id) }
                                 )
                                 StackedScreen.SWAP -> ShiftSwapScreen(
                                     currentMemberId = summary.member.id,
@@ -638,6 +685,12 @@ private fun WorkbookImportResult.toImportPreview(): ScheduleImportPreview {
             summary = null
         )
     }
+}
+
+private fun LabDateTime.firebaseTimestamp(): String {
+    val dateLabel = "${date.year.toString().padStart(4, '0')}-${date.month.toString().padStart(2, '0')}-${date.day.toString().padStart(2, '0')}"
+    val timeLabel = "${(minuteOfDay / 60).toString().padStart(2, '0')}:${(minuteOfDay % 60).toString().padStart(2, '0')}:00"
+    return "${dateLabel}T$timeLabel"
 }
 
 @Composable

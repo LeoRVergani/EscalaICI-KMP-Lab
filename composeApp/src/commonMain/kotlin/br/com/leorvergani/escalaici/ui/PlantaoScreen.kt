@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.model.LabDate
 import br.com.leorvergani.escalaici.model.LabYearMonth
 import br.com.leorvergani.escalaici.model.OnCallAssignment
+import br.com.leorvergani.escalaici.model.OnCallGroup
 import br.com.leorvergani.escalaici.model.OnCallStatus
 import br.com.leorvergani.escalaici.model.LabDateTime
 import br.com.leorvergani.escalaici.model.TemporalState
@@ -57,7 +58,6 @@ import br.com.leorvergani.escalaici.model.onCallDates
 import br.com.leorvergani.escalaici.model.relevantOnCall
 import br.com.leorvergani.escalaici.model.PlantaoWorkbookParser
 import br.com.leorvergani.escalaici.model.WorkbookImportResult
-import br.com.leorvergani.escalaici.model.mockOnCallAssignments
 import br.com.leorvergani.escalaici.platform.rememberWorkbookImportLauncher
 import br.com.leorvergani.escalaici.repository.CacheRead
 import br.com.leorvergani.escalaici.repository.CachedOnCall
@@ -84,29 +84,45 @@ internal fun PlantaoScreen(
     now: LabDateTime,
     localDataCache: LocalDataCache,
     firebaseData: OnCallSourceData? = null,
-    onRetryFirebase: () -> Unit = {}
+    onCallGroups: List<OnCallGroup> = emptyList(),
+    teamId: String = "soc",
+    onRetryFirebase: () -> Unit = {},
+    onGroupSelected: (OnCallGroup) -> Unit = {}
 ) {
-    var assignments by remember { mutableStateOf(mockOnCallAssignments()) }
+    var allAssignments by remember { mutableStateOf<List<OnCallAssignment>>(emptyList()) }
     var isImported by remember { mutableStateOf(false) }
     var importedFileName by remember { mutableStateOf<String?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
     var importError by remember { mutableStateOf<String?>(null) }
+    var selectedGroupId by remember(onCallGroups) { mutableStateOf<String?>(null) }
+    val groupDecision = remember(onCallGroups, selectedGroupId) {
+        decideOnCallGroupSelection(onCallGroups, selectedGroupId)
+    }
+    val selectedGroup = (groupDecision as? OnCallGroupSelectionDecision.UseGroup)?.group
 
-    LaunchedEffect(localDataCache) {
+    LaunchedEffect(selectedGroup?.id) {
+        selectedGroup?.let(onGroupSelected)
+    }
+
+    LaunchedEffect(localDataCache, selectedGroup?.id) {
+        val group = selectedGroup ?: return@LaunchedEffect
         when (val cached = localDataCache.loadOnCall()) {
             is CacheRead.Valid -> {
-                assignments = cached.value.assignments
-                isImported = true
-                importedFileName = cached.value.originalFileName
+                if (cached.value.groupId == group.id) {
+                    allAssignments = onCallAssignmentsForGroup(cached.value.assignments, group.id)
+                    isImported = true
+                    importedFileName = cached.value.originalFileName
+                }
             }
             is CacheRead.Invalid -> importError = cached.safeMessage
             CacheRead.Missing -> Unit
         }
     }
 
-    LaunchedEffect(firebaseData) {
+    LaunchedEffect(firebaseData, selectedGroup?.id) {
+        val group = selectedGroup ?: return@LaunchedEffect
         firebaseData?.let {
-            assignments = it.assignments
+            allAssignments = onCallAssignmentsForGroup(it.assignments, group.id)
             isImported = true
             importedFileName = "Firebase"
             importMessage = if (it.metadata.fromCache) "Dados disponíveis offline." else "Fonte: Firebase"
@@ -115,26 +131,35 @@ internal fun PlantaoScreen(
     }
 
     val importLauncher = rememberWorkbookImportLauncher { result ->
+        val group = selectedGroup
+        if (group == null) {
+            importError = "Escolha um grupo de plantão antes de importar o relatório."
+            return@rememberWorkbookImportLauncher
+        }
         when (result) {
             is WorkbookImportResult.Success -> {
                 val parsed = PlantaoWorkbookParser.parse(result.workbook)
                 if (parsed.error != null) {
                     importError = parsed.error
                 } else {
-                    assignments = parsed.assignments
+                    val groupedAssignments = parsed.assignments.map { assignment ->
+                        assignment.copy(teamId = teamId, groupId = group.id)
+                    }
+                    allAssignments = groupedAssignments
                     isImported = true
                     importedFileName = parsed.fileName
                     importMessage = parsed.warnings.firstOrNull()
                     importError = null
-                    val firstDate = parsed.assignments.minOfOrNull { it.startDate }?.let(LabDate::parseIso)
+                    val firstDate = groupedAssignments.minOfOrNull { it.startDate }?.let(LabDate::parseIso)
                     if (firstDate != null) {
                         localDataCache.saveOnCall(CachedOnCall(
                             originalFileName = parsed.fileName,
                             importedAt = "${today.year.toString().padStart(4, '0')}-${today.month.toString().padStart(2, '0')}-${today.day.toString().padStart(2, '0')}",
                             resolvedYear = firstDate.year,
                             yearResolutionSource = YearResolutionSource.FULL_DATE_IN_WORKBOOK,
-                            teamId = "soc",
-                            assignments = parsed.assignments,
+                            teamId = teamId,
+                            groupId = group.id,
+                            assignments = groupedAssignments,
                             warnings = parsed.warnings
                         ))
                     }
@@ -146,6 +171,9 @@ internal fun PlantaoScreen(
         }
     }
 
+    val assignments = remember(allAssignments, selectedGroup?.id) {
+        selectedGroup?.let { onCallAssignmentsForGroup(allAssignments, it.id) } ?: emptyList()
+    }
     val sortedAssignments = remember(assignments) { assignments.sortedBy { "${it.startDate}T${it.startTime}" } }
     val relevant = remember(assignments, now) { relevantOnCall(assignments, now) }
     val heroShifts = listOfNotNull(relevant?.assignment)
@@ -182,41 +210,90 @@ internal fun PlantaoScreen(
                 Text("Plantão", style = MaterialTheme.typography.titleLarge, color = LabColors.onSurface, fontWeight = FontWeight.Bold)
             }
         }
-        item {
-            PlantaoHeroCard(
-                title = heroTitle,
-                active = relevant?.state == TemporalState.CURRENT,
-                heroShifts = heroShifts,
-                assignmentCount = assignments.size,
-                isImported = isImported,
-                importedFileName = importedFileName,
-                importMessage = importMessage,
-                importError = importError,
-                onImportClick = {
-                    importError = null
-                    importLauncher.launch()
-                },
-                onRetryFirebase = onRetryFirebase
+        when (val decision = groupDecision) {
+            OnCallGroupSelectionDecision.NoGroups -> {
+                item { PlantaoNoGroupsCard() }
+            }
+            is OnCallGroupSelectionDecision.RequiresSelection -> {
+                item {
+                    PlantaoGroupSelectionCard(
+                        groups = decision.groups,
+                        onSelect = { selectedGroupId = it.id }
+                    )
+                }
+            }
+            is OnCallGroupSelectionDecision.UseGroup -> {
+                item {
+                    PlantaoHeroCard(
+                        title = heroTitle,
+                        active = relevant?.state == TemporalState.CURRENT,
+                        heroShifts = heroShifts,
+                        assignmentCount = assignments.size,
+                        isImported = isImported,
+                        importedFileName = importedFileName,
+                        importMessage = importMessage,
+                        importError = importError,
+                        groupName = decision.group.name,
+                        onImportClick = {
+                            importError = null
+                            importLauncher.launch()
+                        },
+                        onRetryFirebase = onRetryFirebase
+                    )
+                }
+                item {
+                    PlantaoMonthHeader(
+                        visibleMonth = visibleMonth,
+                        onPrevious = { visibleMonth = visibleMonth.plusMonths(-1) },
+                        onNext = { visibleMonth = visibleMonth.plusMonths(1) }
+                    )
+                }
+                item {
+                    PlantaoCalendarGrid(
+                        yearMonth = visibleMonth,
+                        assignments = assignments,
+                        selectedDate = selectedDate,
+                        referenceDate = referenceDate,
+                        onDateClick = { selectedDate = it }
+                    )
+                }
+                item {
+                    PlantaoDayDetailCard(selectedDate = selectedDate, assignments = selectedDayAssignments)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlantaoNoGroupsCard() {
+    LabCard(borderColor = LabColors.red.copy(alpha = 0.35f)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Error, contentDescription = null, tint = LabColors.red, modifier = Modifier.size(20.dp))
+            Text(
+                "Nenhum grupo de plantão cadastrado para esta equipe.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = LabColors.onSurface,
+                fontWeight = FontWeight.SemiBold
             )
         }
-        item {
-            PlantaoMonthHeader(
-                visibleMonth = visibleMonth,
-                onPrevious = { visibleMonth = visibleMonth.plusMonths(-1) },
-                onNext = { visibleMonth = visibleMonth.plusMonths(1) }
-            )
-        }
-        item {
-            PlantaoCalendarGrid(
-                yearMonth = visibleMonth,
-                assignments = assignments,
-                selectedDate = selectedDate,
-                referenceDate = referenceDate,
-                onDateClick = { selectedDate = it }
-            )
-        }
-        item {
-            PlantaoDayDetailCard(selectedDate = selectedDate, assignments = selectedDayAssignments)
+    }
+}
+
+@Composable
+private fun PlantaoGroupSelectionCard(
+    groups: List<OnCallGroup>,
+    onSelect: (OnCallGroup) -> Unit
+) {
+    LabCard(title = "Grupo de plantão", borderColor = LabColors.primary.copy(alpha = 0.30f)) {
+        groups.forEach { group ->
+            Button(
+                onClick = { onSelect(group) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = LabColors.surfaceElevated, contentColor = LabColors.onSurface)
+            ) {
+                Text(group.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
@@ -231,6 +308,7 @@ private fun PlantaoHeroCard(
     importedFileName: String?,
     importMessage: String?,
     importError: String?,
+    groupName: String,
     onImportClick: () -> Unit,
     onRetryFirebase: () -> Unit
 ) {
@@ -256,6 +334,11 @@ private fun PlantaoHeroCard(
                 Text(title, style = MaterialTheme.typography.titleLarge, color = LabColors.onSurface, fontWeight = FontWeight.Black)
                 Text(
                     if (assignmentCount > 0) "$assignmentCount plantão(ões) no período" else "Nenhum plantão carregado para o período atual.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LabColors.onSurfaceMuted
+                )
+                Text(
+                    "Grupo: $groupName",
                     style = MaterialTheme.typography.bodySmall,
                     color = LabColors.onSurfaceMuted
                 )

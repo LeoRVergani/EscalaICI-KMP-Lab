@@ -142,7 +142,8 @@ class WebLocalDataCache : LocalDataCache {
                     startTime = jsonArrayString(raw, "assignments", index, "startTime") ?: return@mapNotNull null,
                     endTime = jsonArrayString(raw, "assignments", index, "endTime") ?: return@mapNotNull null,
                     status = OnCallStatus.SCHEDULED,
-                    notes = jsonArrayString(raw, "assignments", index, "notes")
+                    notes = jsonArrayString(raw, "assignments", index, "notes"),
+                    groupId = jsonArrayString(raw, "assignments", index, "groupId") ?: jsonString(raw, "groupId")
                 )
             }
             if (assignments.size != count) return CacheRead.Invalid("O plantão salvo possui assignments inválidos.")
@@ -153,6 +154,7 @@ class WebLocalDataCache : LocalDataCache {
                     resolvedYear = jsonInt(raw, "resolvedYear") ?: 0,
                     yearResolutionSource = YearResolutionSource.FULL_DATE_IN_WORKBOOK,
                     teamId = jsonString(raw, "teamId") ?: "soc",
+                    groupId = jsonString(raw, "groupId"),
                     assignments = assignments,
                     warnings = jsonStringArray(raw, "warnings")
                 )
@@ -173,6 +175,7 @@ class WebLocalDataCache : LocalDataCache {
             field("periodStart", onCall.assignments.minOfOrNull { it.startDate })
             field("periodEnd", onCall.assignments.maxOfOrNull { it.endDate })
             field("teamId", onCall.teamId)
+            field("groupId", onCall.groupId)
             field("resolvedYear", onCall.resolvedYear)
             field("yearResolutionSource", onCall.yearResolutionSource.name)
             stringArrayField("warnings", onCall.warnings)
@@ -187,7 +190,8 @@ class WebLocalDataCache : LocalDataCache {
                 field("startTime", assignment.startTime)
                 field("endDate", assignment.endDate)
                 field("endTime", assignment.endTime)
-                field("notes", assignment.notes, trailingComma = false)
+                field("notes", assignment.notes)
+                field("groupId", assignment.groupId, trailingComma = false)
                 append('}')
             }
             append("]}")

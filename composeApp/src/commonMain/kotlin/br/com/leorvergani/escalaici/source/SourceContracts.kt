@@ -72,7 +72,8 @@ sealed interface DataLoadResult<out T> {
 data class SourceQuery(
     val memberId: String? = null,
     val teamId: String? = null,
-    val scheduleProfileId: String? = null
+    val scheduleProfileId: String? = null,
+    val groupId: String? = null
 )
 
 data class ScheduleSourceData(

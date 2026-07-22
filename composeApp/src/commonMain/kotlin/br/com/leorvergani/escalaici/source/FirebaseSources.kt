@@ -5,6 +5,7 @@ import br.com.leorvergani.escalaici.model.LabDate
 import br.com.leorvergani.escalaici.model.Member
 import br.com.leorvergani.escalaici.model.MemberRole
 import br.com.leorvergani.escalaici.model.OnCallAssignment
+import br.com.leorvergani.escalaici.model.OnCallGroup
 import br.com.leorvergani.escalaici.model.OnCallPeriod
 import br.com.leorvergani.escalaici.model.OnCallStatus
 import br.com.leorvergani.escalaici.model.ScheduleSourceType
@@ -87,30 +88,34 @@ class FirebaseOnCallSource(
     override val sourceType = ScheduleSourceType.FIREBASE
     private var lastSnapshot: FirebaseOnCallSnapshot? = null
 
+    suspend fun loadOnCallGroups(teamId: String): List<OnCallGroup> =
+        gateway.loadOnCallGroups(teamId).filter { it.active }
+
     override suspend fun loadActive(query: SourceQuery): DataLoadResult<OnCallSourceData> {
         val loadedAt = now()
         return try {
             val teamId = query.teamId ?: return error("Equipe não informada.", loadedAt)
-            val period = gateway.loadActiveOnCallPeriod(teamId) ?: return empty(teamId, loadedAt, ScheduleSyncCause.NO_ACTIVE_PERIOD)
-            val assignments = gateway.loadOnCallAssignments(teamId, period.periodId)
+            val groupId = query.groupId?.trim()?.takeIf { it.isNotEmpty() }
+            val period = gateway.loadActiveOnCallPeriod(teamId, groupId) ?: return empty(teamId, loadedAt, ScheduleSyncCause.NO_ACTIVE_PERIOD)
+            val assignments = gateway.loadOnCallAssignments(teamId, period.periodId, groupId)
             if (assignments.isEmpty()) {
-                cacheFallback(loadedAt)?.let { return it }
+                cacheFallback(groupId, loadedAt)?.let { return it }
                 return empty(teamId, loadedAt, ScheduleSyncCause.NO_ASSIGNMENTS)
             }
             val members = gateway.loadMembers(teamId)
             val snapshot = FirebaseOnCallSnapshot(period, members, assignments, loadedAt, loadedAt)
             val data = snapshot.toOnCallData()
-            if (!cache.saveOnCall(snapshot)) return error("O plantão foi carregado, mas não pôde ser disponibilizado offline.", loadedAt)
+            if (!cache.saveOnCall(snapshot, groupId ?: period.groupId)) return error("O plantão foi carregado, mas não pôde ser disponibilizado offline.", loadedAt)
             lastSnapshot = snapshot
             DataLoadResult.Success(data, data.metadata, loadedAt = loadedAt)
         } catch (t: Throwable) {
-            cacheFallback(loadedAt)?.let { return it }
+            cacheFallback(query.groupId, loadedAt)?.let { return it }
             error("Não foi possível atualizar o plantão. Tente novamente.", loadedAt, classifySyncFailure(t))
         }
     }
 
-    private fun cacheFallback(at: String): DataLoadResult<OnCallSourceData>? =
-        cache.loadOnCall()?.let { snapshot ->
+    private fun cacheFallback(groupId: String?, at: String): DataLoadResult<OnCallSourceData>? =
+        cache.loadOnCall(groupId)?.let { snapshot ->
             runCatching { snapshot.toOnCallData(fromCache = true) }.getOrNull()?.let { data ->
                 DataLoadResult.OfflineCache(data, data.metadata, loadedAt = at)
             }
@@ -126,14 +131,14 @@ class FirebaseOnCallSource(
         return try {
             val teamId = query.teamId ?: return error("Equipe não informada.", loadedAt)
             val remote = gateway.checkRemoteUpdatedAt(teamId, onCall = true)
-            val local = cache.loadOnCall()?.period?.updatedAt
-            val metadata = metadata(cache.loadOnCall()?.period?.periodId, remote, loadedAt, false)
+            val local = cache.loadOnCall(query.groupId)?.period?.updatedAt
+            val metadata = metadata(cache.loadOnCall(query.groupId)?.period?.periodId, remote, loadedAt, false)
             DataLoadResult.Success(SourceUpdateStatus(remote != null && remote != local, metadata), metadata, loadedAt = loadedAt)
         } catch (t: Throwable) { error("Não foi possível verificar atualizações do plantão.", loadedAt, classifySyncFailure(t)) }
     }
 
-    override suspend fun updateCache(data: OnCallSourceData): Boolean = lastSnapshot?.let(cache::saveOnCall) ?: false
-    override suspend fun invalidateCache(query: SourceQuery) = cache.clearOnCall()
+    override suspend fun updateCache(data: OnCallSourceData): Boolean = lastSnapshot?.let { cache.saveOnCall(it, data.period?.groupId) } ?: false
+    override suspend fun invalidateCache(query: SourceQuery) = cache.clearOnCall(query.groupId)
 
     private fun empty(teamId: String?, at: String, cause: ScheduleSyncCause) =
         DataLoadResult.Empty(metadata(userMessage = cause.defaultMessage(teamId), at = at), loadedAt = at, cause = cause)
@@ -194,10 +199,28 @@ private fun FirebaseOnCallSnapshot.toOnCallData(fromCache: Boolean = false): OnC
         val startTime = dto.startDateTime.substringAfter('T').take(5)
         val endTime = dto.endDateTime.substringAfter('T').take(5)
         require(LabDate.parseIso(startDate) != null && LabDate.parseIso(endDate) != null && startTime.length == 5 && endTime.length == 5)
-        OnCallAssignment(dto.onCallId, dto.periodId ?: period.periodId, dto.teamId, memberId, dto.scaleName, startDate, startDate, endDate, startTime, endTime, OnCallStatus.SCHEDULED, dto.notes)
+        OnCallAssignment(
+            id = dto.onCallId,
+            periodId = dto.periodId ?: period.periodId,
+            teamId = dto.teamId,
+            memberId = memberId,
+            memberName = dto.scaleName,
+            date = startDate,
+            startDate = startDate,
+            endDate = endDate,
+            startTime = startTime,
+            endTime = endTime,
+            status = OnCallStatus.SCHEDULED,
+            notes = dto.notes,
+            groupId = dto.groupId ?: period.groupId
+        )
     }
     val metadata = metadata(period.periodId, period.updatedAt, cachedAt, fromCache)
-    return OnCallSourceData(OnCallPeriod(period.periodId, period.teamId, period.startDate, period.endDate, period.updatedAt), mapped, metadata)
+    return OnCallSourceData(
+        OnCallPeriod(period.periodId, period.teamId, period.startDate, period.endDate, period.updatedAt, period.groupId),
+        mapped,
+        metadata
+    )
 }
 
 internal fun FirebaseMemberDto.toMember() = Member(

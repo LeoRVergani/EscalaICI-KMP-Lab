@@ -2,6 +2,7 @@ package br.com.leorvergani.escalaici.source
 
 import br.com.leorvergani.escalaici.model.ScheduleSourceType
 import br.com.leorvergani.escalaici.model.ShiftType
+import br.com.leorvergani.escalaici.model.OnCallGroup
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -126,6 +127,41 @@ class FirebaseSourcesTest {
         assertEquals(null, fixture.cache.loadOnCall())
     }
 
+    @Test fun onCallPeriodAndAssignmentReadGroupIdFromRemoteDto() = runTest {
+        val fixture = fixture().apply {
+            gateway.onCallPeriod = gateway.onCallPeriod.copy(groupId = "cosi")
+            gateway.onCallAssignments = mutableListOf(
+                gateway.onCallAssignments.single().copy(groupId = "cosi")
+            )
+        }
+
+        val result = assertIs<DataLoadResult.Success<OnCallSourceData>>(
+            fixture.onCallSource().loadActive(query().copy(groupId = "cosi"))
+        )
+
+        assertEquals("cosi", result.data.period?.groupId)
+        assertEquals("cosi", result.data.assignments.single().groupId)
+    }
+
+    @Test fun onCallCacheIsKeyedByGroupWhenGroupIdIsPresent() = runTest {
+        val fixture = fixture().apply {
+            gateway.onCallPeriod = gateway.onCallPeriod.copy(groupId = "cosi")
+            gateway.onCallAssignments = mutableListOf(gateway.onCallAssignments.single().copy(groupId = "cosi"))
+        }
+        assertIs<DataLoadResult.Success<*>>(fixture.onCallSource().loadActive(query().copy(groupId = "cosi")))
+
+        fixture.gateway.fail = true
+        val cachedSameGroup = assertIs<DataLoadResult.OfflineCache<OnCallSourceData>>(
+            fixture.onCallSource().loadActive(query().copy(groupId = "cosi"))
+        )
+        val otherGroup = assertIs<DataLoadResult.RecoverableError<*>>(
+            fixture.onCallSource().loadActive(query().copy(groupId = "noc-monitoring"))
+        )
+
+        assertTrue(cachedSameGroup.metadata.fromCache)
+        assertEquals(ScheduleSyncCause.NETWORK_ERROR, otherGroup.cause)
+    }
+
     @Test fun localModePreservesLocalData() {
         val firebase = successResult(ScheduleSourceType.FIREBASE, "firebase")
         val local = successResult(ScheduleSourceType.LOCAL_FILE, "local")
@@ -141,7 +177,7 @@ class FirebaseSourcesTest {
     }
 
     @Test fun gatewayContractExposesOnlyReads() {
-        val allowed = setOf("loadTeam", "loadActiveSchedulePeriod", "loadScheduleAssignments", "loadMembers", "loadActiveOnCallPeriod", "loadOnCallAssignments", "checkRemoteUpdatedAt")
+        val allowed = setOf("loadTeam", "loadActiveSchedulePeriod", "loadScheduleAssignments", "loadMembers", "loadOnCallGroups", "loadActiveOnCallPeriod", "loadOnCallAssignments", "checkRemoteUpdatedAt")
         assertEquals(allowed.size, allowed.distinct().size)
         assertTrue(allowed.none { name -> listOf("add", "create", "set", "update", "delete", "batch", "transaction").any { name.startsWith(it, true) } })
     }
@@ -177,15 +213,19 @@ private class FakeFirebaseGateway : FirebaseScheduleGateway {
         FirebaseScheduleAssignmentDto("a1", "soc", "period-1", "member-1", "pessoa1", "2026-07-01", "WORK_SHIFT", "Manhã"),
         FirebaseScheduleAssignmentDto("a2", "soc", "period-1", "member-1", "pessoa1", "2026-07-02", "OFF")
     )
-    private val onCallPeriod = FirebaseOnCallPeriodDto("oncall-1", "soc", "Julho", "2026-07-01", "2026-07-31", true, "2026-07-14T00:00:00Z")
-    private val onCallAssignments = listOf(FirebaseOnCallAssignmentDto("o1", "soc", "oncall-1", "member-1", "pessoa1", "2026-07-01T19:00:00", "2026-07-02T07:00:00", "Plantão", true))
+    var onCallGroups = listOf(OnCallGroup("cosi", "soc", "COSI", true))
+    var onCallPeriod = FirebaseOnCallPeriodDto("oncall-1", "soc", "Julho", "2026-07-01", "2026-07-31", true, "2026-07-14T00:00:00Z")
+    var onCallAssignments = mutableListOf(FirebaseOnCallAssignmentDto("o1", "soc", "oncall-1", "member-1", "pessoa1", "2026-07-01T19:00:00", "2026-07-02T07:00:00", "Plantão", true))
 
     private fun check() { if (fail) error("network") }
     override suspend fun loadTeam(teamId: String) = team.also { check() }
     override suspend fun loadActiveSchedulePeriod(teamId: String) = schedulePeriod.also { check() }
     override suspend fun loadScheduleAssignments(teamId: String, periodId: String) = scheduleAssignments.toList().also { check() }
     override suspend fun loadMembers(teamId: String) = members.also { check() }
-    override suspend fun loadActiveOnCallPeriod(teamId: String) = onCallPeriod.also { check() }
-    override suspend fun loadOnCallAssignments(teamId: String, periodId: String) = onCallAssignments.also { check() }
+    override suspend fun loadOnCallGroups(teamId: String) = onCallGroups.filter { it.teamId == teamId }.also { check() }
+    override suspend fun loadActiveOnCallPeriod(teamId: String, groupId: String?) =
+        onCallPeriod.takeIf { it.teamId == teamId && (groupId == null || it.groupId == groupId) }.also { check() }
+    override suspend fun loadOnCallAssignments(teamId: String, periodId: String, groupId: String?) =
+        onCallAssignments.filter { it.teamId == teamId && it.periodId == periodId && (groupId == null || it.groupId == groupId) }.also { check() }
     override suspend fun checkRemoteUpdatedAt(teamId: String, onCall: Boolean): String? { check(); return if (onCall) onCallPeriod.updatedAt else schedulePeriod?.updatedAt }
 }

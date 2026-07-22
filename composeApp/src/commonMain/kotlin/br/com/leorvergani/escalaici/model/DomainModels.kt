@@ -141,12 +141,20 @@ data class WorkspacePublicationPointer(
     val allowedDeveloperObjectIds: List<String> = emptyList()
 )
 
+data class OnCallGroup(
+    val id: String,
+    val teamId: String,
+    val name: String,
+    val active: Boolean
+)
+
 data class OnCallPeriod(
     val id: String,
     val teamId: String,
     val startDate: String,
     val endDate: String,
-    val updatedAt: String
+    val updatedAt: String,
+    val groupId: String? = null
 )
 
 data class OnCallAssignment(
@@ -161,7 +169,8 @@ data class OnCallAssignment(
     val startTime: String,
     val endTime: String,
     val status: OnCallStatus,
-    val notes: String? = null
+    val notes: String? = null,
+    val groupId: String? = null
 ) {
     fun durationMinutes(): Long? {
         fun timeMinutes(value: String): Int? {

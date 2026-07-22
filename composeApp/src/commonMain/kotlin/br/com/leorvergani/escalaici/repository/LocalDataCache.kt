@@ -28,6 +28,7 @@ data class CachedOnCall(
     val resolvedYear: Int,
     val yearResolutionSource: YearResolutionSource,
     val teamId: String,
+    val groupId: String? = null,
     val assignments: List<OnCallAssignment>,
     val warnings: List<String> = emptyList()
 )

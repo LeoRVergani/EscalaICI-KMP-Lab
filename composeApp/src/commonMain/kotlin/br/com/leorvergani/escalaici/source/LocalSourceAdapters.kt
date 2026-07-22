@@ -176,6 +176,7 @@ class LocalOnCallCacheSource(
                 resolvedYear = data.assignments.first().startDate.substringBefore("-").toIntOrNull() ?: return false,
                 yearResolutionSource = YearResolutionSource.FULL_DATE_IN_WORKBOOK,
                 teamId = data.assignments.first().teamId,
+                groupId = data.period?.groupId ?: data.assignments.first().groupId,
                 assignments = data.assignments,
                 warnings = emptyList()
             )
@@ -193,7 +194,8 @@ class LocalOnCallCacheSource(
                 teamId = teamId,
                 startDate = it.minOf { assignment -> assignment.startDate },
                 endDate = it.maxOf { assignment -> assignment.endDate },
-                updatedAt = importedAt
+                updatedAt = importedAt,
+                groupId = groupId
             )
         }
         val data = OnCallSourceData(period, assignments, metadata)

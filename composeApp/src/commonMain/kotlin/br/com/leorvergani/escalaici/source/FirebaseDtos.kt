@@ -54,7 +54,8 @@ data class FirebaseOnCallPeriodDto(
     val startDate: String,
     val endDate: String,
     val active: Boolean,
-    val updatedAt: String
+    val updatedAt: String,
+    val groupId: String? = null
 )
 
 @Serializable
@@ -68,7 +69,8 @@ data class FirebaseOnCallAssignmentDto(
     val endDateTime: String,
     val label: String,
     val active: Boolean,
-    val notes: String? = null
+    val notes: String? = null,
+    val groupId: String? = null
 )
 
 @Serializable

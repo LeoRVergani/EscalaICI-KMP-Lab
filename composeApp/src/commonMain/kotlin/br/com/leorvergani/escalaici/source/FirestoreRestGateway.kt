@@ -1,5 +1,6 @@
 package br.com.leorvergani.escalaici.source
 
+import br.com.leorvergani.escalaici.model.OnCallGroup
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -42,14 +43,18 @@ class FirestoreRestGateway(
     override suspend fun loadMembers(teamId: String): List<FirebaseMemberDto> =
         documents("members").mapNotNull(::member).filter { it.teamId == teamId && it.active }
 
-    override suspend fun loadActiveOnCallPeriod(teamId: String): FirebaseOnCallPeriodDto? =
-        documents("oncall_periods").mapNotNull(::onCallPeriod)
+    override suspend fun loadOnCallGroups(teamId: String): List<OnCallGroup> =
+        documents("oncall_groups").mapNotNull(::onCallGroup)
             .filter { it.teamId == teamId && it.active }
+
+    override suspend fun loadActiveOnCallPeriod(teamId: String, groupId: String?): FirebaseOnCallPeriodDto? =
+        documents("oncall_periods").mapNotNull(::onCallPeriod)
+            .filter { it.teamId == teamId && it.active && (groupId == null || it.groupId == groupId) }
             .maxByOrNull { it.updatedAt }
 
-    override suspend fun loadOnCallAssignments(teamId: String, periodId: String): List<FirebaseOnCallAssignmentDto> =
+    override suspend fun loadOnCallAssignments(teamId: String, periodId: String, groupId: String?): List<FirebaseOnCallAssignmentDto> =
         documents("oncall_assignments").mapNotNull(::onCallAssignment)
-            .filter { it.teamId == teamId && it.periodId == periodId && it.active }
+            .filter { it.teamId == teamId && it.periodId == periodId && it.active && (groupId == null || it.groupId == groupId) }
 
     override suspend fun checkRemoteUpdatedAt(teamId: String, onCall: Boolean): String? =
         if (onCall) loadActiveOnCallPeriod(teamId)?.updatedAt else loadActiveSchedulePeriod(teamId)?.updatedAt
@@ -150,7 +155,8 @@ class FirestoreRestGateway(
         FirebaseOnCallPeriodDto(
             string(f, "periodId") ?: return null, string(f, "teamId") ?: return null,
             string(f, "name") ?: return null, string(f, "startDate") ?: return null,
-            string(f, "endDate") ?: return null, bool(f, "active"), string(f, "updatedAt") ?: return null
+            string(f, "endDate") ?: return null, bool(f, "active"), string(f, "updatedAt") ?: return null,
+            string(f, "groupId")
         )
     }
 
@@ -159,7 +165,17 @@ class FirestoreRestGateway(
             string(f, "onCallId") ?: return null, string(f, "teamId") ?: return null,
             string(f, "periodId"), string(f, "memberId"), string(f, "scaleName") ?: return null,
             string(f, "startDateTime") ?: return null, string(f, "endDateTime") ?: return null,
-            string(f, "label") ?: return null, bool(f, "active"), string(f, "notes")
+            string(f, "label") ?: return null, bool(f, "active"), string(f, "notes"),
+            string(f, "groupId")
+        )
+    }
+
+    private fun onCallGroup(document: JsonObject): OnCallGroup? = fields(document).let { f ->
+        OnCallGroup(
+            id = string(f, "groupId") ?: string(f, "id") ?: return null,
+            teamId = string(f, "teamId") ?: return null,
+            name = string(f, "name") ?: string(f, "groupName") ?: return null,
+            active = bool(f, "active", default = true)
         )
     }
 }
