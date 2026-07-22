@@ -9,6 +9,6 @@ package br.com.leorvergani.escalaici.model
  * app oficial).
  */
 object AppVersion {
-    const val CODE: Int = 24
-    const val LABEL: String = "0.7.10"
+    const val CODE: Int = 25
+    const val LABEL: String = "0.7.11"
 }

@@ -7,6 +7,30 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14f — MSAL Web/Wasm: autenticacao corporativa real no navegador
+
+- **Status:** DONE (local, com gate externo pendente) — spec 63.
+- Login corporativo real (MSAL) implementado no alvo Web/Wasm pela primeira vez.
+  `MINHA ESCALA` e `AMBIENTE DEMO` agora aparecem e autenticam no navegador
+  quando `auth-config.json.web` esta configurado (ja esta, neste ambiente).
+- Decisao de arquitetura documentada com evidencia real: a via preferida
+  (`@azure/msal-browser` via dependencia npm + `external class`/`@JsModule`)
+  compilou mas falhou em runtime (Promise da fabrica estatica nunca resolvia
+  no handler anexado); pivotada para script UMD vendorizado (`window.msal`),
+  mesmo padrao ja usado no projeto para `xlsx`/`dropbox-auth.js` - validada
+  isoladamente antes de integrar.
+- Validado com Chromium real (CDP): popup de login abre com URL correta do
+  Entra (tenant/client/scopes reais), UI mostra "Autenticando" corretamente.
+  Conclusao real do login interativo (inserir credenciais) depende de uma
+  pessoa - gate externo, nao automatizavel.
+- Regressao Android completa sem alteracoes em `androidMain`/`identity`/
+  `source` - MSAL Android, MINHA ESCALA, AMBIENTE DEMO e Back seguem
+  funcionando identicamente.
+- Versao: `versionCode` 24->25, `versionName` 0.7.10->0.7.11.
+- Pendente (gate externo, fora do escopo desta fase): confirmar cadastro da
+  redirect URI de producao HTTPS no Entra (sem dominio definitivo ainda);
+  conclusao de um login interativo real ponta a ponta por um humano.
+
 ## FASE 14E — Estabilizacao Android/Web do Ambiente Demo (insets, dados, alertas, identidade)
 
 - **Status:** DONE (local) — 4 rodadas de correcao (Codex, revisadas e testadas

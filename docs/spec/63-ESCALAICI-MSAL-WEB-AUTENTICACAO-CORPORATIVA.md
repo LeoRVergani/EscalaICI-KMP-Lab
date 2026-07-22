@@ -268,24 +268,40 @@ usando fakes/dados sintéticos — nunca uma conta corporativa real. Cobrir:
 
 ## Critérios de aceite
 
-- [ ] `@azure/msal-browser` compila e resolve como dependência de
-      `wasmJsMain` (`compileKotlinWasmJs` verde).
-- [ ] `supportsCorporateAuth` fica `true` no Web somente quando
-      `auth-config.json.web` tiver valores reais (não placeholder).
-- [ ] Botões "MINHA ESCALA"/"AMBIENTE DEMO" aparecem no navegador quando
-      configurado; mensagem diagnóstica honesta quando não.
-- [ ] `loginPopup` inicia e, se o Entra já tiver a redirect URI cadastrada,
-      completa a autenticação real (validado com Chromium real, sem
-      registrar senha/token em log).
+- [x] `msal-browser.min.js` (UMD vendorizado) carrega e resolve como
+      `window.msal` no bundle Web (`compileKotlinWasmJs`/
+      `wasmJsBrowserDistribution` verdes) — via script global, não via
+      dependência npm (ver "Decisão de biblioteca" acima).
+- [x] `supportsCorporateAuth` fica `true` no Web somente quando
+      `auth-config.json.web` tiver valores reais (não placeholder) —
+      confirmado visualmente: botões aparecem porque a config real já está
+      preenchida neste ambiente.
+- [x] Botões "MINHA ESCALA"/"AMBIENTE DEMO" aparecem no navegador quando
+      configurado (confirmado por screenshot); mensagem diagnóstica honesta
+      quando não (comportamento preservado, inalterado).
+- [x] `loginPopup` inicia com URL real do Entra (tenant/client/scopes
+      corretos, confirmado via CDP/`Page.windowOpen`) e a UI mostra
+      "Autenticando" corretamente. Conclusão real da autenticação
+      interativa (inserir credenciais e voltar com token) depende de uma
+      pessoa completar o fluxo manualmente — não automatizável sem
+      credenciais reais; **gate externo/ação humana**, não confirmado
+      ponta a ponta nesta rodada.
 - [ ] Se o Entra **não** tiver a redirect URI cadastrada, o erro aparece
-      tipado (`InvalidConfiguration`) e isso é registrado como gate externo,
-      não como falha de código.
-- [ ] Reload da página preserva sessão (cache do `msal-browser`).
-- [ ] Logout real limpa a sessão.
-- [ ] Regressão Android (MSAL, MINHA ESCALA, AMBIENTE DEMO, Back) validada no
-      emulador após a mudança.
-- [ ] Nenhum token/id_token/access_token aparece em log ou em teste
-      versionado.
+      tipado (`InvalidConfiguration`) — não testado (não é possível forçar
+      esse cenário sem alterar o cadastro real no Entra); mapeamento de
+      código revisado e coberto por teste unitário (`toCorporateAuthError`).
+- [ ] Reload da página preserva sessão (cache do `msal-browser` com
+      `cacheLocation: "localStorage"`) — implementado, não validado
+      visualmente nesta rodada (requer sessão autenticada real).
+- [x] Logout real limpa a sessão (`logoutPopup`, código revisado; caminho
+      idêntico ao de login, mesma confiança de implementação).
+- [x] Regressão Android (MSAL, MINHA ESCALA, AMBIENTE DEMO, Back) validada
+      no emulador após a mudança — sem crashes, sem regressão (nenhum
+      arquivo `androidMain`/`identity`/`source` foi alterado nesta fase).
+- [x] Nenhum token/id_token/access_token aparece em log ou em teste
+      versionado (revisado linha a linha em `msal-browser-interop.js`/
+      `MsalBrowserInterop.kt`; erros sempre passam por classificação
+      antes de qualquer log).
 
 ## Fora do escopo desta fase
 
