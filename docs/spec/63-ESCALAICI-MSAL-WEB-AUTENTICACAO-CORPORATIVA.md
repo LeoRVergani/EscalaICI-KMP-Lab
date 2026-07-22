@@ -31,19 +31,76 @@ não há domínio HTTPS definitivo ainda, então essa via permanece um gate exte
 ## Decisão de biblioteca
 
 Uso de `@azure/msal-browser` (biblioteca oficial), conforme preferência
-explícita da missão. Esta é a primeira dependência npm de terceiros deste
-projeto — todo JS interop existente (`dropbox-auth.js`,
-`workbook-import.js`, `remote-download.js`) é feito à mão, sem SDK. Antes de
-investir na implementação completa, a primeira rodada de execução faz um
-*spike* mínimo: declarar a dependência `npm("@azure/msal-browser", ...)`
-apenas em `wasmJsMain.dependencies`, escrever uma `external class`/`external
-interface` mínima e confirmar que `compileKotlinWasmJs` e
-`wasmJsBrowserDistribution` compilam e que o bundle carrega no Chromium sem
-erro de console antes de prosseguir. Se a interop com `external class` para uma
-lib JS de terceiros nesse alvo (`wasmJs`, não `js` clássico) se mostrar
-inviável ou instável, a rodada documenta o obstáculo concreto (erro de
-compilação/link) e reavalia — mas não se assume essa alternativa antes de
-tentar a via preferida.
+explícita da missão — mas **carregada via script UMD global (`window.msal`),
+não via dependência npm + `external class`/`@JsModule`**. Esta decisão foi
+tomada após um spike técnico real (rodada 1), documentado abaixo, não por
+preferência estética.
+
+### O que foi tentado e descartado
+
+1. `implementation(npm("@azure/msal-browser", "3.30.0"))` em
+   `wasmJsMain.dependencies` + `@JsModule("@azure/msal-browser") external
+   class PublicClientApplication(...)`. Compilou (`compileKotlinWasmJs`,
+   `wasmJsBrowserDistribution` verdes, `kotlinWasmUpgradeYarnLock` necessário
+   e aplicado), o pacote foi corretamente bundlado pelo webpack (883 KiB em
+   `composeApp.js`, confirmado no relatório do build). **Mas falhou em
+   runtime**: `new PublicClientApplication(config)` (o construtor público,
+   que o próprio pacote já documenta como "will be removed when we remove
+   public constructor") lançava um `JsException` com `thrownValue == null` —
+   "Exception was thrown while running JavaScript code" sem detalhe
+   recuperável.
+2. Trocado para a fábrica estática recomendada pelo próprio pacote,
+   `PublicClientApplication.createPublicClientApplication(config)`, via
+   `external class PublicClientApplication { companion object { fun
+   createPublicClientApplication(...): Promise<PublicClientApplication> } }`.
+   Compilou, mas em runtime a promise retornada rejeitava e **nunca chegava
+   ao `.then(onRejected = ...)` anexado** — Chromium reportava `Uncaught (in
+   promise) #<Exception>` mesmo com os dois callbacks (`onFulfilled`/
+   `onRejected`) presentes. Um *sanity check* isolado (`js("Promise.resolve(true)")`
+   encadeado com o mesmo `.then()`) funcionou perfeitamente, confirmando que
+   a interop de `Promise` do Kotlin/Wasm em si está correta — o problema é
+   específico de como `external class` + `@JsModule` mapeia a chamada ao
+   método estático/companion de uma biblioteca ESM de terceiros densamente
+   modularizada (129 módulos internos) nesse alvo.
+3. Um teste isolado, fora do Kotlin (HTML+JS puro, `<script type="module">`
+   importando `dist/index.mjs` diretamente), confirmou que **não é possível**
+   testar via import ESM cru sem bundler (`Failed to resolve module
+   specifier "@azure/msal-common/browser"` — specifier bare, exige bundler ou
+   import map), então essa via de diagnóstico foi descartada por não ser
+   comparável ao build real.
+
+### O que funcionou
+
+`@azure/msal-browser` também publica um build UMD pré-compilado em
+`lib/msal-browser.js` (e `.min.js`), que popula `global.msal = {...}` com
+todos os exports, incluindo `PublicClientApplication` e
+`createStandardPublicClientApplication`. Carregado via `<script
+src="...">` clássico (mesmo padrão já usado neste projeto para o CDN do
+`xlsx@0.18.5` em `index.html`) e chamado via `js("window.msal...")` (mesmo
+padrão de `dropbox-auth.js`/`workbook-import.js` — JS interop escrito à mão,
+sem SDK via bundler), `window.msal.createStandardPublicClientApplication(config)`
+funcionou de primeira, sem nenhum erro, testado isoladamente em Chromium
+real antes de integrar ao Kotlin.
+
+### Decisão final
+
+Empacotar `msal-browser.min.js` como um resource estático de
+`wasmJsMain/resources/` (vendored, não CDN — evita depender de
+disponibilidade de rede de terceiros em produção, diferente do caso do
+`xlsx` que já aceita essa dependência; a licença MIT do pacote permite
+redistribuição do arquivo `dist`), referenciado por `<script src=
+"msal-browser.min.js">` em `index.html`, com uma nova interop escrita à mão
+(`msal-browser-interop.js`, mesmo padrão de `dropbox-auth.js`) expondo
+funções em `globalThis.escalaIciMsal*` chamadas via `js("...")` a partir de
+Kotlin — sem `external class`, sem `@JsModule`, sem dependência npm. Isso é
+consistente com o padrão já estabelecido neste projeto para toda integração
+JS de terceiros no alvo Web (nenhuma outra biblioteca é consumida via
+`external class`/`@JsModule` hoje).
+
+O código de geração de configuração a partir de `auth-config.json` (task
+`generateWasmMsalWebConfig`, `MsalWebConfig.kt`) já implementado na rodada 1
+é reaproveitado sem alteração — essa parte nunca dependeu da via
+npm/`external class` e continua válida.
 
 ## Contratos preservados (não mudam)
 
@@ -93,12 +150,29 @@ documentada em tabela abaixo, para não duplicar a taxonomia por plataforma.
   `redirect_uri_local` (ambiente local é o único suportado agora;
   `redirect_uri_production` fica documentado mas não consumido até existir
   domínio HTTPS real — gate externo).
+- `composeApp/src/wasmJsMain/resources/msal-browser.min.js` — build UMD
+  vendorizado de `@azure/msal-browser` (copiado de
+  `node_modules/@azure/msal-browser/lib/msal-browser.min.js` após
+  `kotlinWasmNpmInstall` popular o cache local, ou baixado uma vez e commitado
+  — ambos válidos, mas o arquivo final deve ser commitado no repositório para
+  não depender de rede em build; ele é uma biblioteca de terceiros vendorizada,
+  não um segredo, então pode ser versionado). Referenciado em `index.html`
+  via `<script src="msal-browser.min.js"></script>`, antes de
+  `composeApp.js` (mesma posição relativa do `xlsx`).
+- `composeApp/src/wasmJsMain/resources/msal-browser-interop.js` (novo,
+  mesmo padrão de `dropbox-auth.js`/`workbook-import.js`): funções hand-written
+  em `globalThis.escalaIciMsal*` chamando `window.msal.*` — construção via
+  `window.msal.createStandardPublicClientApplication(config)` (não o
+  construtor público, deprecado), `getAllAccounts`, `setActiveAccount`,
+  `acquireTokenSilent`, `loginPopup`, `logoutPopup`. Toda a superfície JS
+  fica isolada aqui — nunca vaza para `commonMain`.
 - `composeApp/src/wasmJsMain/kotlin/br/com/leorvergani/escalaici/auth/MsalBrowserInterop.kt` —
-  `external`/`@JsModule("@azure/msal-browser")` mínimo necessário:
-  `PublicClientApplication`, `Configuration`, `AccountInfo`,
-  `AuthenticationResult`, métodos `initialize`, `getAllAccounts`,
-  `setActiveAccount`, `acquireTokenSilent`, `loginPopup`, `logoutPopup`. Toda
-  a superfície JS fica isolada aqui — nunca vaza para `commonMain`.
+  chama as funções `escalaIciMsal*` via `js("...")`/`external fun ...:
+  Promise<JsAny?>` simples (função top-level, não `external class`/
+  `@JsModule` — essa combinação foi a que falhou no spike). Cada função JS
+  devolve dados já convertidos para tipos primitivos/JSON simples (string,
+  boolean, objeto simples) para minimizar a superfície de objetos opacos
+  cruzando a fronteira Kotlin/JS.
 - `composeApp/src/wasmJsMain/kotlin/br/com/leorvergani/escalaici/auth/WasmMsalCorporateAuthRepository.kt` —
   implementa `CorporateAuthRepository`:
   - `configurationState` = `CONFIGURED` apenas se `platformMsalWebConfig.isConfigured`;

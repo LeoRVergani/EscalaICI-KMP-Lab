@@ -189,9 +189,23 @@ fun firebaseApiKeyFromWebConfig(config: Map<String, Any?>?): String {
 fun buildConfigString(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
+@Suppress("UNCHECKED_CAST")
+fun msalWebScopeFromAuthConfig(config: Map<String, Any?>?): List<String> {
+    val web = config?.get("web") as? Map<String, Any?>
+    val scopes = web?.get("scope") as? List<Any?>
+    return scopes?.mapNotNull { realValue(it) }.orEmpty()
+}
+
 val demoFirebaseAndroidProjectId = firebaseProjectIdFromGoogleServices(googleServicesConfig)
 val demoFirebaseWebProjectId = firebaseProjectIdFromWebConfig(webConfig)
     .ifBlank { demoFirebaseAndroidProjectId }
+
+@Suppress("UNCHECKED_CAST")
+val msalWebConfig = authConfig?.get("web") as? Map<String, Any?>
+val msalWebTenantId = realValue(authConfig?.get("tenant_id")) ?: ""
+val msalWebClientId = realValue(authConfig?.get("client_id")) ?: ""
+val msalWebRedirectUriLocal = realValue(msalWebConfig?.get("redirect_uri_local")) ?: ""
+val msalWebScopes = msalWebScopeFromAuthConfig(authConfig)
 
 val generatedWasmFirebaseConfigDir = layout.buildDirectory.dir("generated/source/demoFirebaseConfig/wasmJsMain")
 val generateWasmFirebaseConfig by tasks.registering {
@@ -217,12 +231,43 @@ val generateWasmFirebaseConfig by tasks.registering {
     }
 }
 
+val generatedWasmMsalWebConfigDir = layout.buildDirectory.dir("generated/source/msalWebConfig/wasmJsMain")
+val generateWasmMsalWebConfig by tasks.registering {
+    val outputFile = generatedWasmMsalWebConfigDir.map {
+        it.file("br/com/leorvergani/escalaici/auth/MsalWebConfig.wasmJs.generated.kt")
+    }
+    outputs.file(outputFile)
+    inputs.property("msalWebTenantId", msalWebTenantId)
+    inputs.property("msalWebClientId", msalWebClientId)
+    inputs.property("msalWebRedirectUriLocal", msalWebRedirectUriLocal)
+    inputs.property("msalWebScopes", msalWebScopes)
+
+    doLast {
+        val file = outputFile.get().asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            package br.com.leorvergani.escalaici.auth
+
+            val platformMsalWebConfig: MsalWebConfig = MsalWebConfig(
+                tenantId = ${buildConfigString(msalWebTenantId)},
+                clientId = ${buildConfigString(msalWebClientId)},
+                redirectUri = ${buildConfigString(msalWebRedirectUriLocal)},
+                scopes = listOf(${msalWebScopes.joinToString(", ") { buildConfigString(it) }})
+            )
+            """.trimIndent() + "\n"
+        )
+    }
+}
+
 kotlin.sourceSets.named("wasmJsMain") {
     kotlin.srcDir(generatedWasmFirebaseConfigDir)
+    kotlin.srcDir(generatedWasmMsalWebConfigDir)
 }
 
 tasks.matching { it.name.contains("compileKotlinWasmJs", ignoreCase = true) }.configureEach {
     dependsOn(generateWasmFirebaseConfig)
+    dependsOn(generateWasmMsalWebConfig)
 }
 
 extensions.configure<ApplicationExtension>("android") {
