@@ -88,8 +88,9 @@ private fun showScheduledNotification(notification: ScheduledNotification) {
     )
 }
 
-private fun showViaServiceWorker(title: String, body: String, tag: String, date: String): Unit =
-    js("if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && 'serviceWorker' in navigator) { navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, { body: body, tag: tag, icon: './icons/icon-192.png', badge: './icons/icon-192.png', data: { date: date } }); }).catch(function(){ }); }")
+private fun showViaServiceWorker(title: String, body: String, tag: String, date: String) {
+    js("{ if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && 'serviceWorker' in navigator) { navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, { body: body, tag: tag, icon: './icons/icon-192.png', badge: './icons/icon-192.png', data: { date: date } }); }).catch(function(){ }); } }")
+}
 
 private fun LabDateTime.toEpochMillis(): Double =
     localEpochMillis(date.year, date.month, date.day, minuteOfDay / 60, minuteOfDay % 60)
