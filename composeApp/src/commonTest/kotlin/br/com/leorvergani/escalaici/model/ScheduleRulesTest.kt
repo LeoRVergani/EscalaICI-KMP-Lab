@@ -72,6 +72,17 @@ class ScheduleRulesTest {
     }
 
     @Test
+    fun scheduleAlertRules_resetsSixByOneSequenceAcrossMissingCivilDay() {
+        val assignments = listOf(1, 2, 3, 5, 6, 7, 8).map { day ->
+            assignment("2026-07-${day.toString().padStart(2, '0')}", ShiftType.MANHA)
+        }
+
+        val alerts = ScheduleAlertRules(assignments)
+
+        assertTrue(alerts.none { it.title == "Regra 6x1 excedida" })
+    }
+
+    @Test
     fun scheduleAlertRules_flagsInconsistencyAndUndefinedShifts() {
         val assignments = listOf(
             assignment("2026-07-06", ShiftType.INCONSISTENCIA, notes = "Colaborador não encontrado"),

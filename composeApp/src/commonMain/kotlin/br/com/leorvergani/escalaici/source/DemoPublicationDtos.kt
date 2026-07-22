@@ -203,16 +203,5 @@ internal fun JsonObject.stringArray(name: String): List<String> =
 private fun value(element: JsonElement?, key: String): String? =
     element?.jsonObject?.get(key)?.jsonPrimitive?.content
 
-private fun shiftTypeFrom(assignmentType: String?, shiftName: String?): ShiftType = when (assignmentType) {
-    "OFF" -> ShiftType.FOLGA
-    "VACATION" -> ShiftType.FERIAS
-    "WORK_SHIFT" -> when (shiftName?.lowercase()) {
-        "madrugada" -> ShiftType.MADRUGADA
-        "manhã", "manha", "morning" -> ShiftType.MANHA
-        "tarde", "afternoon" -> ShiftType.TARDE
-        "noite", "night" -> ShiftType.NOITE
-        "comercial" -> ShiftType.COMERCIAL
-        else -> ShiftType.INDEFINIDO
-    }
-    else -> ShiftType.INDEFINIDO
-}
+private fun shiftTypeFrom(assignmentType: String?, shiftName: String?): ShiftType =
+    shiftTypeFromAssignment(assignmentType, shiftName) ?: ShiftType.INDEFINIDO

@@ -6,6 +6,24 @@ import kotlin.test.assertTrue
 
 class LabAlertsTest {
     @Test
+    fun sixByOneSequenceResetsAcrossMissingCivilDay() {
+        val workedDays = listOf(1, 2, 3, 5, 6, 7, 8).map { day ->
+            val date = LabDate(2026, 7, day)
+            ShiftDay(
+                dayLabel = date.dayOfWeekShort(),
+                dateLabel = date.dateLabel(),
+                fullDateLabel = date.fullDateLabel(),
+                type = ShiftType.MANHA,
+                date = date
+            )
+        }
+
+        val alerts = GenerateLabAlerts(summaryWithDays(workedDays))
+
+        assertTrue(alerts.none { it.title == "Regra 6x1 excedida" })
+    }
+
+    @Test
     fun undefinedShiftsUpToThresholdGenerateOneAlertPerDay() {
         val alerts = GenerateLabAlerts(summaryWithUndefinedDays(3))
 
@@ -33,6 +51,10 @@ class LabAlertsTest {
                 date = date
             )
         }
+        return summaryWithDays(days)
+    }
+
+    private fun summaryWithDays(days: List<ShiftDay>): ScheduleSummary {
         return ScheduleSummary(
             member = Member(
                 email = "pessoa@example.invalid",

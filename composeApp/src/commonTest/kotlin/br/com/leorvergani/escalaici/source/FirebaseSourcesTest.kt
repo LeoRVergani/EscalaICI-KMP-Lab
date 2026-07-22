@@ -1,6 +1,7 @@
 package br.com.leorvergani.escalaici.source
 
 import br.com.leorvergani.escalaici.model.ScheduleSourceType
+import br.com.leorvergani.escalaici.model.ShiftType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -53,6 +54,24 @@ class FirebaseSourcesTest {
     @Test fun invalidAssignmentIsRecoverable() = runTest {
         val fixture = fixture().apply { gateway.scheduleAssignments[0] = gateway.scheduleAssignments[0].copy(date = "invalid") }
         assertIs<DataLoadResult.RecoverableError<*>>(fixture.scheduleSource().loadActive(query()))
+    }
+
+    @Test fun officialAssignmentGranularityMapsToShiftTypes() = runTest {
+        val cases = listOf(
+            FirebaseScheduleAssignmentDto("off-bh", "soc", "period-1", "member-1", "pessoa1", "2026-07-03", "OFF", "BH") to ShiftType.BH,
+            FirebaseScheduleAssignmentDto("off-birthday", "soc", "period-1", "member-1", "pessoa1", "2026-07-03", "OFF", "Aniversário") to ShiftType.ANIVERSARIO,
+            FirebaseScheduleAssignmentDto("off-common", "soc", "period-1", "member-1", "pessoa1", "2026-07-03", "OFF", null) to ShiftType.FOLGA,
+            FirebaseScheduleAssignmentDto("other-hole", "soc", "period-1", "member-1", "pessoa1", "2026-07-03", "OTHER", "Sem dado importado") to ShiftType.INDEFINIDO,
+            FirebaseScheduleAssignmentDto("other-inconsistent", "soc", "period-1", "member-1", "pessoa1", "2026-07-03", "OTHER", "Trabalho sem turno localizado (1)") to ShiftType.INCONSISTENCIA
+        )
+
+        cases.forEach { (remoteAssignment, expectedType) ->
+            val fixture = fixture().apply { gateway.scheduleAssignments = mutableListOf(remoteAssignment) }
+
+            val result = assertIs<DataLoadResult.Success<ScheduleSourceData>>(fixture.scheduleSource().loadActive(query()))
+
+            assertEquals(expectedType, result.data.summary.days.single().type)
+        }
     }
 
     @Test fun missingMemberIsRecoverable() = runTest {

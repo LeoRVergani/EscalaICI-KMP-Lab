@@ -84,10 +84,16 @@ object GenerateLabAlerts {
     private fun generateSixByOneAlerts(days: List<ShiftDay>, alerts: MutableList<LabAlert>) {
         var sequence = 0
         var start: LabDate? = null
+        var previousDate: LabDate? = null
 
         days.sortedBy { it.date }.forEach { day ->
+            val date = day.date
+            if (previousDate == null || date == null || previousDate.plusDays(1) != date) {
+                sequence = 0
+                start = null
+            }
             if (day.type.isWorkShift) {
-                if (sequence == 0) start = day.date
+                if (sequence == 0) start = date
                 sequence += 1
                 if (sequence > 6) {
                     alerts += LabAlert(
@@ -101,6 +107,7 @@ object GenerateLabAlerts {
                 sequence = 0
                 start = null
             }
+            previousDate = date
         }
     }
 

@@ -83,8 +83,14 @@ object ScheduleAlertRules {
         val alerts = mutableListOf<ScheduleAlert>()
         var sequence = 0
         var start: String? = null
+        var previousDate: LabDate? = null
 
         sorted.forEach { assignment ->
+            val date = LabDate.parseIso(assignment.date)
+            if (previousDate == null || date == null || previousDate.plusDays(1) != date) {
+                sequence = 0
+                start = null
+            }
             if (assignment.shiftType.isWorkShift) {
                 if (sequence == 0) start = assignment.date
                 sequence += 1
@@ -100,6 +106,7 @@ object ScheduleAlertRules {
                 sequence = 0
                 start = null
             }
+            previousDate = date
         }
         return alerts
     }

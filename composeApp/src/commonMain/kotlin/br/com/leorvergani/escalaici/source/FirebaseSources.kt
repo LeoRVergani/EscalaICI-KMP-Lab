@@ -206,19 +206,13 @@ internal fun FirebaseMemberDto.toMember() = Member(
     active = active
 )
 
-private fun FirebaseScheduleAssignmentDto.toShiftType(): ShiftType = when (assignmentType) {
-    "OFF" -> ShiftType.FOLGA
-    "VACATION" -> ShiftType.FERIAS
-    "WORK_SHIFT" -> when (shiftName?.lowercase()) {
-        "madrugada" -> ShiftType.MADRUGADA
-        "manhã", "manha" -> ShiftType.MANHA
-        "tarde" -> ShiftType.TARDE
-        "noite" -> ShiftType.NOITE
-        "comercial" -> ShiftType.COMERCIAL
-        else -> error("Turno desconhecido.")
-    }
-    else -> error("Tipo de assignment desconhecido.")
-}
+private fun FirebaseScheduleAssignmentDto.toShiftType(): ShiftType =
+    shiftTypeFromAssignment(
+        assignmentType = assignmentType,
+        shiftName = shiftName,
+        unknownWorkShift = null,
+        unknownAssignmentType = null
+    ) ?: error("Tipo de assignment desconhecido.")
 
 private fun metadata(
     periodId: String? = null,

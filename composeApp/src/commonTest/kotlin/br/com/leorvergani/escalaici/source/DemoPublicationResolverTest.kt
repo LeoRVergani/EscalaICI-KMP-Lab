@@ -163,6 +163,29 @@ class DemoPublicationResolverTest {
     }
 
     @Test
+    fun mapsOfficialAssignmentGranularityFromDashboardPublication() {
+        val cases = listOf(
+            Triple("OFF", "BH", ShiftType.BH),
+            Triple("OFF", "Aniversário", ShiftType.ANIVERSARIO),
+            Triple("OFF", null, ShiftType.FOLGA),
+            Triple("OTHER", "Sem dado importado", ShiftType.INDEFINIDO),
+            Triple("OTHER", "Trabalho sem turno localizado (1)", ShiftType.INCONSISTENCIA),
+            Triple("ABSENCE", null, ShiftType.AFASTAMENTO),
+            Triple("TRAINING", null, ShiftType.INDEFINIDO)
+        )
+
+        cases.forEach { (assignmentType, shiftName, expectedType) ->
+            val assignment = assignment(
+                revision = 7,
+                assignmentType = assignmentType,
+                shiftName = shiftName
+            ).toDemoScheduleAssignment(revision = 7)
+
+            assertEquals(expectedType, assignment.shiftType)
+        }
+    }
+
+    @Test
     fun nonActivePointerStatusIsRejectedDefensively() = runTest {
         val result = assertIs<DemoPublicationLoadResult.Failure>(
             DemoPublicationResolver(
@@ -462,7 +485,8 @@ private fun assignment(
     revision: Int,
     teamId: String = "team-demo-soc",
     workspaceId: String = "demo-v1",
-    shiftName: String = "manha"
+    assignmentType: String = "WORK_SHIFT",
+    shiftName: String? = "manha"
 ) = buildJsonObject {
     putField("id", "assignment-demo-1")
     putField("workspaceId", workspaceId)
@@ -471,8 +495,8 @@ private fun assignment(
     putField("teamId", teamId)
     putField("memberId", "member-demo-1")
     putField("date", "2026-07-01")
-    putField("assignmentType", "WORK_SHIFT")
-    putField("shiftName", shiftName)
+    putField("assignmentType", assignmentType)
+    if (shiftName != null) putField("shiftName", shiftName)
 }
 
 private fun request(revision: Int, teamId: String, workspaceId: String = "demo-v1") = buildJsonObject {
