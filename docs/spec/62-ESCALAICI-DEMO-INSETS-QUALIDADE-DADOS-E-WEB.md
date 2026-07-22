@@ -209,4 +209,32 @@ Todos os testes já existentes foram preservados; nenhuma cobertura foi reduzida
 
 - Configuração de MSAL Web para validação visual completa no navegador.
 - Qualquer escrita, publicação ou deploy no Firebase.
+
+## Nota pós-validação: acesso ao Ambiente Demo em build release (2026-07-21)
+
+Após a distribuição do build de release 0.7.10 gerado nesta fase (primeira vez que um
+release chegou a ser testado fora do ambiente de desenvolvimento), o acesso ao Ambiente
+Demo passou a falhar com "Esta conta não possui acesso ao modo Demo." para uma conta que
+antes conseguia entrar. Não foi uma regressão de código desta fase: `isDemoAuthorizedForIdentity`
+(`identity/DemoAuthorization.kt`, já existente desde a FASE 14c-5B) só libera acesso por duas vias:
+
+1. `objectId` (Entra ID) presente em `workspaces/demo-v1.allowedDeveloperObjectIds` no Firestore;
+2. fallback temporário `BuildConfig.DEBUG == true` + e-mail fixo `lvergani@ici.tec.br`.
+
+A via 2 nunca funciona em build de release (`BuildConfig.DEBUG = false`), e o campo da via 1
+estava vazio — por isso ninguém conseguia entrar em um release antes desta correção.
+
+**Correção aplicada:** o campo `allowedDeveloperObjectIds` foi populado manualmente via
+Firebase Console (não há escrita de cliente possível: `firestore.rules` bloqueia
+`allow write: if false` incondicionalmente em `/workspaces/**`, e não há credencial de
+Admin SDK configurada neste ambiente) com o `objectId` real da conta, confirmado por leitura
+somente-leitura via REST e por um log de diagnóstico temporário (adicionado e revertido no
+mesmo ciclo, sem alterar o código versionado) que capturou o claim `oid` retornado pelo MSAL.
+Nenhum código foi alterado; nenhuma escrita de publicação/dado de negócio foi feita — apenas
+este campo de controle de acesso interno.
+
+**Pendência real:** a via 2 (fallback por e-mail fixo) continua marcada no código como
+temporária e deve ser removida quando `allowedDeveloperObjectIds` for a única fonte de
+verdade, com um processo (ou UI administrativa) para adicionar contas sem depender de edição
+manual no Console.
 - Alterações no Dashboard ou no EscalaSOC.
