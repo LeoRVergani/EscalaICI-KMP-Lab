@@ -289,8 +289,8 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = androidApplicationId
         minSdk = 28
         targetSdk = 36
-        versionCode = 26
-        versionName = "0.7.12"
+        versionCode = 27
+        versionName = "0.7.13"
 
         buildConfigField("String", "MSAL_TENANT_ID", "\"$msalTenantId\"")
         buildConfigField("String", "MSAL_CLIENT_ID", "\"$msalClientId\"")

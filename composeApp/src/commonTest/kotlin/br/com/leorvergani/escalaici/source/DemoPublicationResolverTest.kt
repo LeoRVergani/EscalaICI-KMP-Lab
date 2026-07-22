@@ -51,6 +51,28 @@ class DemoPublicationResolverTest {
     }
 
     @Test
+    fun parsesCorporateLoginWrittenByDashboardOfficialPublication() = runTest {
+        // Auditoria de contrato FASE 14f-3: o Dashboard grava corporateLogin em todo membro
+        // publicado (DemoMemberDto.corporateLogin), mas essa leitura nunca extraia o campo -
+        // a resolucao de identidade por login sempre caia para comparar contra scaleName.
+        val collections = revisionCollections(7).toMutableMap()
+        collections[DemoPublicationCollections.MEMBERS] = listOf(
+            member(7).let { doc ->
+                buildJsonObject {
+                    doc.forEach { (key, value) -> put(key, value) }
+                    putField("corporateLogin", "pessoa.demo")
+                }
+            }
+        )
+
+        val result = assertIs<DemoPublicationLoadResult.Success>(
+            DemoPublicationResolver(FakeDemoGateway(revisions = mapOf(7 to collections))).loadActiveSnapshot()
+        )
+
+        assertEquals("pessoa.demo", result.snapshot.members.single().corporateLogin)
+    }
+
+    @Test
     fun buildsOnlyWorkspaceRevisionPathsForDemoPublication() = runTest {
         val gateway = FakeDemoGateway(revisions = mapOf(7 to revisionCollections(7)))
 

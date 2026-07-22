@@ -138,7 +138,8 @@ data class Member(
     val workspaceId: String? = null,
     val publicationRevision: Int? = null,
     val entraTenantId: String? = null,
-    val entraObjectId: String? = null
+    val entraObjectId: String? = null,
+    val corporateLogin: String? = null
 )
 
 data class Team(

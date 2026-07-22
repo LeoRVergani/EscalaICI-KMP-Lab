@@ -338,7 +338,13 @@ private fun DemoPublicationSnapshot.toData() = DemoPublicationData(
     memberships = memberships,
     schedulePeriods = schedulePeriods,
     scheduleAssignments = scheduleAssignments,
-    loginByMemberId = emptyMap(),
+    // Antes sempre vazio: a publicacao oficial do Dashboard grava corporateLogin em todo
+    // membro, mas essa leitura ignorava o campo - a resolucao por login sempre comparava
+    // contra scaleName (ver fallback em findActiveMemberIds). Agora alinhado com o caminho
+    // de fixture (DemoFixturePackage.loginByMemberId()), que ja fazia isso corretamente.
+    loginByMemberId = members.mapNotNull { member ->
+        member.corporateLogin?.takeIf { it.isNotBlank() }?.let { member.id to it }
+    }.toMap(),
     state = DemoDataSourceState(
         origin = DemoDataOrigin.REMOTE_PUBLICATION,
         publicationRevision = pointer.activeRevision,

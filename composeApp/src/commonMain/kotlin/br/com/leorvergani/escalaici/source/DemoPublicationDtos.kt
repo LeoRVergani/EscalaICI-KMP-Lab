@@ -76,7 +76,12 @@ internal fun JsonObject.toDemoMember(revision: Int) = Member(
     workspaceId = requiredWorkspaceId(),
     publicationRevision = requiredPublicationRevision(revision),
     entraTenantId = string("entraTenantId"),
-    entraObjectId = string("entraObjectId")
+    entraObjectId = string("entraObjectId"),
+    // Escrito pelo Dashboard em toda publicacao oficial (server/domain/officialPublicationPlanner.mjs
+    // via DemoMemberDto.corporateLogin), mas nunca lido aqui ate esta correcao - a resolucao de
+    // identidade por login sempre caia silenciosamente para comparar contra scaleName/displayName
+    // em vez do login corporativo real (auditoria de contrato FASE 14f-3).
+    corporateLogin = string("corporateLogin")
 )
 
 internal fun JsonObject.toDemoMembership(revision: Int) = MemberTeamMembership(

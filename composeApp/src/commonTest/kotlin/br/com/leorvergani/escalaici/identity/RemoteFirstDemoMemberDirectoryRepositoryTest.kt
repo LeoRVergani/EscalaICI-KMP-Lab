@@ -51,6 +51,45 @@ class RemoteFirstDemoMemberDirectoryRepositoryTest {
 
         assertEquals(listOf("member-entra"), result)
     }
+
+    @Test
+    fun remoteFirstDirectoryResolvesByCorporateLoginWrittenByDashboard() = runTest {
+        // Auditoria de contrato FASE 14f-3: o Dashboard grava corporateLogin em todo membro da
+        // publicacao oficial, mas loginByMemberId do caminho remoto era sempre vazio - a
+        // resolucao por login nunca via esse campo e caia (silenciosamente) para comparar
+        // contra displayName/scaleName. Este teste falha sem a correcao em
+        // OrganizationRepositories.kt (DemoPublicationSnapshot.toData()).
+        val publicationRepository = DemoPublicationRepository(
+            resolver = DemoPublicationResolver(
+                gateway = FakeDemoPublicationGateway(
+                    workspaceId = OrganizationWorkspace.CORPORATE_WORKSPACE_ID,
+                    members = listOf(
+                        member(
+                            id = "member-login",
+                            workspaceId = OrganizationWorkspace.CORPORATE_WORKSPACE_ID,
+                            email = "outro@example.invalid",
+                            displayName = "Nome de Escala",
+                            corporateLogin = "lvergani@ici.tec.br"
+                        )
+                    )
+                ),
+                workspaceId = OrganizationWorkspace.CORPORATE_WORKSPACE_ID
+            ),
+            fixtureProvider = null
+        )
+
+        val result = RemoteFirstDemoMemberDirectoryRepository(
+            publicationRepository = publicationRepository,
+            workspaceId = OrganizationWorkspace.CORPORATE_WORKSPACE_ID
+        ).findActiveMemberIds(
+            normalizedEmail = null,
+            normalizedLogin = "lvergani@ici.tec.br",
+            entraTenantId = null,
+            entraObjectId = null
+        )
+
+        assertEquals(listOf("member-login"), result)
+    }
 }
 
 private class FakeDemoPublicationGateway(
@@ -86,6 +125,7 @@ private fun member(
     displayName: String,
     entraTenantId: String? = null,
     entraObjectId: String? = null,
+    corporateLogin: String? = null,
     revision: Int = 7
 ) = buildJsonObject {
     putField("id", id)
@@ -96,6 +136,7 @@ private fun member(
     putBoolField("active", true)
     entraTenantId?.let { putField("entraTenantId", it) }
     entraObjectId?.let { putField("entraObjectId", it) }
+    corporateLogin?.let { putField("corporateLogin", it) }
 }
 
 private fun JsonObjectBuilder.putField(name: String, value: String) {

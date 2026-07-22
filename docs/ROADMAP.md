@@ -7,6 +7,29 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14f-3 — Auditoria de contrato: publicacao oficial Dashboard x leitura KMP
+
+- **Status:** DONE (local) — spec 64.
+- Comparacao campo a campo entre o que `escala-dashboard` escreve em
+  `workspaces/ici-dev/revisions/{n}/{colecao}` e o que o KMP le. Achado
+  real corrigido: `corporateLogin` era escrito pelo Dashboard em todo
+  membro mas nunca lido no caminho remoto do KMP (`loginByMemberId`
+  sempre vazio) - resolucao de identidade por login sempre caia para
+  comparar contra o nome de exibicao em vez do login corporativo real.
+- Corrigido: `Member.corporateLogin` (novo campo), `toDemoMember()` le o
+  campo, `DemoPublicationSnapshot.toData()` constroi `loginByMemberId`
+  a partir dele (alinhado com o caminho de fixture, que ja fazia isso
+  certo). 2 testes novos, incluindo um teste de contrato ponta a ponta
+  que falha sem a correcao.
+- Outras divergencias encontradas (nao corrigidas, documentadas na spec
+  64 por nao afetarem resolucao de identidade hoje): `teams.acronym`/
+  `active` inacessiveis no modelo KMP; 4 de 6 valores de
+  `team_manager_assignments.role` colapsam para `OTHER`;
+  `schedule_periods.updatedAt` sempre vazio; `entraTenantId`/
+  `entraObjectId` do vinculo corporativo nunca sao persistidos pelo
+  Dashboard (fallback de email/login ja resolve o caso real).
+- Versao: `versionCode` 26->27, `versionName` 0.7.12->0.7.13.
+
 ## FASE 14f — MSAL Web/Wasm: autenticacao corporativa real no navegador
 
 - **Status:** DONE (local, com gate externo pendente) — spec 63.
