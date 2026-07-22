@@ -71,6 +71,7 @@ import br.com.leorvergani.escalaici.platform.PlatformCapabilities
 import br.com.leorvergani.escalaici.platform.PlatformBackHandler
 import br.com.leorvergani.escalaici.platform.WebNotificationService
 import br.com.leorvergani.escalaici.platform.UnsupportedWebNotificationService
+import br.com.leorvergani.escalaici.platform.InMemoryNotificationSettingsStore
 import br.com.leorvergani.escalaici.model.LabDateTime
 import br.com.leorvergani.escalaici.repository.DropboxScaleRepository
 import br.com.leorvergani.escalaici.repository.InMemoryAuthSessionRepository
@@ -167,6 +168,7 @@ fun EscalaIciLabApp(
         var firebaseLoading by remember { mutableStateOf(false) }
         var firebaseOnCall by remember { mutableStateOf<OnCallSourceData?>(null) }
         var firebaseOnCallGroups by remember { mutableStateOf<List<OnCallGroup>>(emptyList()) }
+        val notificationSettingsStore = remember { InMemoryNotificationSettingsStore() }
         var importPreview by remember { mutableStateOf<ScheduleImportPreview?>(null) }
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
         var isFetchingFromCloud by remember { mutableStateOf(false) }
@@ -561,6 +563,7 @@ fun EscalaIciLabApp(
                                         demoPersonaResolutionResult = demoPersonaResolutionResult,
                                         selectedDemoPersona = selectedDemoPersona,
                                         notificationService = notificationService,
+                                        notificationSettingsStore = notificationSettingsStore,
                                         onLogout = {
                                             if (requestedEntryContext == EntryContext.DEMO && selectedDemoPersona != null) {
                                                 returnToDemoWorkspaceFromPersona()

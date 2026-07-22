@@ -2,6 +2,7 @@ package br.com.leorvergani.escalaici.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,10 +26,12 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,10 +57,18 @@ import br.com.leorvergani.escalaici.model.GenerateLabAlerts
 import br.com.leorvergani.escalaici.model.LabAlert
 import br.com.leorvergani.escalaici.model.ScheduleSummary
 import br.com.leorvergani.escalaici.model.LabDateTime
+import br.com.leorvergani.escalaici.model.NotificationSettings
+import br.com.leorvergani.escalaici.model.NotificationType
+import br.com.leorvergani.escalaici.model.ShiftStartOffsetOptions
+import br.com.leorvergani.escalaici.model.buildNotificationPlan
+import br.com.leorvergani.escalaici.model.isoMinuteLabel
 import br.com.leorvergani.escalaici.model.pauseFor
+import br.com.leorvergani.escalaici.model.pauseSuggestionTimes
 import br.com.leorvergani.escalaici.model.relevantShift
+import br.com.leorvergani.escalaici.model.timeLabel
 import br.com.leorvergani.escalaici.platform.WebNotificationService
 import br.com.leorvergani.escalaici.platform.NotificationPermissionState
+import br.com.leorvergani.escalaici.platform.NotificationSettingsStore
 import br.com.leorvergani.escalaici.platform.rememberAppUpdateChecker
 import br.com.leorvergani.escalaici.ui.components.LabCard
 import br.com.leorvergani.escalaici.ui.components.LabCollaboratorAvatar
@@ -80,10 +91,12 @@ internal fun ProfileTab(
     demoPersonaResolutionResult: OrganizationResolutionResult?,
     selectedDemoPersona: DemoPersona?,
     notificationService: WebNotificationService,
+    notificationSettingsStore: NotificationSettingsStore,
     onLogout: () -> Unit,
     onOpenPlantao: () -> Unit,
     onOpenSwap: () -> Unit
 ) {
+    val notificationScope = rememberCoroutineScope()
     val corporateAuthState = corporateAuthRepository?.state?.collectAsState()?.value
     val criticalAlerts = remember(summary) { GenerateLabAlerts(summary).count { it.severity == LabAlert.Severity.CRITICO } }
     val identityDecision = remember(selectedDemoPersona, organizationResolutionResult) {
@@ -92,6 +105,30 @@ internal fun ProfileTab(
     var notificationPermission by remember(notificationService) { mutableStateOf(notificationService.capability().permissionState) }
     var requestingNotification by remember { mutableStateOf(false) }
     var notificationFeedback by remember { mutableStateOf<String?>(null) }
+    var notificationSettings by remember(notificationSettingsStore) { mutableStateOf(NotificationSettings()) }
+    var rescheduleFeedback by remember { mutableStateOf<String?>(null) }
+    val relevantShift = remember(summary, now) { summary.relevantShift(now) }
+    val pause = remember(relevantShift) { pauseFor(relevantShift) }
+    val pauseDecision = remember(notificationSettings, relevantShift, notificationPermission, supportsWebNotifications) {
+        decideProfilePauseNotification(
+            settings = notificationSettings,
+            relevantShift = relevantShift,
+            notificationPermission = notificationPermission,
+            requiresNotificationPermission = supportsWebNotifications
+        )
+    }
+    val notificationPlan = remember(summary.days, notificationSettings, now) {
+        buildNotificationPlan(summary.days, notificationSettings, now)
+    }
+    val updateNotificationSettings: (NotificationSettings) -> Unit = { next ->
+        notificationSettings = next
+        notificationScope.launch { notificationSettingsStore.save(next) }
+    }
+
+    LaunchedEffect(notificationSettingsStore) {
+        notificationSettings = notificationSettingsStore.load()
+    }
+
     PageList {
         item {
             LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
@@ -192,53 +229,149 @@ internal fun ProfileTab(
                 }
             }
         }
-        if (supportsWebNotifications) item {
+        item {
             LabCard(title = "Notificações", icon = Icons.Default.Notifications, borderColor = LabColors.primary.copy(alpha = 0.30f), gradient = listOf(LabColors.surfaceElevated.copy(alpha = 0.88f), LabColors.surface.copy(alpha = 0.96f))) {
                 val status = when {
                     requestingNotification -> "Solicitando permissão..."
-                    notificationPermission == NotificationPermissionState.GRANTED -> "Notificações Web ativadas"
-                    notificationPermission == NotificationPermissionState.DENIED -> "Notificações bloqueadas no navegador"
-                    notificationPermission == NotificationPermissionState.UNSUPPORTED -> "Este navegador não oferece notificações compatíveis"
+                    supportsWebNotifications && notificationPermission == NotificationPermissionState.GRANTED -> "Notificações Web ativadas"
+                    supportsWebNotifications && notificationPermission == NotificationPermissionState.DENIED -> "Notificações bloqueadas no navegador"
+                    supportsWebNotifications && notificationPermission == NotificationPermissionState.UNSUPPORTED -> "Este navegador não oferece notificações compatíveis"
+                    !supportsWebNotifications -> "Preferências e plano calculados no app; disparo real por plataforma vem nas próximas rodadas"
                     else -> "Notificações Web desativadas"
                 }
                 StatusLine("Status", status)
-                when (notificationPermission) {
-                    NotificationPermissionState.DEFAULT -> TextButton(enabled = !requestingNotification, onClick = {
+                when {
+                    !supportsWebNotifications -> Text("A implementação real de alarmes Android fica para a próxima rodada; esta tela já salva as preferências pela interface comum.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    notificationPermission == NotificationPermissionState.DEFAULT -> TextButton(enabled = !requestingNotification, onClick = {
                         requestingNotification = true
                         notificationService.requestPermission { result ->
                             notificationPermission = result
                             requestingNotification = false
                         }
                     }) { Text("Ativar notificações Web") }
-                    NotificationPermissionState.GRANTED -> TextButton(onClick = {
+                    notificationPermission == NotificationPermissionState.GRANTED -> TextButton(onClick = {
                         notificationService.showNotification(
                             title = "Pausa do turno",
                             body = "Notificações do Escala ICI estão funcionando.",
                             tag = "escala-ici-notification-test"
                         ) { ok -> notificationFeedback = if (ok) "Notificação de teste enviada." else "Não foi possível exibir a notificação." }
                     }) { Text("Testar notificação Web") }
-                    NotificationPermissionState.DENIED -> Text("Altere a permissão nas configurações do site.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                    NotificationPermissionState.UNSUPPORTED -> Unit
+                    notificationPermission == NotificationPermissionState.DENIED -> Text("Altere a permissão nas configurações do site.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 }
                 notificationFeedback?.let { Text(it, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall) }
-                Text("As notificações Web funcionam enquanto o site ou PWA estiver ativo. Avisos com o aplicativo totalmente fechado exigirão uma integração futura de Push.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Selecione uma pausa válida antes de programar um lembrete.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                if (supportsWebNotifications) {
+                    Text("As notificações Web funcionam enquanto o site ou PWA estiver ativo. Avisos com o aplicativo totalmente fechado exigirão uma integração futura de Push.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                }
+
+                HorizontalDivider(color = LabColors.outline.copy(alpha = 0.28f))
+
+                PreferenceToggle(
+                    label = "Você trabalha amanhã / Você está de folga amanhã",
+                    checked = notificationSettings.notifyDayBefore,
+                    enabled = true,
+                    disabledReason = null,
+                    onCheckedChange = { updateNotificationSettings(notificationSettings.copy(notifyDayBefore = it)) }
+                )
+                OutlinedTextField(
+                    value = notificationSettings.dayBeforeTime,
+                    onValueChange = { updateNotificationSettings(notificationSettings.copy(dayBeforeTime = it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Horário do aviso da véspera") }
+                )
+
+                PreferenceToggle(
+                    label = "Aviso de entrada do turno",
+                    checked = notificationSettings.notifyShiftStart,
+                    enabled = true,
+                    disabledReason = null,
+                    onCheckedChange = { updateNotificationSettings(notificationSettings.copy(notifyShiftStart = it)) }
+                )
+                ChoiceChips(
+                    values = ShiftStartOffsetOptions.map { if (it == 0) "Na hora" else "${it}min" },
+                    selected = if (notificationSettings.shiftStartOffsetMinutes == 0) "Na hora" else "${notificationSettings.shiftStartOffsetMinutes}min",
+                    enabled = notificationSettings.notifyShiftStart,
+                    disabledReason = if (!notificationSettings.notifyShiftStart) "Ative o aviso de entrada para escolher o tempo de antecedência." else null,
+                    onSelect = { label ->
+                        val offset = if (label == "Na hora") 0 else label.removeSuffix("min").toIntOrNull() ?: notificationSettings.shiftStartOffsetMinutes
+                        updateNotificationSettings(notificationSettings.copy(shiftStartOffsetMinutes = offset))
+                    }
+                )
+
+                PreferenceToggle(
+                    label = "Lembrete de pausa",
+                    checked = pauseDecision.checked,
+                    enabled = pauseDecision.enabled,
+                    disabledReason = pauseDecision.disabledReason,
+                    onCheckedChange = { updateNotificationSettings(notificationSettings.copy(notifyPause = it)) }
+                )
+                Text(if (pause != null) "Janela permitida: ${pause.windowStart}–${pause.windowEnd}" else "Pausa não configurada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                val pauseOptions = remember(relevantShift) { pauseSuggestionTimes(relevantShift) }
+                if (pauseOptions.isNotEmpty()) {
+                    ChoiceChips(
+                        values = listOf("Sugestão") + pauseOptions,
+                        selected = notificationSettings.pauseCustomTime ?: "Sugestão",
+                        enabled = pauseDecision.enabled && notificationSettings.notifyPause,
+                        disabledReason = if (pauseDecision.enabled && !notificationSettings.notifyPause) "Ative o lembrete de pausa para escolher um horário." else null,
+                        onSelect = { label ->
+                            updateNotificationSettings(notificationSettings.copy(pauseCustomTime = label.takeUnless { it == "Sugestão" }))
+                        }
+                    )
+                }
+
+                PreferenceToggle(
+                    label = "Aviso de término do turno",
+                    checked = notificationSettings.notifyShiftEnd,
+                    enabled = true,
+                    disabledReason = null,
+                    onCheckedChange = { updateNotificationSettings(notificationSettings.copy(notifyShiftEnd = it)) }
+                )
+                PreferenceToggle(
+                    label = "Nova escala publicada / meu dia mudou",
+                    checked = notificationSettings.notifyScheduleChanged,
+                    enabled = true,
+                    disabledReason = null,
+                    onCheckedChange = { updateNotificationSettings(notificationSettings.copy(notifyScheduleChanged = it)) }
+                )
+
+                HorizontalDivider(color = LabColors.outline.copy(alpha = 0.28f))
+                Text("Próximos alarmes", color = LabColors.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                if (notificationPlan.isEmpty()) {
+                    Text("Nenhum alarme futuro calculado com a escala atual.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                } else {
+                    notificationPlan.take(5).forEach { item ->
+                        StatusLine(notificationTypeLabel(item.type), "${item.triggerAt.date.dateLabel()} ${item.triggerAt.timeLabel()}")
+                    }
+                }
+                notificationSettings.lastRescheduleAt?.let { StatusLine("Última reprogramação", it) }
+                rescheduleFeedback?.let { Text(it, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall) }
+                TextButton(onClick = {
+                    val next = notificationSettings.copy(lastRescheduleAt = now.isoMinuteLabel())
+                    updateNotificationSettings(next)
+                    rescheduleFeedback = "${notificationPlan.size} alarmes recalculados em memória."
+                }) {
+                    Text("Reprogramar", color = LabColors.primary)
+                }
             }
         }
         item {
-            val pause = pauseFor(summary.relevantShift(now))
             LabCard(title = "Pausa de 15 minutos", icon = Icons.Default.Schedule, iconTint = LabColors.tertiary, borderColor = LabColors.tertiary.copy(alpha = 0.30f), gradient = listOf(Color(0xFF0D2832), Color(0xFF092A28), Color(0xFF0D1730))) {
                 Text(if (pause != null) "${pause.displayTitle}: ${pause.displayValue}" else "Pausa não configurada", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                VisualToggle("Lembrete de pausa", true)
+                PreferenceToggle(
+                    label = "Lembrete de pausa",
+                    checked = pauseDecision.checked,
+                    enabled = pauseDecision.enabled,
+                    disabledReason = pauseDecision.disabledReason,
+                    onCheckedChange = { updateNotificationSettings(notificationSettings.copy(notifyPause = it)) }
+                )
                 pause?.let { Text("Permitido entre ${it.windowStart} e ${it.windowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall) }
                 Text("Analista: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         item {
-            val pause = pauseFor(summary.relevantShift(now))
             LabCard(title = "Resumo", icon = Icons.Default.Checklist, borderColor = LabColors.primary.copy(alpha = 0.22f)) {
-                Text("Entrada do turno: 15 min antes", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Pausa: ${pause?.displayValue ?: "não configurada"}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Entrada do turno: ${if (notificationSettings.shiftStartOffsetMinutes == 0) "na hora" else "${notificationSettings.shiftStartOffsetMinutes} min antes"}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Pausa: ${if (notificationSettings.notifyPause) pause?.displayValue ?: "não configurada" else "desativada"}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 pause?.let { Text("Janela permitida: ${it.windowStart}–${it.windowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall) }
             }
         }
@@ -396,10 +529,19 @@ private fun DisabledAction(label: String) {
 private fun unavailableAction() = Unit
 
 @Composable
-private fun VisualToggle(label: String, checked: Boolean) {
+private fun PreferenceToggle(
+    label: String,
+    checked: Boolean,
+    enabled: Boolean,
+    disabledReason: String?,
+    onCheckedChange: (Boolean) -> Unit
+) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = LabColors.onSurface, style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = checked, onCheckedChange = null, enabled = false)
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+    }
+    disabledReason?.let {
+        Text(it, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -415,4 +557,44 @@ private fun ProfileChip(text: String, selected: Boolean, modifier: Modifier = Mo
     ) {
         Text(text, color = if (selected) Color.White else LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
+}
+
+@Composable
+private fun ChoiceChips(
+    values: List<String>,
+    selected: String,
+    enabled: Boolean,
+    disabledReason: String?,
+    onSelect: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        values.chunked(3).forEach { rowValues ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                rowValues.forEach { value ->
+                    ProfileChip(
+                        text = value,
+                        selected = value == selected,
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(if (enabled) Modifier.clickable { onSelect(value) } else Modifier)
+                    )
+                }
+                repeat(3 - rowValues.size) {
+                    Box(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+    disabledReason?.let {
+        Text(it, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+private fun notificationTypeLabel(type: NotificationType): String = when (type) {
+    NotificationType.DAY_BEFORE_WORK -> "Trabalho amanhã"
+    NotificationType.DAY_BEFORE_REST -> "Folga amanhã"
+    NotificationType.SHIFT_START -> "Entrada"
+    NotificationType.SHIFT_END -> "Término"
+    NotificationType.PAUSE_START -> "Início da pausa"
+    NotificationType.PAUSE_END -> "Fim da pausa"
 }

@@ -33,17 +33,27 @@ data class PausePresentation(val scheduledLabel: String?, val windowStart: Strin
     val displayValue: String get() = scheduledLabel ?: "$windowStart–$windowEnd"
 }
 
+data class PauseWindow(val start: LabDateTime, val end: LabDateTime) {
+    val startLabel: String get() = start.timeLabel()
+    val endLabel: String get() = end.timeLabel()
+}
+
 fun pauseFor(shift: ShiftOccurrence?): PausePresentation? {
-    val start = shift?.day?.type?.startMinute ?: return null
+    val window = pauseWindowFor(shift) ?: return null
+    return PausePresentation(
+        scheduledLabel = null,
+        windowStart = window.startLabel,
+        windowEnd = window.endLabel
+    )
+}
+
+fun pauseWindowFor(shift: ShiftOccurrence?): PauseWindow? {
+    if (shift?.day?.type?.startMinute == null) return null
     val end = shift.end
     val windowStart = shift.start.plusMinutes(120)
     val windowEnd = shift.start.plusMinutes(285)
     if (windowStart > end) return null
-    return PausePresentation(
-        scheduledLabel = null,
-        windowStart = windowStart.timeLabel(),
-        windowEnd = minOf(windowEnd, end).timeLabel()
-    )
+    return PauseWindow(start = windowStart, end = minOf(windowEnd, end))
 }
 
 data class OnCallOccurrence(val assignment: OnCallAssignment, val start: LabDateTime, val end: LabDateTime, val state: TemporalState)
@@ -76,17 +86,27 @@ fun onCallDates(assignment: OnCallAssignment): Set<LabDate> {
 
 fun LabDate.plusDays(days: Int): LabDate {
     var result = this
-    repeat(days) {
-        result = if (result.day < LabDate.monthLength(result.year, result.month)) result.copy(day = result.day + 1)
-        else if (result.month < 12) LabDate(result.year, result.month + 1, 1)
-        else LabDate(result.year + 1, 1, 1)
+    if (days >= 0) {
+        repeat(days) {
+            result = if (result.day < LabDate.monthLength(result.year, result.month)) result.copy(day = result.day + 1)
+            else if (result.month < 12) LabDate(result.year, result.month + 1, 1)
+            else LabDate(result.year + 1, 1, 1)
+        }
+    } else {
+        repeat(-days) {
+            result = if (result.day > 1) result.copy(day = result.day - 1)
+            else if (result.month > 1) LabDate(result.year, result.month - 1, LabDate.monthLength(result.year, result.month - 1))
+            else LabDate(result.year - 1, 12, 31)
+        }
     }
     return result
 }
 
-private fun LabDateTime.plusMinutes(minutes: Int): LabDateTime {
+fun LabDateTime.plusMinutes(minutes: Int): LabDateTime {
     val total = minuteOfDay + minutes
-    return LabDateTime(date.plusDays(total / (24 * 60)), total % (24 * 60))
+    val days = total.floorDiv(24 * 60)
+    val minute = total.mod(24 * 60)
+    return LabDateTime(date.plusDays(days), minute)
 }
 
 fun LabDateTime.timeLabel(): String = "${(minuteOfDay / 60).toString().padStart(2, '0')}:${(minuteOfDay % 60).toString().padStart(2, '0')}"
@@ -94,4 +114,14 @@ private fun parseMinute(value: String): Int? = value.split(":").takeIf { it.size
     val h = p[0].toIntOrNull() ?: return null
     val m = p[1].toIntOrNull() ?: return null
     (h * 60 + m).takeIf { h in 0..23 && m in 0..59 }
+}
+
+private fun Int.floorDiv(other: Int): Int {
+    val result = this / other
+    return if ((this xor other) < 0 && result * other != this) result - 1 else result
+}
+
+private fun Int.mod(other: Int): Int {
+    val result = this % other
+    return if (result < 0) result + other else result
 }
