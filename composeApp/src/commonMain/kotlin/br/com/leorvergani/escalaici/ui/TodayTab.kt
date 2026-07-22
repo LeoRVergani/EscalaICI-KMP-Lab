@@ -49,8 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.leorvergani.escalaici.model.LabDate
 import br.com.leorvergani.escalaici.model.LabDateTime
+import br.com.leorvergani.escalaici.model.NotificationSettings
 import br.com.leorvergani.escalaici.model.TemporalState
-import br.com.leorvergani.escalaici.model.pauseFor
 import br.com.leorvergani.escalaici.model.relevantShift
 import br.com.leorvergani.escalaici.model.ScheduleSummary
 import br.com.leorvergani.escalaici.model.ShiftDay
@@ -61,7 +61,14 @@ import br.com.leorvergani.escalaici.ui.theme.LabColors
 import br.com.leorvergani.escalaici.ui.theme.shiftColor
 
 @Composable
-internal fun TodayTab(summary: ScheduleSummary, today: LabDate, now: LabDateTime, onOpenPlantao: () -> Unit, onImportClick: () -> Unit) {
+internal fun TodayTab(
+    summary: ScheduleSummary,
+    today: LabDate,
+    now: LabDateTime,
+    notificationSettings: NotificationSettings,
+    onOpenPlantao: () -> Unit,
+    onImportClick: () -> Unit
+) {
     val next = summary.nextShift(today)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -81,7 +88,7 @@ internal fun TodayTab(summary: ScheduleSummary, today: LabDate, now: LabDateTime
             EventsCard(summary = summary, today = today)
         }
         item {
-            PauseCard(summary = summary, now = now)
+            PauseCard(summary = summary, now = now, notificationSettings = notificationSettings)
         }
         item {
             PeriodSummary(summary = summary)
@@ -113,6 +120,7 @@ private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportCli
                 ImportVisualButton(onClick = onImportClick)
             }
         } else {
+            val colleagues = colleaguesForShift(day)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -135,7 +143,7 @@ private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportCli
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
             Text(
-                text = if (day.teamMembers.isNotEmpty()) heroMetaText("Com:", day.teamMembers.joinToString(", ")) else buildAnnotatedString { append("Nenhum colega escalado neste dia") },
+                text = if (colleagues.isNotEmpty()) heroMetaText("Com:", colleagues.joinToString(", ")) else buildAnnotatedString { append("Nenhum colega escalado neste dia") },
                 color = Color.White.copy(alpha = 0.72f),
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2,
@@ -283,8 +291,8 @@ private fun EventLine(icon: ImageVector, text: String, color: Color) {
 }
 
 @Composable
-private fun PauseCard(summary: ScheduleSummary, now: LabDateTime) {
-    val pause = pauseFor(summary.relevantShift(now))
+private fun PauseCard(summary: ScheduleSummary, now: LabDateTime, notificationSettings: NotificationSettings) {
+    val pause = effectivePause(summary.relevantShift(now), notificationSettings)
     LabCard(
         title = "Pausa",
         icon = Icons.Default.Schedule,

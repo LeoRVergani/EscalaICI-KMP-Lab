@@ -378,6 +378,7 @@ private fun ShiftLegendItem(type: ShiftType, modifier: Modifier = Modifier) {
 @Composable
 private fun CalendarDayDetailCard(day: ShiftDay) {
     val color = day.type.shiftColor()
+    val colleagues = colleaguesForShift(day)
     LabCard(
         title = "Detalhe do dia",
         icon = Icons.Default.CalendarMonth,
@@ -402,7 +403,7 @@ private fun CalendarDayDetailCard(day: ShiftDay) {
             Text(day.type.timeRange, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodyMedium)
         }
         Text(
-            if (day.teamMembers.isNotEmpty()) "Com: ${day.teamMembers.joinToString(", ")}" else "Nenhum colega escalado neste dia",
+            if (colleagues.isNotEmpty()) "Com: ${colleagues.joinToString(", ")}" else "Nenhum colega escalado neste dia",
             color = LabColors.onSurfaceMuted,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 2,

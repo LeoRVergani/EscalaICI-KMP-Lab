@@ -539,6 +539,7 @@ fun EscalaIciLabApp(
                                         summary = summary,
                                         today = today,
                                         now = now,
+                                        notificationSettings = appNotificationSettings,
                                         onOpenPlantao = onOpenPlantao,
                                         onImportClick = { activeTab = LabTab.Importar }
                                     )

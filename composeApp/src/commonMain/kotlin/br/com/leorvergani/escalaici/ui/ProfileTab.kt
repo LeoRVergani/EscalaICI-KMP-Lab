@@ -63,7 +63,6 @@ import br.com.leorvergani.escalaici.model.NotificationType
 import br.com.leorvergani.escalaici.model.ShiftStartOffsetOptions
 import br.com.leorvergani.escalaici.model.buildNotificationPlan
 import br.com.leorvergani.escalaici.model.isoMinuteLabel
-import br.com.leorvergani.escalaici.model.pauseFor
 import br.com.leorvergani.escalaici.model.pauseSuggestionTimes
 import br.com.leorvergani.escalaici.model.relevantShift
 import br.com.leorvergani.escalaici.model.timeLabel
@@ -118,7 +117,7 @@ internal fun ProfileTab(
     }
     var rescheduleFeedback by remember { mutableStateOf<String?>(null) }
     val relevantShift = remember(summary, now) { summary.relevantShift(now) }
-    val pause = remember(relevantShift) { pauseFor(relevantShift) }
+    val pause = remember(relevantShift, notificationSettings) { effectivePause(relevantShift, notificationSettings) }
     val pauseDecision = remember(notificationSettings, relevantShift, notificationPermission, supportsSystemNotifications) {
         decideProfilePauseNotification(
             settings = notificationSettings,
