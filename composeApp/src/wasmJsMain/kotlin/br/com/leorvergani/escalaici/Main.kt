@@ -3,6 +3,8 @@ package br.com.leorvergani.escalaici
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeViewport
+import br.com.leorvergani.escalaici.auth.CorporateAuthConfigurationState
+import br.com.leorvergani.escalaici.auth.WasmMsalCorporateAuthRepository
 import br.com.leorvergani.escalaici.identity.DefaultOrganizationIdentityResolver
 import br.com.leorvergani.escalaici.identity.DemoPublicationRepository
 import br.com.leorvergani.escalaici.identity.InMemoryMemberDirectoryRepository
@@ -31,6 +33,7 @@ import br.com.leorvergani.escalaici.source.createFirebaseScheduleGateway
 fun main() {
     ComposeViewport(viewportContainerId = "webApp") {
         val notifications = BrowserNotificationService()
+        val corporateAuthRepository = remember { WasmMsalCorporateAuthRepository() }
         val demoResolver = remember { DemoPublicationResolver(createDemoPublicationGateway()) }
         val demoPublicationRepository = remember { DemoPublicationRepository(demoResolver) }
         val corporateResolver = remember {
@@ -50,9 +53,11 @@ fun main() {
             currentTimeProvider = WebCurrentTimeProvider,
             platformCapabilities = PlatformCapabilities(
                 supportsAppUpdate = false,
-                supportsWebNotifications = notifications.capability().supportsSystemNotifications
+                supportsWebNotifications = notifications.capability().supportsSystemNotifications,
+                supportsCorporateAuth = corporateAuthRepository.configurationState == CorporateAuthConfigurationState.CONFIGURED
             ),
             notificationService = notifications,
+            corporateAuthRepository = corporateAuthRepository,
             organizationIdentityResolver = DefaultOrganizationIdentityResolver(
                 corporateMemberDirectoryRepository = RemoteFirstDemoMemberDirectoryRepository(
                     corporatePublicationRepository,
