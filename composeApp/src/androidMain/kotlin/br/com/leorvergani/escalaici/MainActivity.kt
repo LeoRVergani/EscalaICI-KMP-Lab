@@ -1,8 +1,11 @@
 package br.com.leorvergani.escalaici
 
+import android.content.Intent
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import br.com.leorvergani.escalaici.BuildConfig
 import br.com.leorvergani.escalaici.auth.MsalCorporateAuthRepository
@@ -19,7 +22,15 @@ import br.com.leorvergani.escalaici.identity.RemoteFirstDemoTeamRepository
 import br.com.leorvergani.escalaici.identity.OrganizationWorkspace
 import br.com.leorvergani.escalaici.identity.isDemoAuthorizedForIdentity
 import br.com.leorvergani.escalaici.identity.scheduleSummaryForMember
+import br.com.leorvergani.escalaici.model.LabDate
+import br.com.leorvergani.escalaici.platform.AndroidCurrentTimeProvider
+import br.com.leorvergani.escalaici.platform.AndroidNotificationScheduler
+import br.com.leorvergani.escalaici.platform.AndroidNotificationService
+import br.com.leorvergani.escalaici.platform.AndroidNotificationSettingsStore
+import br.com.leorvergani.escalaici.platform.ExtraNotificationDate
 import br.com.leorvergani.escalaici.platform.PlatformCapabilities
+import br.com.leorvergani.escalaici.platform.ensureShiftReminderChannel
+import br.com.leorvergani.escalaici.repository.AndroidLocalDataCache
 import br.com.leorvergani.escalaici.ui.EscalaIciLabApp
 import br.com.leorvergani.escalaici.source.DemoPublicationResolver
 import br.com.leorvergani.escalaici.source.FirebaseSourceCache
@@ -29,10 +40,29 @@ import br.com.leorvergani.escalaici.source.createFirebaseScheduleGateway
 import br.com.leorvergani.escalaici.source.initializeFirebasePlatform
 
 class MainActivity : ComponentActivity() {
+    private lateinit var notificationService: AndroidNotificationService
+    private val notificationDateState = mutableStateOf<LabDate?>(null)
+
+    private val postNotificationsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        notificationService.onPermissionResult(granted)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initializeFirebasePlatform(this)
+        ensureShiftReminderChannel(this)
+        notificationDateState.value = notificationDateFromIntent(intent)
+        notificationService = AndroidNotificationService(this, postNotificationsLauncher)
+        if (notificationService.shouldRequestPermissionOnStartup()) {
+            notificationService.requestPermission { }
+        }
         setContent {
+            val notificationDate = notificationDateState.value
+            val localDataCache = remember { AndroidLocalDataCache(this@MainActivity) }
+            val notificationSettingsStore = remember { AndroidNotificationSettingsStore(this@MainActivity) }
+            val notificationScheduler = remember { AndroidNotificationScheduler(this@MainActivity) }
             val demoResolver = remember { DemoPublicationResolver(createDemoPublicationGateway()) }
             val demoPublicationRepository = remember { DemoPublicationRepository(demoResolver) }
             val corporateResolver = remember {
@@ -48,7 +78,13 @@ class MainActivity : ComponentActivity() {
             EscalaIciLabApp(
                 firebaseGateway = createFirebaseScheduleGateway(),
                 firebaseCache = FirebaseSourceCache(createFirebaseRawCacheStore()),
+                localDataCache = localDataCache,
+                currentTimeProvider = AndroidCurrentTimeProvider,
                 corporateAuthRepository = MsalCorporateAuthRepository(this),
+                notificationService = notificationService,
+                notificationSettingsStore = notificationSettingsStore,
+                localNotificationRuntime = notificationScheduler,
+                initialNotificationDate = notificationDate,
                 organizationIdentityResolver = DefaultOrganizationIdentityResolver(
                     corporateMemberDirectoryRepository = RemoteFirstDemoMemberDirectoryRepository(
                         corporatePublicationRepository,
@@ -84,9 +120,19 @@ class MainActivity : ComponentActivity() {
                 },
                 platformCapabilities = PlatformCapabilities(
                     supportsAppUpdate = true,
+                    supportsBackgroundScheduledNotifications = true,
                     supportsCorporateAuth = true
                 )
             )
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        notificationDateState.value = notificationDateFromIntent(intent)
+    }
+
+    private fun notificationDateFromIntent(intent: Intent?): LabDate? =
+        intent?.getStringExtra(ExtraNotificationDate)?.let(LabDate::parseIso)
 }

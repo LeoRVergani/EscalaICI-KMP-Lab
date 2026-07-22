@@ -58,11 +58,18 @@ import br.com.leorvergani.escalaici.ui.theme.LabShapes
 import br.com.leorvergani.escalaici.ui.theme.shiftColor
 
 @Composable
-internal fun ScheduleTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao: () -> Unit) {
+internal fun ScheduleTab(
+    summary: ScheduleSummary,
+    today: LabDate,
+    initialSelectedDate: LabDate? = null,
+    onOpenPlantao: () -> Unit
+) {
     val sortedDays = summary.days.sortedBy { it.date }
-    val initialDate = remember(summary, today) { initialScheduleDate(summary, today) }
-    var selectedDate by remember(summary, today) { mutableStateOf(initialDate) }
-    var visibleMonth by remember(summary, today) { mutableStateOf((initialDate ?: today).yearMonth()) }
+    val initialDate = remember(summary, today, initialSelectedDate) {
+        initialSelectedDate?.takeIf { summary.contains(it) } ?: initialScheduleDate(summary, today)
+    }
+    var selectedDate by remember(summary, today, initialSelectedDate) { mutableStateOf(initialDate) }
+    var visibleMonth by remember(summary, today, initialSelectedDate) { mutableStateOf((initialDate ?: today).yearMonth()) }
     var showLegend by remember { mutableStateOf(false) }
     val daysByDate = remember(summary) {
         sortedDays.mapNotNull { day -> day.date?.let { it to day } }.toMap()

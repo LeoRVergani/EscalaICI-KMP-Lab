@@ -58,6 +58,7 @@ import br.com.leorvergani.escalaici.model.LabAlert
 import br.com.leorvergani.escalaici.model.ScheduleSummary
 import br.com.leorvergani.escalaici.model.LabDateTime
 import br.com.leorvergani.escalaici.model.NotificationSettings
+import br.com.leorvergani.escalaici.model.ScheduledNotification
 import br.com.leorvergani.escalaici.model.NotificationType
 import br.com.leorvergani.escalaici.model.ShiftStartOffsetOptions
 import br.com.leorvergani.escalaici.model.buildNotificationPlan
@@ -69,6 +70,7 @@ import br.com.leorvergani.escalaici.model.timeLabel
 import br.com.leorvergani.escalaici.platform.WebNotificationService
 import br.com.leorvergani.escalaici.platform.NotificationPermissionState
 import br.com.leorvergani.escalaici.platform.NotificationSettingsStore
+import br.com.leorvergani.escalaici.platform.LocalNotificationResult
 import br.com.leorvergani.escalaici.platform.rememberAppUpdateChecker
 import br.com.leorvergani.escalaici.ui.components.LabCard
 import br.com.leorvergani.escalaici.ui.components.LabCollaboratorAvatar
@@ -92,6 +94,9 @@ internal fun ProfileTab(
     selectedDemoPersona: DemoPersona?,
     notificationService: WebNotificationService,
     notificationSettingsStore: NotificationSettingsStore,
+    initialNotificationSettings: NotificationSettings,
+    onNotificationSettingsSaved: (NotificationSettings) -> Unit,
+    onReconcileNotifications: suspend (List<ScheduledNotification>) -> LocalNotificationResult,
     onLogout: () -> Unit,
     onOpenPlantao: () -> Unit,
     onOpenSwap: () -> Unit
@@ -102,19 +107,24 @@ internal fun ProfileTab(
     val identityDecision = remember(selectedDemoPersona, organizationResolutionResult) {
         decideProfileIdentityPresentation(selectedDemoPersona, organizationResolutionResult)
     }
-    var notificationPermission by remember(notificationService) { mutableStateOf(notificationService.capability().permissionState) }
+    val notificationCapability = notificationService.capability()
+    val supportsSystemNotifications = notificationCapability.supportsSystemNotifications
+    val supportsReliableBackgroundScheduling = notificationCapability.supportsReliableBackgroundScheduling
+    var notificationPermission by remember(notificationService) { mutableStateOf(notificationCapability.permissionState) }
     var requestingNotification by remember { mutableStateOf(false) }
     var notificationFeedback by remember { mutableStateOf<String?>(null) }
-    var notificationSettings by remember(notificationSettingsStore) { mutableStateOf(NotificationSettings()) }
+    var notificationSettings by remember(notificationSettingsStore, initialNotificationSettings) {
+        mutableStateOf(initialNotificationSettings)
+    }
     var rescheduleFeedback by remember { mutableStateOf<String?>(null) }
     val relevantShift = remember(summary, now) { summary.relevantShift(now) }
     val pause = remember(relevantShift) { pauseFor(relevantShift) }
-    val pauseDecision = remember(notificationSettings, relevantShift, notificationPermission, supportsWebNotifications) {
+    val pauseDecision = remember(notificationSettings, relevantShift, notificationPermission, supportsSystemNotifications) {
         decideProfilePauseNotification(
             settings = notificationSettings,
             relevantShift = relevantShift,
             notificationPermission = notificationPermission,
-            requiresNotificationPermission = supportsWebNotifications
+            requiresNotificationPermission = supportsSystemNotifications
         )
     }
     val notificationPlan = remember(summary.days, notificationSettings, now) {
@@ -122,11 +132,18 @@ internal fun ProfileTab(
     }
     val updateNotificationSettings: (NotificationSettings) -> Unit = { next ->
         notificationSettings = next
-        notificationScope.launch { notificationSettingsStore.save(next) }
+        notificationScope.launch {
+            notificationSettingsStore.save(next)
+            onNotificationSettingsSaved(next)
+            val result = onReconcileNotifications(buildNotificationPlan(summary.days, next, now))
+            rescheduleFeedback = result.feedbackMessage()
+        }
     }
 
     LaunchedEffect(notificationSettingsStore) {
-        notificationSettings = notificationSettingsStore.load()
+        val stored = notificationSettingsStore.load()
+        notificationSettings = stored
+        onNotificationSettingsSaved(stored)
     }
 
     PageList {
@@ -233,30 +250,36 @@ internal fun ProfileTab(
             LabCard(title = "Notificações", icon = Icons.Default.Notifications, borderColor = LabColors.primary.copy(alpha = 0.30f), gradient = listOf(LabColors.surfaceElevated.copy(alpha = 0.88f), LabColors.surface.copy(alpha = 0.96f))) {
                 val status = when {
                     requestingNotification -> "Solicitando permissão..."
+                    supportsReliableBackgroundScheduling && notificationPermission == NotificationPermissionState.GRANTED -> "Notificações Android ativadas"
+                    supportsReliableBackgroundScheduling && notificationPermission == NotificationPermissionState.DENIED -> "Notificações bloqueadas no sistema"
                     supportsWebNotifications && notificationPermission == NotificationPermissionState.GRANTED -> "Notificações Web ativadas"
                     supportsWebNotifications && notificationPermission == NotificationPermissionState.DENIED -> "Notificações bloqueadas no navegador"
-                    supportsWebNotifications && notificationPermission == NotificationPermissionState.UNSUPPORTED -> "Este navegador não oferece notificações compatíveis"
-                    !supportsWebNotifications -> "Preferências e plano calculados no app; disparo real por plataforma vem nas próximas rodadas"
-                    else -> "Notificações Web desativadas"
+                    supportsSystemNotifications && notificationPermission == NotificationPermissionState.UNSUPPORTED -> "Este ambiente não oferece notificações compatíveis"
+                    !supportsSystemNotifications -> "Preferências e plano calculados no app; disparo real indisponível nesta plataforma"
+                    else -> "Notificações desativadas"
                 }
                 StatusLine("Status", status)
                 when {
-                    !supportsWebNotifications -> Text("A implementação real de alarmes Android fica para a próxima rodada; esta tela já salva as preferências pela interface comum.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    !supportsSystemNotifications -> Text("Esta tela salva as preferências pela interface comum.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                     notificationPermission == NotificationPermissionState.DEFAULT -> TextButton(enabled = !requestingNotification, onClick = {
                         requestingNotification = true
                         notificationService.requestPermission { result ->
                             notificationPermission = result
                             requestingNotification = false
                         }
-                    }) { Text("Ativar notificações Web") }
+                    }) { Text("Ativar notificações") }
                     notificationPermission == NotificationPermissionState.GRANTED -> TextButton(onClick = {
                         notificationService.showNotification(
                             title = "Pausa do turno",
                             body = "Notificações do Escala ICI estão funcionando.",
                             tag = "escala-ici-notification-test"
                         ) { ok -> notificationFeedback = if (ok) "Notificação de teste enviada." else "Não foi possível exibir a notificação." }
-                    }) { Text("Testar notificação Web") }
-                    notificationPermission == NotificationPermissionState.DENIED -> Text("Altere a permissão nas configurações do site.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    }) { Text(if (supportsReliableBackgroundScheduling) "Testar notificação Android" else "Testar notificação Web") }
+                    notificationPermission == NotificationPermissionState.DENIED -> Text(
+                        if (supportsReliableBackgroundScheduling) "Ative as notificações nas configurações do sistema." else "Altere a permissão nas configurações do site.",
+                        color = LabColors.onSurfaceMuted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
                 notificationFeedback?.let { Text(it, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall) }
                 if (supportsWebNotifications) {
@@ -348,7 +371,6 @@ internal fun ProfileTab(
                 TextButton(onClick = {
                     val next = notificationSettings.copy(lastRescheduleAt = now.isoMinuteLabel())
                     updateNotificationSettings(next)
-                    rescheduleFeedback = "${notificationPlan.size} alarmes recalculados em memória."
                 }) {
                     Text("Reprogramar", color = LabColors.primary)
                 }
@@ -597,4 +619,10 @@ private fun notificationTypeLabel(type: NotificationType): String = when (type) 
     NotificationType.SHIFT_END -> "Término"
     NotificationType.PAUSE_START -> "Início da pausa"
     NotificationType.PAUSE_END -> "Fim da pausa"
+}
+
+private fun LocalNotificationResult.feedbackMessage(): String = when (this) {
+    is LocalNotificationResult.Applied ->
+        "$scheduledCount alarmes reconciliados; $cancelledCount cancelados."
+    is LocalNotificationResult.Skipped -> reason
 }

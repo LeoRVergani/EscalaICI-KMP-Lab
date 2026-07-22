@@ -72,7 +72,15 @@ import br.com.leorvergani.escalaici.platform.PlatformBackHandler
 import br.com.leorvergani.escalaici.platform.WebNotificationService
 import br.com.leorvergani.escalaici.platform.UnsupportedWebNotificationService
 import br.com.leorvergani.escalaici.platform.InMemoryNotificationSettingsStore
+import br.com.leorvergani.escalaici.platform.LocalNotificationRuntime
+import br.com.leorvergani.escalaici.platform.NoOpLocalNotificationRuntime
+import br.com.leorvergani.escalaici.platform.NotificationSettingsStore
+import br.com.leorvergani.escalaici.model.LabDate
 import br.com.leorvergani.escalaici.model.LabDateTime
+import br.com.leorvergani.escalaici.model.NotificationSettings
+import br.com.leorvergani.escalaici.model.YearResolutionSource
+import br.com.leorvergani.escalaici.model.buildNotificationPlan
+import br.com.leorvergani.escalaici.model.isoMinuteLabel
 import br.com.leorvergani.escalaici.repository.DropboxScaleRepository
 import br.com.leorvergani.escalaici.repository.InMemoryAuthSessionRepository
 import br.com.leorvergani.escalaici.repository.CacheRead
@@ -128,6 +136,9 @@ fun EscalaIciLabApp(
     currentTimeProvider: CurrentTimeProvider = CurrentTimeProvider { LabDateTime(todayProvider.today(), 0) },
     platformCapabilities: PlatformCapabilities = PlatformCapabilities(),
     notificationService: WebNotificationService = UnsupportedWebNotificationService,
+    notificationSettingsStore: NotificationSettingsStore = InMemoryNotificationSettingsStore(),
+    localNotificationRuntime: LocalNotificationRuntime = NoOpLocalNotificationRuntime,
+    initialNotificationDate: LabDate? = null,
     firebaseGateway: FirebaseScheduleGateway? = null,
     firebaseCache: FirebaseSourceCache? = null,
     corporateAuthRepository: CorporateAuthRepository? = null,
@@ -158,7 +169,9 @@ fun EscalaIciLabApp(
             sessionMemberId = authRepository.currentMemberId()
         }
 
-        var activeTab by remember { mutableStateOf(LabTab.Hoje) }
+        var activeTab by remember(initialNotificationDate) {
+            mutableStateOf(if (initialNotificationDate != null) LabTab.Escala else LabTab.Hoje)
+        }
         var stackedScreen by remember { mutableStateOf<StackedScreen?>(null) }
         var summary by remember { mutableStateOf(mockScheduleSummary()) }
         var cacheWarning by remember { mutableStateOf<String?>(null) }
@@ -168,7 +181,7 @@ fun EscalaIciLabApp(
         var firebaseLoading by remember { mutableStateOf(false) }
         var firebaseOnCall by remember { mutableStateOf<OnCallSourceData?>(null) }
         var firebaseOnCallGroups by remember { mutableStateOf<List<OnCallGroup>>(emptyList()) }
-        val notificationSettingsStore = remember { InMemoryNotificationSettingsStore() }
+        var appNotificationSettings by remember(notificationSettingsStore) { mutableStateOf(NotificationSettings()) }
         var importPreview by remember { mutableStateOf<ScheduleImportPreview?>(null) }
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
         var isFetchingFromCloud by remember { mutableStateOf(false) }
@@ -307,6 +320,32 @@ fun EscalaIciLabApp(
                 is CacheRead.Invalid -> cacheWarning = cached.safeMessage
                 CacheRead.Missing -> Unit
             }
+        }
+
+        LaunchedEffect(notificationSettingsStore) {
+            appNotificationSettings = notificationSettingsStore.load()
+        }
+
+        LaunchedEffect(summary.days, appNotificationSettings, localNotificationRuntime) {
+            if (hasPublishedOrImportedSchedule(summary)) {
+                localNotificationRuntime.reconcile(
+                    buildNotificationPlan(summary.days, appNotificationSettings, now)
+                )
+            }
+        }
+
+        LaunchedEffect(summary, localDataCache) {
+            if (!hasPublishedOrImportedSchedule(summary)) return@LaunchedEffect
+            val start = summary.periodStart ?: return@LaunchedEffect
+            localDataCache.saveSchedule(
+                CachedSchedule(
+                    originalFileName = summary.sourceFileName ?: summary.remoteSourceLabel ?: "publicacao-remota",
+                    importedAt = now.isoMinuteLabel(),
+                    resolvedYear = start.year,
+                    yearResolutionSource = YearResolutionSource.USER_CONFIRMED,
+                    summary = summary
+                )
+            )
         }
 
         fun refreshFirebaseOnCall(groupId: String? = null) {
@@ -503,7 +542,12 @@ fun EscalaIciLabApp(
                                         onOpenPlantao = onOpenPlantao,
                                         onImportClick = { activeTab = LabTab.Importar }
                                     )
-                                    LabTab.Escala -> ScheduleTab(summary = summary, today = today, onOpenPlantao = onOpenPlantao)
+                                    LabTab.Escala -> ScheduleTab(
+                                        summary = summary,
+                                        today = today,
+                                        initialSelectedDate = initialNotificationDate,
+                                        onOpenPlantao = onOpenPlantao
+                                    )
                                     LabTab.Importar -> ImportTab(
                                         preview = importPreview,
                                         activeFileName = summary.sourceFileName,
@@ -564,6 +608,13 @@ fun EscalaIciLabApp(
                                         selectedDemoPersona = selectedDemoPersona,
                                         notificationService = notificationService,
                                         notificationSettingsStore = notificationSettingsStore,
+                                        initialNotificationSettings = appNotificationSettings,
+                                        onNotificationSettingsSaved = { settings ->
+                                            appNotificationSettings = settings
+                                        },
+                                        onReconcileNotifications = { plan ->
+                                            localNotificationRuntime.reconcile(plan)
+                                        },
                                         onLogout = {
                                             if (requestedEntryContext == EntryContext.DEMO && selectedDemoPersona != null) {
                                                 returnToDemoWorkspaceFromPersona()
