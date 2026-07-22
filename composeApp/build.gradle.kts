@@ -43,6 +43,7 @@ kotlin {
 
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.12.0")
+            implementation(libs.androidx.fragment)
             implementation("org.apache.poi:poi:5.2.5")
             implementation("org.apache.poi:poi-ooxml:5.2.5")
             // CIO so funciona em JVM/Native (usa java.net/kotlinx-io de socket real) - nao
@@ -289,8 +290,8 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = androidApplicationId
         minSdk = 28
         targetSdk = 36
-        versionCode = 27
-        versionName = "0.7.13"
+        versionCode = 28
+        versionName = "0.7.14"
 
         buildConfigField("String", "MSAL_TENANT_ID", "\"$msalTenantId\"")
         buildConfigField("String", "MSAL_CLIENT_ID", "\"$msalClientId\"")

@@ -7,6 +7,118 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14H — Fidelidade do parser, plantão multi-grupo, notificações Android/Web
+
+- **Status:** DONE (local), com um bloqueio externo documentado (achado
+  fora de escopo, ver abaixo) — spec 65 (gate de contrato) +
+  `escala-dashboard` spec `10-DASHBOARD-FASE14H-...`.
+- Baseline confirmado antes de iniciar: KMP `feature/fase-14f-msal-web-auth`
+  @ `da66f77` (`versionCode` 27/`0.7.13`); Dashboard
+  `feature/fase-14f-official-import-publish` @ `8837c40` (`1.15.1`).
+- **Dashboard** (`feature/fase-14h-dashboard-parser-oncall-push`, `1.15.1`
+  → `1.15.2`, 399 → 447 testes): parser oficial ganhou layout
+  `soc-combined` (cruza planilhas Escala+Escalistas por separador
+  unificado, sem ano fixo hardcoded); toda linha/dia agora sempre produz
+  um registro explícito (nunca ausência silenciosa) com fallback
+  `NO_DATA`/"trabalho sem turno localizado"; novo domínio de grupos de
+  plantão (`OnCallGroup`, painel admin, import oficial exige grupo
+  explícito para toda atribuição de plantão — nunca infere por nome de
+  arquivo); novo contrato `/api/push/subscriptions` (Firebase Admin,
+  dry-run — nunca envia push real). Bug real encontrado e corrigido antes
+  do commit: botão de importar escala regular ficava desabilitado sempre
+  que qualquer equipe de plantão existisse no workspace, mesmo sem grupo
+  selecionado.
+- **KMP** (`feature/fase-14h-kmp-schedule-oncall-notifications`, `0.7.13`/27
+  → `0.7.14`/28, 213 → 239 testes JVM + 232 testes `wasmJsTest`/Chromium):
+  - Corrigidas duas causas-raiz confirmadas por pesquisa prévia: gap do
+    6x1 contava posição na lista em vez de adjacência real de data;
+    agrupamento "quem trabalha comigo" ignorava o turno (misturava
+    Manhã/Tarde/Noite no mesmo dia). `ShiftType` ganhou mapeamento
+    explícito para `BH`/`ANIVERSARIO`/`HORA_EXTRA`/`AFASTAMENTO`/
+    `INCONSISTENCIA` (antes convertidos silenciosamente para
+    `INDEFINIDO`, zerando métricas).
+  - Domínio de plantão multi-grupo: SOC (1 grupo, "COSI") abre direto;
+    NOC (múltiplos grupos) exige seleção explícita — nunca infere grupo
+    pelo nome do arquivo. Cache/UI/import escopados por `groupId`.
+  - Domínio de notificações (spec 49): `NotificationSettings` único e
+    consolidado (sem flags divergentes do legado), `buildNotificationPlan`
+    cobre o período publicado inteiro (sem cap de 21 dias), pausa de 15min
+    com janela por turno (spec 49 §2). Corrigido bug de aritmética de data
+    negativa em `LabDate.plusDays`/`LabDateTime.plusMinutes` (necessário
+    para "véspera" e "N min antes do turno" cruzando meia-noite).
+  - Android: canal de notificação + `POST_NOTIFICATIONS` só solicitada se
+    ainda não concedida (o legado pedia sempre); `AlarmManager
+    .setAndAllowWhileIdle` (decisão explícita de não pedir
+    `SCHEDULE_EXACT_ALARM` nesta fase — legado funcionava só com alarme
+    inexato para os mesmos tipos de lembrete); `requestCode` via
+    `id.hashCode()` (sem a colisão do `mod 512` do legado); receiver de
+    `BOOT_COMPLETED` (corrige lacuna real do legado, que nunca sobrevivia
+    a reboot).
+  - Web/PWA: notificações locais via `setTimeout` com horizonte de 12h e
+    reavaliação a cada 5min (nunca agenda semanas à frente — risco de
+    overflow do argumento 32-bit do `setTimeout`); `service-worker.js`
+    corrigido (erro real de `chrome-extension://` no cache, `CACHE_NAME`
+    → v7); Push real (VAPID) fica fora por decisão já registrada na spec
+    49 §10 (fase futura), não por esquecimento.
+  - 2 bugs reais encontrados e corrigidos antes do commit (rodada Web):
+    `scheduledCount` reportado ao usuário refletia o tamanho do plano
+    inteiro em vez do que foi de fato armado no horizonte de 12h (mensagem
+    numericamente enganosa); `showViaServiceWorker` gerava JS inválido no
+    bundle de produção (função de corpo-expressão com conteúdo de
+    statement) — quebrava `wasmJsBrowserDistribution` silenciosamente
+    (nem `compileKotlinWasmJs` nem os testes unitários exercitam o
+    webpack).
+- Validação manual real executada (não apenas compilação):
+  - **Android** (`EscalaSOC_API_37`, `-gpu host`): permissão
+    `POST_NOTIFICATIONS` solicitada corretamente na primeira abertura e
+    não novamente após conceder; notificação de teste real via
+    `NotificationManagerCompat`; alarmes reais registrados no
+    `AlarmManager` do sistema (confirmado via `dumpsys alarm`) cobrindo
+    todo o período publicado (26/07 a 25/08/2026, não só 21 dias);
+    disparo real confirmado para dois alarmes distintos após avançar o
+    relógio do sistema (véspera às 18:00 e início de pausa às 09:00, esta
+    última já reconciliada após reabrir o app); toque na notificação abre
+    o app e cancela a notificação (o foco exato na data via deep-link não
+    foi observável de forma isolada nesta sessão porque um `force-stop`
+    usado num teste de reconciliação também limpou a sessão demo em
+    memória — limitação do teste, não do código, que foi conferido por
+    leitura); reboot real do emulador confirmou que o `BOOT_COMPLETED`
+    reagenda o plano inteiro **sem** o app ter sido aberto manualmente
+    (corrige a lacuna do legado).
+  - **Web/Chromium** (build de produção `wasmJs`, headless real): bug de
+    build corrigido e reverificado com rebuild completo (`BUILD
+    SUCCESSFUL`); service worker registrado e ativo com `CACHE_NAME`
+    `escala-ici-web-v7` confirmado ao vivo; guarda `chrome-extension://`
+    confirmada no arquivo realmente servido; app recarrega e funciona
+    100% offline (rede simulada offline via CDP, shell cacheado serve a
+    tela de entrada normalmente); manifest PWA válido.
+- **Achado real, fora do escopo desta fase, não corrigido aqui**: em uma
+  sessão de navegador genuinamente não autenticada (perfil limpo, sem
+  sessão MSAL prévia), o botão "AMBIENTE DEMO" de `LoginGateScreen.kt`
+  chama o mesmo `signInCorporate()` do botão "MINHA ESCALA", que dispara
+  `signInInteractive` (popup real do Microsoft Entra) sempre que
+  `corporateAuthState` ainda não é `Authenticated` — e toda a lógica do
+  `EntryContext.DEMO` em `App.kt` fica dentro do `if (state is
+  CorporateAuthState.Authenticated ...)`, então o Ambiente Demo fica
+  inacessível sem completar um login corporativo real antes, contradizendo
+  o texto da própria tela ("este modo não depende de vínculo no workspace
+  oficial"). Não é regressão desta fase (nenhuma rodada tocou
+  `LoginGateScreen.kt`/essa lógica) — toda validação manual anterior
+  (14c-5B, 14E) sempre partiu de uma sessão MSAL já restaurada, então esse
+  caminho nunca tinha sido exercitado a frio. Por isso a validação manual
+  Web desta fase não conseguiu percorrer a tela de notificações/perfil
+  autenticada (nunca preenchi credenciais reais no popup — fechado sem
+  interação assim que apareceu). Correção mínima sugerida para uma
+  próxima rodada dedicada: o clique em "AMBIENTE DEMO" não deveria chamar
+  `signInCorporate`/`signInInteractive` nenhuma vez — só `onDemo()`
+  diretamente, deixando o branch `EntryContext.DEMO` (que já trata
+  identidade ausente) decidir.
+- `versionCode`/`versionName`: `27`/`0.7.13` → `28`/`0.7.14`.
+- Nenhum dado real (XLS, Firestore de produção) foi versionado ou
+  alterado; nenhum deploy ou publicação real de revisão feita nesta
+  execução.
+- Detalhe completo: `docs/spec/65-ESCALAICI-FASE14H-GATE-CONTRATO-PLANTAO-NOTIFICACOES.md`.
+
 ## FASE 14f-3 — Auditoria de contrato: publicacao oficial Dashboard x leitura KMP
 
 - **Status:** DONE (local) — spec 64.
