@@ -1,4 +1,4 @@
-const CACHE_NAME = "escala-ici-web-v6";
+const CACHE_NAME = "escala-ici-web-v7";
 const APP_SHELL = [
   "./",
   "index.html",
@@ -27,6 +27,7 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (!event.request.url.startsWith("http:") && !event.request.url.startsWith("https:")) return;
   if (event.request.method !== "GET") return;
 
   if (event.request.mode === "navigate") {
@@ -58,12 +59,18 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("notificationclick", (event) => {
+  const date = event.notification.data?.date;
   event.notification.close();
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       const existing = clients.find((client) => "focus" in client);
-      if (existing) return existing.focus();
-      return self.clients.openWindow("./");
+      if (existing) {
+        return existing.focus().then((client) => {
+          client.postMessage({ type: "escalaici-notification-click", date });
+          return client;
+        });
+      }
+      return self.clients.openWindow(date ? "./?date=" + encodeURIComponent(date) : "./");
     })
   );
 });

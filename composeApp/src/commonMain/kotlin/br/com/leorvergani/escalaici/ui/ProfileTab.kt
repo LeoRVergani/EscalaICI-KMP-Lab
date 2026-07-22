@@ -259,6 +259,13 @@ internal fun ProfileTab(
                     else -> "Notificações desativadas"
                 }
                 StatusLine("Status", status)
+                if (supportsSystemNotifications && !supportsReliableBackgroundScheduling && notificationPermission == NotificationPermissionState.GRANTED) {
+                    Text(
+                        "Funciona melhor com o app aberto ou instalado como PWA; sem um servidor de push, o navegador fechado pode não entregar a tempo.",
+                        color = LabColors.onSurfaceMuted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 when {
                     !supportsSystemNotifications -> Text("Esta tela salva as preferências pela interface comum.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                     notificationPermission == NotificationPermissionState.DEFAULT -> TextButton(enabled = !requestingNotification, onClick = {

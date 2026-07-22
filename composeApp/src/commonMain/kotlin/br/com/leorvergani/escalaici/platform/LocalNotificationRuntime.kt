@@ -1,6 +1,8 @@
 package br.com.leorvergani.escalaici.platform
 
+import br.com.leorvergani.escalaici.model.LabDateTime
 import br.com.leorvergani.escalaici.model.ScheduledNotification
+import br.com.leorvergani.escalaici.model.plusMinutes
 
 data class NotificationReconciliation(
     val idsToCancel: Set<String>,
@@ -25,6 +27,15 @@ fun shouldRequestPostNotifications(
     permissionGranted: Boolean,
     alreadyRequested: Boolean
 ): Boolean = sdkInt >= 33 && !permissionGranted && !alreadyRequested
+
+fun schedulableWithinHorizon(
+    plan: List<ScheduledNotification>,
+    now: LabDateTime,
+    horizonMinutes: Int
+): List<ScheduledNotification> {
+    val horizonEnd = now.plusMinutes(horizonMinutes)
+    return plan.filter { it.triggerAt >= now && it.triggerAt <= horizonEnd }
+}
 
 interface LocalNotificationRuntime {
     suspend fun reconcile(plan: List<ScheduledNotification>): LocalNotificationResult
