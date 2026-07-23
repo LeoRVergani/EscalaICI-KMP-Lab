@@ -76,8 +76,33 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   mesmo motor real via Karma).
 - `versionCode`/`versionName`: `28`/`0.7.14` → `29`/`0.7.15`.
 - Nenhuma publicação real, nenhum deploy, nenhum dado real alterado —
-  a revisão 2 de `ici-dev` continua sendo a ativa; uma futura revisão 3
+  nenhuma ação de publish foi executada nesta fase; uma futura revisão
   corrigida é o próximo passo natural, fora do escopo autorizado aqui.
+- **Achado adicional no gate de distribuição**: `model/AppVersion.kt`
+  (`CODE`/`LABEL`, fonte manual da aba Perfil e do `AppUpdateChecker`
+  Android, já que KMP não gera `BuildConfig` acessível de `commonMain`)
+  estava parado em `27`/`"0.7.13"` desde a FASE 14f-3 — não fora
+  atualizado nem na FASE 14H nem no início desta fase, apesar de
+  `build.gradle.kts` já estar em `29`/`0.7.15`. Corrigido para
+  `29`/`"0.7.15"`; sem isso a aba Perfil exibiria uma versão
+  desatualizada indefinidamente e o `AppUpdateChecker` nunca convergiria
+  (sempre compararia contra `27`). APK release recompilado, reassinado
+  e reconferido (mesma assinatura V2, 1 signer) após a correção; nova
+  cópia de distribuição e novos hashes SHA-256 substituem os gerados
+  antes desse achado.
+- **Anomalia transitória observada no gate de distribuição**: na
+  primeira reinstalação a partir de `EscalaICI-latest.apk` num emulador
+  recém-iniciado, "MINHA ESCALA" retornou uma vez
+  `WORKSPACE_NOT_PUBLISHED` ("A escala oficial ainda não foi publicada
+  neste ambiente."). Não investiguei via logcat (app não emite log
+  correlato) nem alterei nenhum dado remoto — apenas fechei/reabri o
+  app e tentei de novo. Na tentativa seguinte os dados reais carregaram
+  normalmente (mesmo caso `lvergani`/22-07/Manhã/`alamancio` validado
+  antes), confirmando que foi uma falha transitória (rede/latência no
+  primeiro request pós-instalação), não uma regressão desta fase — os
+  arquivos tocados na FASE 14I não tocam `OrganizationIdentityResolver`
+  nem `FirestoreRestGateway`. Versão `0.7.15` confirmada visualmente na
+  aba Perfil logo em seguida, já com a conta corporativa real.
 - Detalhe completo: `docs/spec/66-ESCALAICI-ESTADO-GLOBAL-E-CONSISTENCIA-DOS-CARDS.md`.
 
 ## FASE 14H — Fidelidade do parser, plantão multi-grupo, notificações Android/Web
