@@ -7,6 +7,79 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14I — Consistência dos cards (pausa efetiva, colegas por turno) + padronização visual SOC
+
+- **Status:** DONE (local) — spec 66. Achado real do usuário no APK
+  `0.7.14` (release, FASE 14H): pausa configurada (10:30) não aparecia
+  nos cards "Pausa" (Hoje)/"Resumo" (Perfil), que continuavam mostrando
+  só a janela genérica 09:00–11:45 mesmo com "Próximos alarmes" já
+  usando o horário certo; "Próximo turno"/"Detalhe do dia" misturavam
+  colegas de todos os turnos, enquanto "Quem trabalha nesse dia" já
+  separava corretamente por turno.
+- **Checkpoint 0** (antes de qualquer código): instalei o APK release já
+  existente da FASE 14H (`versionCode 28`/`0.7.14`, assinatura
+  verificada) num emulador limpo, sessão MSAL real restaurada, dado
+  real (revisão remota 2 de `ici-dev`, período `2026-06-25` a
+  `2026-07-26` — confirmando que a FASE 14H genuinamente não publicou
+  revisão nova) — os dois bugs reproduzidos ao vivo, exatamente como
+  relatado.
+- **Causa raiz exata** (lida no código): `PausePresentation.scheduledLabel`
+  (`model/TemporalRules.kt`) já existia para mostrar o horário efetivo,
+  mas `pauseFor()` nunca recebia `NotificationSettings.pauseCustomTime` —
+  `TodayTab` nem recebia `NotificationSettings` como parâmetro.
+  `teamMembers` (achatado, todos os turnos) vs `membersByShift` (correto,
+  por turno) já existiam certos desde a FASE 14H — só dois cards liam o
+  campo errado.
+- **Decisão arquitetural registrada**: não introduzir um
+  `EscalaIciAppState`/`StateFlow` novo. `App.kt` já centraliza o estado
+  (`remember`/`mutableStateOf` único, consumido por todos os tabs) —
+  reescrever isso para corrigir "card lendo o campo errado" seria a
+  refatoração ampla que a própria fase pede para evitar. Correção: dois
+  seletores puros novos (`ui/CardSelectors.kt`): `effectivePause(shift,
+  settings)` (reaproveita `pauseWindowFor()`, preenche `scheduledLabel`
+  quando há horário customizado válido dentro da janela) e
+  `colleaguesForShift(day)` (extrai o fallback `membersByShift ?:
+  teamMembers` já usado em "Quem trabalha nesse dia"). 4 call sites
+  migrados (`TodayTab.PauseCard`/`NextTurnHero`,
+  `ProfileTab`/`ScheduleTab.CalendarDayDetailCard`).
+- Checkpoint D (estrutura canônica do parser): confirmação, não nova
+  implementação — `ShiftDay.sourceStatus` já cumpre integralmente o
+  papel de "código de origem preservado"; mesma tabela canônica de
+  turnos/situações formalizada do lado Dashboard
+  (`docs/spec/11-DASHBOARD-FASE14I-...md`), um único contrato para os
+  dois repositórios.
+- 8 testes novos (`CardSelectorsTest.kt`): pausa dentro/fora da janela,
+  lembrete desativado, horário inválido, turno nulo; colegas por turno
+  com/sem `membersByShift`. 239 → 247 testes JVM, 232 → 240 testes
+  Wasm/Chromium, ambos 0 falhas. `compileDebugKotlinAndroid` e
+  `compileKotlinWasmJs` também verificados.
+- **Validação manual real, com o build novo (`0.7.15`/`29`)**: reproduzi
+  de novo, no mesmo emulador, com a mesma sessão MSAL e o mesmo dado
+  real (22/07/2026, turno Manhã, `lvergani`) — `Com:` agora mostra só
+  `alamancio`; `Pausa` (Hoje) e `Resumo` (Perfil) agora mostram
+  `10:30–10:45` (`Pausa programada`), com `Janela permitida: 09:00–11:45`
+  preservada como texto secundário, nunca confundida com o horário
+  escolhido; `Detalhe do dia` também corrigido; `Quem trabalha nesse
+  dia` sem regressão. Persistência confirmada após `force-stop`+reabrir
+  e após reboot real do emulador (`dumpsys alarm` mostra os alarmes de
+  pausa re-registrados com `10:30`/`10:45` via `BOOT_COMPLETED`, sem
+  abrir o app manualmente).
+- **Web/Wasm**: `wasmJsBrowserDistribution` gerada e servida localmente,
+  Chromium real confirma app íntegro, service worker ativo
+  (`escala-ici-web-v7`, sem regressão), reload 100% offline continua
+  funcionando. Validação interativa completa dos cards em navegador
+  fresco permanece bloqueada pelo mesmo achado já documentado na FASE
+  14H (login corporativo exigido mesmo para "Ambiente Demo" numa sessão
+  não autenticada) — não corrigido nesta fase (fora de escopo,
+  confirmado de novo, mesma decisão). A lógica dos seletores em si já é
+  validada pelos 240 testes Wasm/Chromium (`CardSelectorsTest` roda no
+  mesmo motor real via Karma).
+- `versionCode`/`versionName`: `28`/`0.7.14` → `29`/`0.7.15`.
+- Nenhuma publicação real, nenhum deploy, nenhum dado real alterado —
+  a revisão 2 de `ici-dev` continua sendo a ativa; uma futura revisão 3
+  corrigida é o próximo passo natural, fora do escopo autorizado aqui.
+- Detalhe completo: `docs/spec/66-ESCALAICI-ESTADO-GLOBAL-E-CONSISTENCIA-DOS-CARDS.md`.
+
 ## FASE 14H — Fidelidade do parser, plantão multi-grupo, notificações Android/Web
 
 - **Status:** DONE (local), com um bloqueio externo documentado (achado
