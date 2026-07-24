@@ -26,20 +26,18 @@ class WasmMsalCorporateAuthRepository(
     override suspend fun restoreSession() {
         if (configurationState == CorporateAuthConfigurationState.NOT_CONFIGURED) return
 
-        runCatching {
+        val cachedIdentity = runCatching {
             msalWebInit(config)
-            msalWebGetActiveIdentityJson()
-        }.getOrNull()
-            ?: run {
-                mutableState.value = CorporateAuthState.SignedOut
-                return
-            }
-
-        val identity = runCatching {
-            parseIdentityJson(msalWebAcquireTokenSilent(config.scopesCsv()))
+            msalWebGetActiveIdentityJson()?.let(::parseIdentityJson)
         }.getOrNull()
 
-        mutableState.value = identity?.let(CorporateAuthState::Authenticated) ?: CorporateAuthState.SignedOut
+        val silentRefreshResult = if (cachedIdentity != null) {
+            runCatching { parseIdentityJson(msalWebAcquireTokenSilent(config.scopesCsv())) }
+        } else {
+            Result.success(null)
+        }
+
+        mutableState.value = decideRestoredSessionState(cachedIdentity, silentRefreshResult)
     }
 
     override suspend fun signInInteractive(host: CorporateAuthHost?) {

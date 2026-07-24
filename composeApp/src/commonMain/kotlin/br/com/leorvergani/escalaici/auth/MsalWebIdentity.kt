@@ -51,3 +51,34 @@ fun MsalWebRejection.toCorporateAuthError(): CorporateAuthError =
         "network_error" -> CorporateAuthError.NetworkError
         else -> CorporateAuthError.Unknown(detail = detail)
     }
+
+/**
+ * Decide o [CorporateAuthState] final de uma restauração de sessão Web (FASE 14J,
+ * spec 67 seção 2.3), dada a identidade já obtida do cache local do MSAL.js
+ * ([cachedIdentity], leitura pura sem rede) e o resultado best-effort de uma
+ * tentativa de renovação silenciosa de token ([silentRefreshResult]).
+ *
+ * Sem conta em cache: sempre `SignedOut`. Com conta em cache: uma falha de rede
+ * (ou de causa desconhecida) na renovação NUNCA derruba a sessão já restaurada -
+ * só uma falha que prove que a sessão de fato não é mais válida
+ * (`AccountNotFound`/`InteractionRequired`) derruba para `SignedOut`. Uma
+ * renovação bem-sucedida atualiza a identidade para a versão mais recente.
+ */
+internal fun decideRestoredSessionState(
+    cachedIdentity: CorporateIdentity?,
+    silentRefreshResult: Result<CorporateIdentity?>
+): CorporateAuthState {
+    if (cachedIdentity == null) return CorporateAuthState.SignedOut
+
+    silentRefreshResult.getOrNull()?.let { refreshed ->
+        return CorporateAuthState.Authenticated(refreshed)
+    }
+
+    val rejection = silentRefreshResult.exceptionOrNull()
+    val error = (rejection as? MsalWebRejection)?.toCorporateAuthError()
+    return if (error == CorporateAuthError.AccountNotFound || error == CorporateAuthError.InteractionRequired) {
+        CorporateAuthState.SignedOut
+    } else {
+        CorporateAuthState.Authenticated(cachedIdentity)
+    }
+}

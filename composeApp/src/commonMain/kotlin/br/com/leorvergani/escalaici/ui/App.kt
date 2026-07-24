@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -45,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.auth.CorporateAuthConfigurationState
 import br.com.leorvergani.escalaici.auth.CorporateAuthRepository
@@ -124,9 +129,44 @@ private enum class StackedScreen(val title: String) {
     SWAP("Trocas de escala")
 }
 
-private enum class EntryContext {
+internal enum class EntryContext {
     LOGIN,
     DEMO
+}
+
+/**
+ * Três estados explícitos de inicialização da sessão (FASE 14J, spec 67 seção 2.1) -
+ * evita mostrar `LoginGateScreen` antes da restauração silenciosa do MSAL terminar
+ * (o "flash" reportado pelo usuário). `RESTORING` só se aplica quando a sessão já
+ * está `Authenticated` mas a resolução de identidade/escala (disparada pelo
+ * `LaunchedEffect(corporateAuthState, requestedEntryContext)` já existente) ainda
+ * não produziu um resultado definitivo (nem `sessionMemberId`, nem `gateErrorMessage`,
+ * nem uma entrada explícita no Demo).
+ */
+internal enum class SessionBootstrapPhase { INITIALIZING, RESTORING, READY }
+
+internal fun computeSessionBootstrapPhase(
+    hasConfiguredCorporateAuth: Boolean,
+    corporateAuthState: CorporateAuthState?,
+    sessionMemberId: String?,
+    gateErrorMessage: String?,
+    requestedEntryContext: EntryContext?
+): SessionBootstrapPhase {
+    if (!hasConfiguredCorporateAuth) return SessionBootstrapPhase.READY
+    return when (corporateAuthState) {
+        null -> SessionBootstrapPhase.INITIALIZING
+        is CorporateAuthState.Authenticated ->
+            if (sessionMemberId != null || gateErrorMessage != null || requestedEntryContext == EntryContext.DEMO) {
+                SessionBootstrapPhase.READY
+            } else {
+                SessionBootstrapPhase.RESTORING
+            }
+        CorporateAuthState.NotConfigured,
+        CorporateAuthState.SignedOut,
+        CorporateAuthState.Authenticating,
+        CorporateAuthState.Demo,
+        is CorporateAuthState.Failed -> SessionBootstrapPhase.READY
+    }
 }
 
 @Composable
@@ -161,12 +201,30 @@ fun EscalaIciLabApp(
         var demoPersonaLoading by remember { mutableStateOf(false) }
         var requestedEntryContext by remember { mutableStateOf<EntryContext?>(null) }
         var gateErrorMessage by remember { mutableStateOf<String?>(null) }
+        val sessionBootstrapPhase = computeSessionBootstrapPhase(
+            hasConfiguredCorporateAuth = corporateAuthRepository?.configurationState == CorporateAuthConfigurationState.CONFIGURED,
+            corporateAuthState = corporateAuthState,
+            sessionMemberId = sessionMemberId,
+            gateErrorMessage = gateErrorMessage,
+            requestedEntryContext = requestedEntryContext
+        )
 
         LaunchedEffect(Unit) {
             corporateAuthRepository
                 ?.takeIf { it.configurationState == CorporateAuthConfigurationState.CONFIGURED }
                 ?.restoreSession()
             sessionMemberId = authRepository.currentMemberId()
+        }
+
+        // Dispara a resolução de identidade automaticamente quando a sessão MSAL é
+        // restaurada silenciosamente (sem toque do usuário) - complementa o
+        // LaunchedEffect abaixo, que já resolve identidade quando requestedEntryContext
+        // é setado por um toque manual em LoginGateScreen. Não sobrescreve uma entrada
+        // já em andamento (ex.: Demo escolhido explicitamente).
+        LaunchedEffect(corporateAuthState) {
+            if (corporateAuthState is CorporateAuthState.Authenticated && requestedEntryContext == null) {
+                requestedEntryContext = EntryContext.LOGIN
+            }
         }
 
         var activeTab by remember(initialNotificationDate) {
@@ -473,7 +531,9 @@ fun EscalaIciLabApp(
             stackedScreen = null
         }
 
-        if (sessionMemberId == null && activeDemoWorkspaceSession == null) {
+        if (sessionBootstrapPhase != SessionBootstrapPhase.READY) {
+            SessionBootstrapScreen()
+        } else if (sessionMemberId == null && activeDemoWorkspaceSession == null) {
             LoginGateScreen(
                 supportsCorporateAuth = platformCapabilities.supportsCorporateAuth,
                 corporateAuthRepository = corporateAuthRepository,
@@ -636,6 +696,40 @@ fun EscalaIciLabApp(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Tela mínima exibida enquanto [SessionBootstrapPhase] ainda não é `READY` -
+ * evita mostrar `LoginGateScreen` (e seu botão de login) antes da restauração
+ * silenciosa da sessão MSAL terminar (FASE 14J, spec 67 seção 2.1).
+ */
+@Composable
+private fun SessionBootstrapScreen() {
+    LabPremiumBackground {
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Escala ICI",
+                color = LabColors.onSurface,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(24.dp))
+            CircularProgressIndicator(color = LabColors.primary)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Verificando sessão...",
+                color = LabColors.onSurfaceMuted,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

@@ -84,6 +84,76 @@ class MsalWebIdentityTest {
         )
     }
 
+    private val sampleIdentity = CorporateIdentity(
+        tenantId = "tenant-1",
+        objectId = "object-1",
+        username = "ana.paula@ici.tec.br",
+        displayName = "Ana Paula",
+        email = "ana.paula@ici.tec.br",
+        accountId = "account-1",
+    )
+
+    @Test
+    fun decideRestoredSessionState_noCachedIdentityIsAlwaysSignedOut() {
+        assertEquals(
+            CorporateAuthState.SignedOut,
+            decideRestoredSessionState(cachedIdentity = null, silentRefreshResult = Result.success(sampleIdentity)),
+        )
+        assertEquals(
+            CorporateAuthState.SignedOut,
+            decideRestoredSessionState(
+                cachedIdentity = null,
+                silentRefreshResult = Result.failure(MsalWebRejection("network_error", "sem rede")),
+            ),
+        )
+    }
+
+    @Test
+    fun decideRestoredSessionState_networkFailureDuringRefreshPreservesCachedSession() {
+        val result = decideRestoredSessionState(
+            cachedIdentity = sampleIdentity,
+            silentRefreshResult = Result.failure(MsalWebRejection("network_error", "sem rede")),
+        )
+        assertEquals(CorporateAuthState.Authenticated(sampleIdentity), result)
+    }
+
+    @Test
+    fun decideRestoredSessionState_unknownFailureDuringRefreshPreservesCachedSession() {
+        val result = decideRestoredSessionState(
+            cachedIdentity = sampleIdentity,
+            silentRefreshResult = Result.failure(RuntimeException("erro inesperado")),
+        )
+        assertEquals(CorporateAuthState.Authenticated(sampleIdentity), result)
+    }
+
+    @Test
+    fun decideRestoredSessionState_interactionRequiredEndsSession() {
+        val result = decideRestoredSessionState(
+            cachedIdentity = sampleIdentity,
+            silentRefreshResult = Result.failure(MsalWebRejection("interaction_required", "precisa logar de novo")),
+        )
+        assertEquals(CorporateAuthState.SignedOut, result)
+    }
+
+    @Test
+    fun decideRestoredSessionState_accountNotFoundEndsSession() {
+        val result = decideRestoredSessionState(
+            cachedIdentity = sampleIdentity,
+            silentRefreshResult = Result.failure(MsalWebRejection("account_not_found", "conta removida")),
+        )
+        assertEquals(CorporateAuthState.SignedOut, result)
+    }
+
+    @Test
+    fun decideRestoredSessionState_successfulRefreshUsesRenewedIdentity() {
+        val renewed = sampleIdentity.copy(displayName = "Ana Paula Renovada")
+        val result = decideRestoredSessionState(
+            cachedIdentity = sampleIdentity,
+            silentRefreshResult = Result.success(renewed),
+        )
+        assertEquals(CorporateAuthState.Authenticated(renewed), result)
+    }
+
     @Test
     fun msalWebConfigIsConfiguredOnlyForRealValues() {
         assertEquals(
