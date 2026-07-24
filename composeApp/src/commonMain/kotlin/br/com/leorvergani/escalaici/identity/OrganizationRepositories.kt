@@ -4,6 +4,7 @@ import br.com.leorvergani.escalaici.model.Member
 import br.com.leorvergani.escalaici.model.MemberTeamMembership
 import br.com.leorvergani.escalaici.model.LabDate
 import br.com.leorvergani.escalaici.model.ScheduleAssignment
+import br.com.leorvergani.escalaici.model.ScheduleChangeRequest
 import br.com.leorvergani.escalaici.model.SchedulePeriod
 import br.com.leorvergani.escalaici.model.ScheduleSummary
 import br.com.leorvergani.escalaici.model.ShiftDay
@@ -220,7 +221,11 @@ data class DemoPublicationData(
     val schedulePeriods: List<SchedulePeriod>,
     val scheduleAssignments: List<ScheduleAssignment>,
     val loginByMemberId: Map<String, String>,
-    val state: DemoDataSourceState
+    val state: DemoDataSourceState,
+    // Antes sempre descartado (FASE 14J, spec 67 seção 5.2): a publicação já
+    // parseava e validava scheduleChangeRequests (DemoPublicationSnapshot),
+    // mas essa classe - a que a UI de fato consome - nunca repassava o campo.
+    val scheduleChangeRequests: List<ScheduleChangeRequest> = emptyList()
 )
 
 suspend fun DemoPublicationRepository.scheduleSummaryForMember(memberId: String): ScheduleSummary? {
@@ -356,7 +361,8 @@ private fun DemoPublicationSnapshot.toData() = DemoPublicationData(
         publicationRevision = pointer.activeRevision,
         message = "Fonte: publicacao remota rev. ${pointer.activeRevision}",
         allowedDeveloperObjectIds = pointer.allowedDeveloperObjectIds
-    )
+    ),
+    scheduleChangeRequests = scheduleChangeRequests
 )
 
 private fun DemoFixturePackage.toData(
@@ -374,5 +380,6 @@ private fun DemoFixturePackage.toData(
         publicationRevision = workspace.publicationRevision,
         fallbackCause = fallbackCause,
         message = message ?: "Fonte: fixture Demo local rev. ${workspace.publicationRevision}"
-    )
+    ),
+    scheduleChangeRequests = toScheduleChangeRequests()
 )

@@ -108,6 +108,13 @@ fun main() {
                     OrganizationWorkspace.DEMO_WORKSPACE_ID -> demoPublicationRepository.scheduleSummaryForMember(memberId)
                     else -> null
                 }
+            },
+            loadScheduleChangeRequests = { workspaceId, _ ->
+                when (workspaceId) {
+                    OrganizationWorkspace.CORPORATE_WORKSPACE_ID -> corporatePublicationRepository.data().scheduleChangeRequests
+                    OrganizationWorkspace.DEMO_WORKSPACE_ID -> demoPublicationRepository.data().scheduleChangeRequests
+                    else -> emptyList()
+                }
             }
         )
     }

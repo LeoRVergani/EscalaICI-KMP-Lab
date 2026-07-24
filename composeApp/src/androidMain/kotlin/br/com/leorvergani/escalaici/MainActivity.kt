@@ -118,6 +118,13 @@ class MainActivity : ComponentActivity() {
                         else -> null
                     }
                 },
+                loadScheduleChangeRequests = { workspaceId, _ ->
+                    when (workspaceId) {
+                        OrganizationWorkspace.CORPORATE_WORKSPACE_ID -> corporatePublicationRepository.data().scheduleChangeRequests
+                        OrganizationWorkspace.DEMO_WORKSPACE_ID -> demoPublicationRepository.data().scheduleChangeRequests
+                        else -> emptyList()
+                    }
+                },
                 platformCapabilities = PlatformCapabilities(
                     supportsAppUpdate = true,
                     supportsBackgroundScheduledNotifications = true,

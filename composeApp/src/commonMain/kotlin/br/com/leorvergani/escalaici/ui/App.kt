@@ -64,6 +64,7 @@ import br.com.leorvergani.escalaici.identity.OrganizationResolutionResult
 import br.com.leorvergani.escalaici.model.ImportedWorkbook
 import br.com.leorvergani.escalaici.model.LabWorkbookParser
 import br.com.leorvergani.escalaici.model.OnCallGroup
+import br.com.leorvergani.escalaici.model.ScheduleChangeRequest
 import br.com.leorvergani.escalaici.model.ScheduleImportPreview
 import br.com.leorvergani.escalaici.model.ScheduleSummary
 import br.com.leorvergani.escalaici.model.WorkbookImportResult
@@ -143,7 +144,8 @@ private data class RealSessionSnapshot(
     val sessionMemberId: String,
     val summary: ScheduleSummary,
     val organizationResolutionResult: OrganizationResolutionResult?,
-    val corporateDataSourceState: DemoDataSourceState?
+    val corporateDataSourceState: DemoDataSourceState?,
+    val scheduleChangeRequests: List<ScheduleChangeRequest>
 )
 
 /**
@@ -198,7 +200,8 @@ fun EscalaIciLabApp(
     corporateDataSourceStateProvider: (suspend () -> DemoDataSourceState?)? = null,
     isDemoAuthorized: (suspend (CorporateIdentity) -> Boolean)? = null,
     loadDemoWorkspaceOverview: (suspend () -> DemoWorkspaceOverview)? = null,
-    loadPublishedScheduleSummary: (suspend (String, String) -> ScheduleSummary?)? = null
+    loadPublishedScheduleSummary: (suspend (String, String) -> ScheduleSummary?)? = null,
+    loadScheduleChangeRequests: (suspend (String, String) -> List<ScheduleChangeRequest>)? = null
 ) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
@@ -260,6 +263,7 @@ fun EscalaIciLabApp(
         }
         var stackedScreen by remember { mutableStateOf<StackedScreen?>(null) }
         var summary by remember { mutableStateOf(mockScheduleSummary()) }
+        var scheduleChangeRequests by remember { mutableStateOf<List<ScheduleChangeRequest>>(emptyList()) }
         var cacheWarning by remember { mutableStateOf<String?>(null) }
         var firebaseMetadata by remember { mutableStateOf<SourceMetadata?>(null) }
         var firebaseError by remember { mutableStateOf<String?>(null) }
@@ -313,8 +317,13 @@ fun EscalaIciLabApp(
                                 if (decision.summary != null) {
                                     sessionMemberId = result.context.memberId
                                     summary = decision.summary
+                                    scheduleChangeRequests = loadScheduleChangeRequests?.invoke(
+                                        result.context.workspaceId,
+                                        result.context.memberId
+                                    ) ?: emptyList()
                                 } else {
                                     sessionMemberId = null
+                                    scheduleChangeRequests = emptyList()
                                 }
                             }
                             else -> {
@@ -387,6 +396,10 @@ fun EscalaIciLabApp(
                     if (decision.summary != null) {
                         sessionMemberId = result.context.memberId
                         summary = decision.summary
+                        scheduleChangeRequests = loadScheduleChangeRequests?.invoke(
+                            result.context.workspaceId,
+                            result.context.memberId
+                        ) ?: emptyList()
                     } else {
                         sessionMemberId = null
                     }
@@ -537,6 +550,7 @@ fun EscalaIciLabApp(
             gateErrorMessage = null
             appNotificationSettings = NotificationSettings()
             summary = mockScheduleSummary()
+            scheduleChangeRequests = emptyList()
             firebaseOnCall = null
             firebaseOnCallGroups = emptyList()
             importPreview = null
@@ -566,6 +580,7 @@ fun EscalaIciLabApp(
             summary = saved.summary
             organizationResolutionResult = saved.organizationResolutionResult
             corporateDataSourceState = saved.corporateDataSourceState
+            scheduleChangeRequests = saved.scheduleChangeRequests
             savedRealSession = null
             demoWorkspaceSession = null
             selectedDemoPersona = null
@@ -677,6 +692,7 @@ fun EscalaIciLabApp(
                                 )
                                 StackedScreen.SWAP -> ShiftSwapScreen(
                                     currentMemberId = summary.member.id,
+                                    changeRequests = scheduleChangeRequests,
                                     onBack = { stackedScreen = null }
                                 )
                                 null -> {
@@ -781,9 +797,11 @@ fun EscalaIciLabApp(
                                                     sessionMemberId = currentMemberId,
                                                     summary = summary,
                                                     organizationResolutionResult = organizationResolutionResult,
-                                                    corporateDataSourceState = corporateDataSourceState
+                                                    corporateDataSourceState = corporateDataSourceState,
+                                                    scheduleChangeRequests = scheduleChangeRequests
                                                 )
                                                 sessionMemberId = null
+                                                scheduleChangeRequests = emptyList()
                                                 requestedEntryContext = EntryContext.DEMO
                                             }
                                         }

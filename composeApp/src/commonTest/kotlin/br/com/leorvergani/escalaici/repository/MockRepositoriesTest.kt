@@ -53,26 +53,6 @@ class MockRepositoriesTest {
     }
 
     @Test
-    fun shiftSwapRepository_persistsNewRequests() = runTest {
-        val repository = MockShiftSwapRepository(initialRequests = emptyList())
-        val request = repository.requestSwap(
-            br.com.leorvergani.escalaici.model.ShiftSwapRequest(
-                id = "swap-test",
-                requesterMemberId = "a@ici.tec.br",
-                targetMemberId = "b@ici.tec.br",
-                originalDate = "2026-07-06",
-                requestedDate = "2026-07-07",
-                status = br.com.leorvergani.escalaici.model.SwapStatus.PENDENTE_TECNICO_DESTINO
-            )
-        )
-
-        assertEquals("swap-test", request.id)
-        assertEquals(1, repository.getSwapRequests("a@ici.tec.br").size)
-        assertEquals(1, repository.getSwapRequests("b@ici.tec.br").size)
-        assertTrue(repository.getSwapRequests("nobody@ici.tec.br").isEmpty())
-    }
-
-    @Test
     fun authSessionRepository_returnsConfiguredMemberId() = runTest {
         assertEquals("lvergani@ici.tec.br", MockAuthSessionRepository().currentMemberId())
         assertNull(MockAuthSessionRepository(memberId = null).currentMemberId())

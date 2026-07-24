@@ -91,7 +91,7 @@ fun mockTeamMembers(): List<Member> = listOf(
 
 /**
  * Dados mock dos modelos puros da FASE 9c (`SchedulePeriod`, `ScheduleAssignment`,
- * `OnCallPeriod`, `OnCallAssignment`, `ShiftSwapRequest`, `ImportJob`,
+ * `OnCallPeriod`, `OnCallAssignment`, `ImportJob`,
  * `SourceFileRecord`). Ainda nao sao consumidos pela UI do laboratorio; existem
  * para validar que os modelos compilam e sao utilizaveis multiplataforma.
  */
@@ -182,51 +182,6 @@ fun mockOnCallAssignments(): List<OnCallAssignment> = listOf(
         startTime = "07:00",
         endTime = "19:00",
         status = OnCallStatus.COMPLETED
-    )
-)
-
-fun mockShiftSwapRequests(): List<ShiftSwapRequest> = listOf(
-    ShiftSwapRequest(
-        id = "swap-1",
-        requesterMemberId = "lvergani@ici.tec.br",
-        targetMemberId = "alamancio@ici.tec.br",
-        originalDate = "2026-07-08",
-        requestedDate = "2026-07-09",
-        status = SwapStatus.PENDENTE_TECNICO_DESTINO,
-        requesterName = "lvergani",
-        targetName = "alamancio",
-        requesterShiftType = ShiftType.MANHA,
-        targetShiftType = ShiftType.TARDE,
-        teamName = "SOC",
-        createdAt = "2026-07-07"
-    ),
-    ShiftSwapRequest(
-        id = "swap-2",
-        requesterMemberId = "altaborda@ici.tec.br",
-        targetMemberId = "lvergani@ici.tec.br",
-        originalDate = "2026-07-12",
-        requestedDate = "2026-07-13",
-        status = SwapStatus.PENDENTE_TECNICO_DESTINO,
-        requesterName = "altaborda",
-        targetName = "lvergani",
-        requesterShiftType = ShiftType.NOITE,
-        targetShiftType = ShiftType.MANHA,
-        teamName = "SOC",
-        createdAt = "2026-07-06"
-    ),
-    ShiftSwapRequest(
-        id = "swap-3",
-        requesterMemberId = "alamancio@ici.tec.br",
-        targetMemberId = "lvergani@ici.tec.br",
-        originalDate = "2026-07-03",
-        requestedDate = "2026-07-04",
-        status = SwapStatus.APROVADA,
-        requesterName = "alamancio",
-        targetName = "lvergani",
-        requesterShiftType = ShiftType.TARDE,
-        targetShiftType = ShiftType.MANHA,
-        teamName = "SOC",
-        createdAt = "2026-07-01"
     )
 )
 

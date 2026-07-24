@@ -4,6 +4,7 @@ import br.com.leorvergani.escalaici.model.Member
 import br.com.leorvergani.escalaici.model.MemberTeamMembership
 import br.com.leorvergani.escalaici.model.AssignmentSource
 import br.com.leorvergani.escalaici.model.ScheduleAssignment
+import br.com.leorvergani.escalaici.model.ScheduleChangeRequest
 import br.com.leorvergani.escalaici.model.SchedulePeriod
 import br.com.leorvergani.escalaici.model.ScheduleSourceType
 import br.com.leorvergani.escalaici.model.ShiftType
@@ -225,6 +226,26 @@ fun DemoFixturePackage.toScheduleAssignments(): List<ScheduleAssignment> = sched
 
 fun DemoFixturePackage.loginByMemberId(): Map<String, String> =
     members.associate { it.id to it.corporateLogin }
+
+fun DemoFixturePackage.toScheduleChangeRequests(): List<ScheduleChangeRequest> = scheduleChangeRequests.map { request ->
+    ScheduleChangeRequest(
+        id = request.id,
+        workspaceId = request.workspaceId,
+        publicationRevision = workspace.publicationRevision,
+        memberId = request.requesterMemberId,
+        teamId = request.requesterTeamId,
+        periodId = request.schedulePeriodId,
+        assignmentId = request.assignmentId,
+        status = request.status,
+        assignedManagerMemberId = request.assignedManagerMemberId,
+        requestType = request.requestType,
+        reason = request.reason,
+        createdAt = request.createdAt,
+        resolvedAt = request.resolvedAt,
+        resolvedByMemberId = request.resolvedByMemberId,
+        resolutionNote = request.resolutionNote
+    )
+}
 
 private fun fixtureShiftType(assignmentType: String, shiftName: String?): ShiftType = when (assignmentType) {
     "OFF" -> ShiftType.FOLGA

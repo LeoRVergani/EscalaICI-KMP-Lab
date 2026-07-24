@@ -5,13 +5,11 @@ import br.com.leorvergani.escalaici.model.OnCallAssignment
 import br.com.leorvergani.escalaici.model.OnCallPeriod
 import br.com.leorvergani.escalaici.model.ScheduleAssignment
 import br.com.leorvergani.escalaici.model.SchedulePeriod
-import br.com.leorvergani.escalaici.model.ShiftSwapRequest
 import br.com.leorvergani.escalaici.model.Team
 import br.com.leorvergani.escalaici.model.mockOnCallAssignments
 import br.com.leorvergani.escalaici.model.mockOnCallPeriod
 import br.com.leorvergani.escalaici.model.mockScheduleAssignments
 import br.com.leorvergani.escalaici.model.mockSchedulePeriod
-import br.com.leorvergani.escalaici.model.mockShiftSwapRequests
 import br.com.leorvergani.escalaici.model.mockTeamMembers
 
 /**
@@ -62,20 +60,6 @@ class MockOnCallRepository(
 
     override suspend fun getOnCallAssignments(periodId: String): List<OnCallAssignment> =
         assignments.filter { it.periodId == periodId }
-}
-
-class MockShiftSwapRepository(
-    initialRequests: List<ShiftSwapRequest> = mockShiftSwapRequests()
-) : ShiftSwapRepository {
-    private val requests = initialRequests.toMutableList()
-
-    override suspend fun getSwapRequests(memberId: String): List<ShiftSwapRequest> =
-        requests.filter { it.requesterMemberId == memberId || it.targetMemberId == memberId }
-
-    override suspend fun requestSwap(request: ShiftSwapRequest): ShiftSwapRequest {
-        requests += request
-        return request
-    }
 }
 
 class MockAuthSessionRepository(

@@ -3,6 +3,7 @@ package br.com.leorvergani.escalaici.ui
 import br.com.leorvergani.escalaici.model.LabDate
 import br.com.leorvergani.escalaici.model.LabDateTime
 import br.com.leorvergani.escalaici.model.NotificationSettings
+import br.com.leorvergani.escalaici.model.ScheduleChangeRequest
 import br.com.leorvergani.escalaici.model.ShiftDay
 import br.com.leorvergani.escalaici.model.ShiftOccurrence
 import br.com.leorvergani.escalaici.model.ShiftType
@@ -10,6 +11,7 @@ import br.com.leorvergani.escalaici.model.TemporalState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class CardSelectorsTest {
     @Test
@@ -97,6 +99,58 @@ class CardSelectorsTest {
 
         assertEquals(listOf("colega1", "colega2"), colleaguesForShift(day))
     }
+
+    @Test
+    fun changeRequestsRelevantToIncludesRequestedByMemberAndAwaitingAsManager() {
+        val requests = listOf(
+            changeRequest(id = "sent-by-me", memberId = "me", assignedManagerMemberId = "other-manager"),
+            changeRequest(id = "awaiting-my-approval", memberId = "colleague", assignedManagerMemberId = "me"),
+            changeRequest(id = "not-mine", memberId = "colleague", assignedManagerMemberId = "other-manager"),
+        )
+
+        val relevant = changeRequestsRelevantTo("me", requests).map { it.id }
+
+        assertEquals(listOf("sent-by-me", "awaiting-my-approval"), relevant)
+    }
+
+    @Test
+    fun changeRequestsRelevantToReturnsEmptyWhenNoneMatch() {
+        val requests = listOf(changeRequest(id = "not-mine", memberId = "colleague", assignedManagerMemberId = "other-manager"))
+
+        assertTrue(changeRequestsRelevantTo("me", requests).isEmpty())
+    }
+
+    @Test
+    fun pendingChangeRequestsRelevantToExcludesNonPendingStatuses() {
+        val requests = listOf(
+            changeRequest(id = "pending-mine", memberId = "me", assignedManagerMemberId = "other-manager", status = "PENDING"),
+            changeRequest(id = "approved-mine", memberId = "me", assignedManagerMemberId = "other-manager", status = "APPROVED"),
+            changeRequest(id = "pending-not-mine", memberId = "colleague", assignedManagerMemberId = "other-manager", status = "PENDING"),
+        )
+
+        val pending = pendingChangeRequestsRelevantTo("me", requests).map { it.id }
+
+        assertEquals(listOf("pending-mine"), pending)
+    }
+
+    private fun changeRequest(
+        id: String,
+        memberId: String,
+        assignedManagerMemberId: String,
+        status: String = "PENDING"
+    ) = ScheduleChangeRequest(
+        id = id,
+        workspaceId = "ici-dev",
+        publicationRevision = 2,
+        memberId = memberId,
+        teamId = "team-1",
+        periodId = "period-1",
+        status = status,
+        assignedManagerMemberId = assignedManagerMemberId,
+        requestType = "SHIFT_CHANGE",
+        reason = "Motivo de teste",
+        createdAt = "2026-07-20T00:00:00Z",
+    )
 
     private fun morningShift(): ShiftOccurrence {
         val date = LabDate(2026, 7, 23)

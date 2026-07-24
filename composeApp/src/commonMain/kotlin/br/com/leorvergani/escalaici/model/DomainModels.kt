@@ -35,19 +35,6 @@ enum class OnCallStatus {
     CANCELLED
 }
 
-/**
- * Portado 1:1 de `ShiftSwapStatus` (app real, `data/swap/`) — 6 estados
- * textuais distintos usados pela tela de Trocas de escala (FASE 10.11).
- */
-enum class SwapStatus {
-    PENDENTE_TECNICO_DESTINO,
-    AGUARDANDO_COORDENADOR,
-    APROVADA,
-    RECUSADA_TECNICO_DESTINO,
-    RECUSADA_COORDENADOR,
-    CANCELADA
-}
-
 enum class ScheduleSourceType {
     LOCAL_FILE,
     LOCAL_CACHE,
@@ -113,6 +100,17 @@ data class TeamManagerAssignment(
     val createdBy: String = ""
 )
 
+/**
+ * Uma solicitação de troca/alteração de escala (FASE 14J, spec 67 seção 5) - lida
+ * de `workspaces/{id}/revisions/{n}/schedule_change_requests` (contrato real do
+ * Dashboard, `contracts/organization-approval-v1.schema.json`). `memberId`/
+ * `teamId`/`periodId` são os nomes internos para `requesterMemberId`/
+ * `requesterTeamId`/`schedulePeriodId` do Firestore (mesmo dado, alias já
+ * resolvido na fronteira de parsing - ver `DemoPublicationDtos.toDemoChangeRequest`).
+ * `status`/`requestType` continuam `String` livre (preserva o valor de origem,
+ * mesmo espírito de `ShiftDay.sourceStatus`) - use [statusTyped]/[requestTypeTyped]
+ * para leitura tipada, com fallback seguro para `UNKNOWN` em vez de lançar.
+ */
 data class ScheduleChangeRequest(
     val id: String,
     val workspaceId: String,
@@ -130,6 +128,48 @@ data class ScheduleChangeRequest(
     val resolvedByMemberId: String? = null,
     val resolutionNote: String? = null
 )
+
+/** Valores reais escritos pelo Dashboard (`DemoChangeRequestStatus`, `dto.ts`). */
+enum class ChangeRequestStatus {
+    DRAFT, PENDING, APPROVED, REJECTED, CANCELLED, EXPIRED, UNKNOWN;
+
+    companion object {
+        fun parse(raw: String): ChangeRequestStatus = entries.firstOrNull { it.name == raw } ?: UNKNOWN
+    }
+}
+
+/** Valores reais escritos pelo Dashboard (`DemoChangeRequestType`, `dto.ts`). */
+enum class ChangeRequestType {
+    SHIFT_CHANGE, DAY_OFF_CHANGE, SWAP_WITH_MEMBER, SCHEDULE_CORRECTION, OTHER, UNKNOWN;
+
+    companion object {
+        fun parse(raw: String): ChangeRequestType = entries.firstOrNull { it.name == raw } ?: UNKNOWN
+    }
+}
+
+val ScheduleChangeRequest.statusTyped: ChangeRequestStatus get() = ChangeRequestStatus.parse(status)
+val ScheduleChangeRequest.requestTypeTyped: ChangeRequestType get() = ChangeRequestType.parse(requestType)
+
+/** Rótulos idênticos aos do Dashboard (`STATUS_LABELS`, `DemoChangeRequestsDialog.tsx`). */
+fun ChangeRequestStatus.label(): String = when (this) {
+    ChangeRequestStatus.DRAFT -> "Rascunho"
+    ChangeRequestStatus.PENDING -> "Pendente"
+    ChangeRequestStatus.APPROVED -> "Aprovada"
+    ChangeRequestStatus.REJECTED -> "Recusada"
+    ChangeRequestStatus.CANCELLED -> "Cancelada"
+    ChangeRequestStatus.EXPIRED -> "Expirada"
+    ChangeRequestStatus.UNKNOWN -> "Desconhecido"
+}
+
+/** Rótulos idênticos aos do Dashboard (`REQUEST_TYPE_LABELS`, `DemoChangeRequestsDialog.tsx`). */
+fun ChangeRequestType.label(): String = when (this) {
+    ChangeRequestType.SHIFT_CHANGE -> "Troca de turno"
+    ChangeRequestType.DAY_OFF_CHANGE -> "Troca de folga"
+    ChangeRequestType.SWAP_WITH_MEMBER -> "Troca com colega"
+    ChangeRequestType.SCHEDULE_CORRECTION -> "Correção de escala"
+    ChangeRequestType.OTHER -> "Outro"
+    ChangeRequestType.UNKNOWN -> "Desconhecido"
+}
 
 data class WorkspacePublicationPointer(
     val workspaceId: String,
@@ -188,22 +228,6 @@ data class OnCallAssignment(
         return ((endDay - startDay) * 24L * 60L + endMinute - startMinute).takeIf { it > 0 }
     }
 }
-
-data class ShiftSwapRequest(
-    val id: String,
-    val requesterMemberId: String,
-    val targetMemberId: String,
-    val originalDate: String,
-    val requestedDate: String,
-    val status: SwapStatus,
-    val notes: String? = null,
-    val requesterName: String = requesterMemberId,
-    val targetName: String = targetMemberId,
-    val requesterShiftType: ShiftType? = null,
-    val targetShiftType: ShiftType? = null,
-    val teamName: String? = null,
-    val createdAt: String = ""
-)
 
 data class ImportJob(
     val id: String,

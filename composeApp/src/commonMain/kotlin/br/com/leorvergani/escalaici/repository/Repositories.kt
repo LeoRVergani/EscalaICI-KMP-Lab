@@ -5,7 +5,6 @@ import br.com.leorvergani.escalaici.model.OnCallAssignment
 import br.com.leorvergani.escalaici.model.OnCallPeriod
 import br.com.leorvergani.escalaici.model.ScheduleAssignment
 import br.com.leorvergani.escalaici.model.SchedulePeriod
-import br.com.leorvergani.escalaici.model.ShiftSwapRequest
 import br.com.leorvergani.escalaici.model.Team
 
 /**
@@ -38,11 +37,6 @@ interface TeamRepository {
 interface OnCallRepository {
     suspend fun getOnCallPeriod(teamId: String): OnCallPeriod?
     suspend fun getOnCallAssignments(periodId: String): List<OnCallAssignment>
-}
-
-interface ShiftSwapRepository {
-    suspend fun getSwapRequests(memberId: String): List<ShiftSwapRequest>
-    suspend fun requestSwap(request: ShiftSwapRequest): ShiftSwapRequest
 }
 
 interface AuthSessionRepository {
