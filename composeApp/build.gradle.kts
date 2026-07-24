@@ -282,6 +282,50 @@ tasks.matching { it.name.contains("compileKotlinWasmJs", ignoreCase = true) }.co
     dependsOn(generateWasmMsalWebConfig)
 }
 
+// Fonte unica de versao (FASE 14J, spec 67 secao 8): appVersionCode/appVersionName
+// abaixo sao os UNICOS literais de versao do projeto - defaultConfig.versionCode/
+// versionName e AppVersion.kt (commonMain, gerado, nao versionado) sempre derivam
+// destes dois valores. Antes desta fase, AppVersion.kt era um arquivo mantido a
+// mao, independente do Gradle - ja ficou desatualizado uma vez (FASE 14I), porque
+// nada impedia as duas fontes de divergirem silenciosamente.
+val appVersionCode = 30
+val appVersionName = "0.7.16"
+
+val generatedAppVersionDir = layout.buildDirectory.dir("generated/source/appVersion/commonMain")
+val generateAppVersion by tasks.registering {
+    val outputFile = generatedAppVersionDir.map {
+        it.file("br/com/leorvergani/escalaici/model/AppVersion.kt")
+    }
+    outputs.file(outputFile)
+    inputs.property("appVersionCode", appVersionCode)
+    inputs.property("appVersionName", appVersionName)
+
+    doLast {
+        val file = outputFile.get().asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            package br.com.leorvergani.escalaici.model
+
+            // Gerado pela task generateAppVersion (composeApp/build.gradle.kts) a partir
+            // de appVersionCode/appVersionName - nao editar a mao, nao versionar.
+            object AppVersion {
+                const val CODE: Int = $appVersionCode
+                const val LABEL: String = "$appVersionName"
+            }
+            """.trimIndent() + "\n"
+        )
+    }
+}
+
+kotlin.sourceSets.named("commonMain") {
+    kotlin.srcDir(generatedAppVersionDir)
+}
+
+tasks.matching { it.name.startsWith("compile") && it.name.contains("Kotlin") }.configureEach {
+    dependsOn(generateAppVersion)
+}
+
 extensions.configure<ApplicationExtension>("android") {
     namespace = "br.com.leorvergani.escalaici"
     compileSdk = 36
@@ -290,8 +334,8 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = androidApplicationId
         minSdk = 28
         targetSdk = 36
-        versionCode = 29
-        versionName = "0.7.15"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         buildConfigField("String", "MSAL_TENANT_ID", "\"$msalTenantId\"")
         buildConfigField("String", "MSAL_CLIENT_ID", "\"$msalClientId\"")
