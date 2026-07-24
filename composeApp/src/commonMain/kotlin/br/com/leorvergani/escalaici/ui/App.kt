@@ -705,7 +705,9 @@ fun EscalaIciLabApp(
                                         now = now,
                                         notificationSettings = appNotificationSettings,
                                         onOpenPlantao = onOpenPlantao,
-                                        onImportClick = { activeTab = LabTab.Importar }
+                                        onImportClick = { activeTab = LabTab.Importar },
+                                        changeRequests = scheduleChangeRequests,
+                                        onOpenSwap = { stackedScreen = StackedScreen.SWAP }
                                     )
                                     LabTab.Escala -> ScheduleTab(
                                         summary = summary,

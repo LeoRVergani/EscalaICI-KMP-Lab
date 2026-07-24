@@ -25,11 +25,13 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,8 +54,11 @@ import br.com.leorvergani.escalaici.model.LabDateTime
 import br.com.leorvergani.escalaici.model.NotificationSettings
 import br.com.leorvergani.escalaici.model.TemporalState
 import br.com.leorvergani.escalaici.model.relevantShift
+import br.com.leorvergani.escalaici.model.ScheduleChangeRequest
 import br.com.leorvergani.escalaici.model.ScheduleSummary
 import br.com.leorvergani.escalaici.model.ShiftDay
+import br.com.leorvergani.escalaici.model.label
+import br.com.leorvergani.escalaici.model.statusTyped
 import br.com.leorvergani.escalaici.ui.components.HeroCard
 import br.com.leorvergani.escalaici.ui.components.LabCard
 import br.com.leorvergani.escalaici.ui.components.LabPremiumHeader
@@ -67,7 +72,9 @@ internal fun TodayTab(
     now: LabDateTime,
     notificationSettings: NotificationSettings,
     onOpenPlantao: () -> Unit,
-    onImportClick: () -> Unit
+    onImportClick: () -> Unit,
+    changeRequests: List<ScheduleChangeRequest> = emptyList(),
+    onOpenSwap: () -> Unit = {}
 ) {
     val next = summary.nextShift(today)
     LazyColumn(
@@ -86,6 +93,13 @@ internal fun TodayTab(
         }
         item {
             EventsCard(summary = summary, today = today)
+        }
+        item {
+            ChangeRequestsCard(
+                currentMemberId = summary.member.id,
+                changeRequests = changeRequests,
+                onOpenSwap = onOpenSwap
+            )
         }
         item {
             PauseCard(summary = summary, now = now, notificationSettings = notificationSettings)
@@ -287,6 +301,43 @@ private fun EventLine(icon: ImageVector, text: String, color: Color) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
         Text(text, color = color, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Black)
+    }
+}
+
+/** Singular/plural do contador do card "Solicitações de troca" - testável isoladamente. */
+internal fun pendingChangeRequestsCountLabel(count: Int): String =
+    if (count == 1) "1 solicitação pendente" else "$count solicitações pendentes"
+
+/**
+ * Card "Solicitações de troca" (FASE 14J, spec 67 seção 6.1) - consome a mesma
+ * fonte/seletor que a tela completa (`ShiftSwapScreen`/`pendingChangeRequestsRelevantTo`),
+ * nunca um contador paralelo. Oculto quando não há pendências relevantes ao
+ * usuário (reduz ruído visual); a lista completa (pendente ou não) continua
+ * acessível via "Ver solicitações" mesmo quando este card está oculto.
+ */
+@Composable
+private fun ChangeRequestsCard(
+    currentMemberId: String,
+    changeRequests: List<ScheduleChangeRequest>,
+    onOpenSwap: () -> Unit
+) {
+    val pending = pendingChangeRequestsRelevantTo(currentMemberId, changeRequests)
+    if (pending.isEmpty()) return
+    val mostRecent = pending.maxByOrNull { it.createdAt } ?: return
+    val requesterLabel = if (mostRecent.memberId == currentMemberId) "Você" else mostRecent.memberId
+
+    LabCard(
+        title = "Solicitações de troca",
+        badge = pendingChangeRequestsCountLabel(pending.size),
+        icon = Icons.Default.SwapHoriz,
+        borderColor = LabColors.primary.copy(alpha = 0.42f)
+    ) {
+        Text(requesterLabel, color = LabColors.onSurface, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text(mostRecent.reason, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(mostRecent.statusTyped.label(), color = LabColors.tertiary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+        TextButton(onClick = onOpenSwap) {
+            Text("Ver solicitações", color = LabColors.primary)
+        }
     }
 }
 
