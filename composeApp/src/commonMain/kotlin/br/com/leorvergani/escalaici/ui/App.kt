@@ -135,6 +135,18 @@ internal enum class EntryContext {
 }
 
 /**
+ * Fotografia da sessão administrativa real, guardada enquanto o usuário visita o
+ * Ambiente Demo a partir de Perfil (FASE 14J, spec 67 seção 4) - permite voltar
+ * exatamente para onde estava, sem precisar reautenticar via MSAL.
+ */
+private data class RealSessionSnapshot(
+    val sessionMemberId: String,
+    val summary: ScheduleSummary,
+    val organizationResolutionResult: OrganizationResolutionResult?,
+    val corporateDataSourceState: DemoDataSourceState?
+)
+
+/**
  * Três estados explícitos de inicialização da sessão (FASE 14J, spec 67 seção 2.1) -
  * evita mostrar `LoginGateScreen` antes da restauração silenciosa do MSAL terminar
  * (o "flash" reportado pelo usuário). `RESTORING` só se aplica quando a sessão já
@@ -201,6 +213,8 @@ fun EscalaIciLabApp(
         var demoPersonaLoading by remember { mutableStateOf(false) }
         var requestedEntryContext by remember { mutableStateOf<EntryContext?>(null) }
         var gateErrorMessage by remember { mutableStateOf<String?>(null) }
+        var demoAccessGranted by remember { mutableStateOf(false) }
+        var savedRealSession by remember { mutableStateOf<RealSessionSnapshot?>(null) }
         val sessionBootstrapPhase = computeSessionBootstrapPhase(
             hasConfiguredCorporateAuth = corporateAuthRepository?.configurationState == CorporateAuthConfigurationState.CONFIGURED,
             corporateAuthState = corporateAuthState,
@@ -224,6 +238,20 @@ fun EscalaIciLabApp(
         LaunchedEffect(corporateAuthState) {
             if (corporateAuthState is CorporateAuthState.Authenticated && requestedEntryContext == null) {
                 requestedEntryContext = EntryContext.LOGIN
+            }
+        }
+
+        // Visibilidade da ação "Ambiente Demo" (FASE 14J, spec 67 seção 4): só decide
+        // se o card aparece em Perfil - a entrada real no Demo (EntryContext.DEMO,
+        // LaunchedEffect acima) sempre reconfirma a autorização de novo antes de
+        // conceder acesso, então esta variável nunca é a autoridade final, só a UI.
+        // Recalculada a cada sessão autenticada (nunca cacheada indefinidamente).
+        LaunchedEffect(corporateAuthState) {
+            val state = corporateAuthState
+            demoAccessGranted = if (state is CorporateAuthState.Authenticated && isDemoAuthorized != null) {
+                isDemoAuthorized.invoke(state.identity)
+            } else {
+                false
             }
         }
 
@@ -482,6 +510,39 @@ fun EscalaIciLabApp(
             }
         }
 
+        // Logout real (FASE 14J, spec 67 seção 2.4): desconecta a sessão MSAL de
+        // verdade (além do mock authRepository já existente), limpa todo o estado
+        // privado em memória e as caches locais globais (schedule/oncall) - como
+        // essas caches são slot único global (não particionadas por usuário),
+        // limpar tudo no logout é o que impede o próximo login de herdar dado do
+        // usuário anterior. Cancela também os alarmes locais já agendados.
+        fun performLogout() {
+            scope.launch {
+                authRepository.signOut()
+                corporateAuthRepository?.signOut()
+                localDataCache.clearSchedule()
+                localDataCache.clearOnCall()
+                firebaseCache?.clearSchedule()
+                firebaseCache?.clearOnCall()
+                notificationSettingsStore.save(NotificationSettings())
+                localNotificationRuntime.reconcile(emptyList())
+            }
+            sessionMemberId = null
+            organizationResolutionResult = null
+            corporateDataSourceState = null
+            demoWorkspaceSession = null
+            selectedDemoPersona = null
+            demoPersonaResolutionResult = null
+            requestedEntryContext = null
+            gateErrorMessage = null
+            appNotificationSettings = NotificationSettings()
+            summary = mockScheduleSummary()
+            firebaseOnCall = null
+            firebaseOnCallGroups = emptyList()
+            importPreview = null
+            importedWorkbook = null
+        }
+
         fun resetMock() {
             localDataCache.clearSchedule()
             summary = mockScheduleSummary()
@@ -495,7 +556,31 @@ fun EscalaIciLabApp(
         }
 
         val activeDemoWorkspaceSession = demoWorkspaceSession
+
+        // Volta exatamente para a sessão administrativa real que estava ativa antes
+        // de visitar o Ambiente Demo a partir de Perfil (FASE 14J, spec 67 seção 4) -
+        // não reautentica via MSAL, só restaura o estado já resolvido.
+        fun returnToAdministrativeSession() {
+            val saved = savedRealSession ?: return
+            sessionMemberId = saved.sessionMemberId
+            summary = saved.summary
+            organizationResolutionResult = saved.organizationResolutionResult
+            corporateDataSourceState = saved.corporateDataSourceState
+            savedRealSession = null
+            demoWorkspaceSession = null
+            selectedDemoPersona = null
+            demoPersonaResolutionResult = null
+            gateErrorMessage = null
+            requestedEntryContext = EntryContext.LOGIN
+            activeTab = LabTab.Hoje
+            stackedScreen = null
+        }
+
         fun returnToEntryGateFromDemoWorkspace() {
+            if (savedRealSession != null) {
+                returnToAdministrativeSession()
+                return
+            }
             demoWorkspaceSession = null
             selectedDemoPersona = null
             demoPersonaResolutionResult = null
@@ -533,13 +618,16 @@ fun EscalaIciLabApp(
 
         if (sessionBootstrapPhase != SessionBootstrapPhase.READY) {
             SessionBootstrapScreen()
+        } else if (savedRealSession != null && sessionMemberId == null && activeDemoWorkspaceSession == null && selectedDemoPersona == null) {
+            // Ambiente Demo acionado a partir de Perfil (spec 67 seção 4): aguarda o
+            // workspace Demo carregar sem piscar a tela de login de volta.
+            SessionBootstrapScreen()
         } else if (sessionMemberId == null && activeDemoWorkspaceSession == null) {
             LoginGateScreen(
                 supportsCorporateAuth = platformCapabilities.supportsCorporateAuth,
                 corporateAuthRepository = corporateAuthRepository,
                 errorMessage = gateErrorMessage,
-                onLogin = { requestedEntryContext = EntryContext.LOGIN },
-                onDemo = { requestedEntryContext = EntryContext.DEMO }
+                onLogin = { requestedEntryContext = EntryContext.LOGIN }
             )
         } else if (sessionMemberId == null && activeDemoWorkspaceSession != null) {
             DemoWorkspaceOverviewScreen(
@@ -680,12 +768,25 @@ fun EscalaIciLabApp(
                                             if (requestedEntryContext == EntryContext.DEMO && selectedDemoPersona != null) {
                                                 returnToDemoWorkspaceFromPersona()
                                             } else {
-                                                scope.launch { authRepository.signOut() }
-                                                sessionMemberId = null
+                                                performLogout()
                                             }
                                         },
                                         onOpenPlantao = onOpenPlantao,
-                                        onOpenSwap = { stackedScreen = StackedScreen.SWAP }
+                                        onOpenSwap = { stackedScreen = StackedScreen.SWAP },
+                                        demoAccessGranted = demoAccessGranted,
+                                        onOpenDemo = {
+                                            val currentMemberId = sessionMemberId
+                                            if (currentMemberId != null) {
+                                                savedRealSession = RealSessionSnapshot(
+                                                    sessionMemberId = currentMemberId,
+                                                    summary = summary,
+                                                    organizationResolutionResult = organizationResolutionResult,
+                                                    corporateDataSourceState = corporateDataSourceState
+                                                )
+                                                sessionMemberId = null
+                                                requestedEntryContext = EntryContext.DEMO
+                                            }
+                                        }
                                     )
                                 }
                                 }

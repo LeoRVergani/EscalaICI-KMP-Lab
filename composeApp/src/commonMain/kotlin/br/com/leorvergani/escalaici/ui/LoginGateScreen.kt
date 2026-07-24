@@ -37,15 +37,17 @@ import br.com.leorvergani.escalaici.ui.theme.LabShapes
 import kotlinx.coroutines.launch
 
 /**
- * Entrada do MVP: LOGIN corporativo e DEMO protegido pela mesma sessão MSAL.
+ * Tela desautenticada (FASE 14J, spec 67 seção 3): mostra somente um botão -
+ * "Entrar com a conta corporativa". O acesso ao Ambiente Demo deixou de
+ * aparecer aqui - vira uma ação secundária em Perfil, visível só depois de
+ * autenticado e só para quem tiver autorização (ver `ProfileTab`/`App.kt`).
  */
 @Composable
 internal fun LoginGateScreen(
     supportsCorporateAuth: Boolean,
     corporateAuthRepository: CorporateAuthRepository?,
     errorMessage: String?,
-    onLogin: () -> Unit,
-    onDemo: () -> Unit
+    onLogin: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val host = rememberCorporateAuthHost()
@@ -105,18 +107,10 @@ internal fun LoginGateScreen(
                         Text("Login: ${corporateAuthState.identity.username}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                     }
                     EntryButton(
-                        text = "MINHA ESCALA",
+                        text = "Entrar com a conta corporativa",
                         loading = isAuthenticating,
                         enabled = !isAuthenticating,
                         onClick = { signInCorporate(onLogin) }
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    EntryButton(
-                        text = "AMBIENTE DEMO",
-                        loading = false,
-                        enabled = !isAuthenticating,
-                        tertiary = true,
-                        onClick = { signInCorporate(onDemo) }
                     )
                     (corporateAuthState as? CorporateAuthState.Failed)?.let { failed ->
                         Spacer(Modifier.height(12.dp))

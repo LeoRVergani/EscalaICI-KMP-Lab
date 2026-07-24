@@ -98,7 +98,9 @@ internal fun ProfileTab(
     onReconcileNotifications: suspend (List<ScheduledNotification>) -> LocalNotificationResult,
     onLogout: () -> Unit,
     onOpenPlantao: () -> Unit,
-    onOpenSwap: () -> Unit
+    onOpenSwap: () -> Unit,
+    demoAccessGranted: Boolean = false,
+    onOpenDemo: () -> Unit = {}
 ) {
     val notificationScope = rememberCoroutineScope()
     val corporateAuthState = corporateAuthRepository?.state?.collectAsState()?.value
@@ -176,7 +178,7 @@ internal fun ProfileTab(
                 )
                 Text(summary.member.email, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = onLogout) {
-                    Text("Sair (login de teste)", color = LabColors.primary)
+                    Text("Sair", color = LabColors.primary)
                 }
             }
         }
@@ -223,6 +225,20 @@ internal fun ProfileTab(
                     )
                     identityDecision.demoModeExplanation?.let { message ->
                         Text(message, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+        if (demoAccessGranted) {
+            item {
+                LabCard(title = "Acesso administrativo", icon = Icons.Default.AdminPanelSettings, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
+                    Text(
+                        "Esta conta corporativa tem acesso ao Ambiente Demo.",
+                        color = LabColors.onSurfaceMuted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    TextButton(onClick = onOpenDemo) {
+                        Text("Ambiente Demo", color = LabColors.primary)
                     }
                 }
             }
