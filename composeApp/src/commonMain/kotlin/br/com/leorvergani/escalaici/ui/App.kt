@@ -313,17 +313,19 @@ fun EscalaIciLabApp(
                                     loadPublishedScheduleSummaryAvailable = loadPublishedScheduleSummary != null,
                                     publishedSummary = publishedSummary
                                 )
-                                gateErrorMessage = decision.errorMessage
-                                if (decision.summary != null) {
-                                    sessionMemberId = result.context.memberId
-                                    summary = decision.summary
-                                    scheduleChangeRequests = loadScheduleChangeRequests?.invoke(
+                                // Ver KDoc de decideLoginEntry: identidade resolvida sempre
+                                // concede entrada, mesmo sem escala oficial publicada ainda.
+                                val entry = decideLoginEntry(result.context, summary, decision)
+                                gateErrorMessage = null
+                                sessionMemberId = entry.sessionMemberId
+                                summary = entry.summary
+                                scheduleChangeRequests = if (entry.shouldLoadChangeRequests) {
+                                    loadScheduleChangeRequests?.invoke(
                                         result.context.workspaceId,
                                         result.context.memberId
                                     ) ?: emptyList()
                                 } else {
-                                    sessionMemberId = null
-                                    scheduleChangeRequests = emptyList()
+                                    emptyList()
                                 }
                             }
                             else -> {

@@ -39,6 +39,35 @@ class ResolvedScheduleSummaryDecisionTest {
         assertEquals("team-demo-soc", summary.team.teamId)
     }
 
+    @Test
+    fun decideLoginEntryGrantsSessionEvenWithoutPublishedSummary() {
+        // Guarda de regressão: identidade resolvida NUNCA pode ficar sem sessionMemberId,
+        // mesmo quando a escala oficial ainda não foi publicada (decision.summary null).
+        val context = resolvedOperationalContext()
+        val decision = ResolvedScheduleSummaryDecision(summary = null, errorMessage = ActiveScheduleMissingMessage)
+
+        val entry = decideLoginEntry(context, mockScheduleSummary(), decision)
+
+        assertEquals(context.memberId, entry.sessionMemberId)
+        assertEquals(false, entry.shouldLoadChangeRequests)
+        assertEquals(context.memberId, entry.summary.member.id)
+        assertEquals(context.memberDisplayName, entry.summary.member.displayName)
+        assertEquals(context.primaryTeamId, entry.summary.team.teamId)
+    }
+
+    @Test
+    fun decideLoginEntryUsesPublishedSummaryWhenAvailable() {
+        val context = resolvedOperationalContext()
+        val published = mockScheduleSummary()
+        val decision = ResolvedScheduleSummaryDecision(summary = published, errorMessage = null)
+
+        val entry = decideLoginEntry(context, mockScheduleSummary(), decision)
+
+        assertEquals(context.memberId, entry.sessionMemberId)
+        assertEquals(true, entry.shouldLoadChangeRequests)
+        assertEquals(published, entry.summary)
+    }
+
     private fun resolvedOperationalContext() = ResolvedOrganizationContext(
         workspaceId = "demo-v1",
         identitySource = IdentitySource.DEMO_PERSONA,
