@@ -125,6 +125,15 @@ class MainActivity : ComponentActivity() {
                         else -> emptyList()
                     }
                 },
+                // FASE 14J.1 (spec 68): reaproveita o mesmo MemberRepository.getMembersByTeam()
+                // já usado pelo resolver de identidade acima - nunca uma segunda fonte paralela.
+                loadTeamRoster = { workspaceId, teamId ->
+                    when (workspaceId) {
+                        OrganizationWorkspace.CORPORATE_WORKSPACE_ID -> RemoteFirstDemoMemberRepository(corporatePublicationRepository).getMembersByTeam(teamId)
+                        OrganizationWorkspace.DEMO_WORKSPACE_ID -> RemoteFirstDemoMemberRepository(demoPublicationRepository).getMembersByTeam(teamId)
+                        else -> emptyList()
+                    }
+                },
                 platformCapabilities = PlatformCapabilities(
                     supportsAppUpdate = true,
                     supportsBackgroundScheduledNotifications = true,

@@ -100,7 +100,17 @@ internal fun ProfileTab(
     onOpenPlantao: () -> Unit,
     onOpenSwap: () -> Unit,
     demoAccessGranted: Boolean = false,
-    onOpenDemo: () -> Unit = {}
+    onOpenDemo: () -> Unit = {},
+    // FASE 14J.1 (spec 68): "Visualizar como colaborador" - `summary` acima já pode ser o
+    // resumo do colaborador visualizado (efetivo), mas o plano de notificação NUNCA pode usar os
+    // turnos da persona - `notificationSourceSummary` é sempre o resumo REAL do administrador
+    // autenticado, por padrão igual a `summary` (comportamento antigo preservado quando não há
+    // visualização ativa).
+    notificationSourceSummary: ScheduleSummary = summary,
+    viewAsAuthorized: Boolean = false,
+    isViewingOtherMember: Boolean = false,
+    onOpenViewAsPicker: () -> Unit = {},
+    onExitViewAs: () -> Unit = {}
 ) {
     val notificationScope = rememberCoroutineScope()
     val corporateAuthState = corporateAuthRepository?.state?.collectAsState()?.value
@@ -128,15 +138,15 @@ internal fun ProfileTab(
             requiresNotificationPermission = supportsSystemNotifications
         )
     }
-    val notificationPlan = remember(summary.days, notificationSettings, now) {
-        buildNotificationPlan(summary.days, notificationSettings, now)
+    val notificationPlan = remember(notificationSourceSummary.days, notificationSettings, now) {
+        buildNotificationPlan(notificationSourceSummary.days, notificationSettings, now)
     }
     val updateNotificationSettings: (NotificationSettings) -> Unit = { next ->
         notificationSettings = next
         notificationScope.launch {
             notificationSettingsStore.save(next)
             onNotificationSettingsSaved(next)
-            val result = onReconcileNotifications(buildNotificationPlan(summary.days, next, now))
+            val result = onReconcileNotifications(buildNotificationPlan(notificationSourceSummary.days, next, now))
             rescheduleFeedback = result.feedbackMessage()
         }
     }
@@ -239,6 +249,28 @@ internal fun ProfileTab(
                     )
                     TextButton(onClick = onOpenDemo) {
                         Text("Ambiente Demo", color = LabColors.primary)
+                    }
+                    if (viewAsAuthorized) {
+                        if (isViewingOtherMember) {
+                            Text(
+                                "Visualizando como: ${summary.member.displayName}",
+                                color = LabColors.tertiary,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            TextButton(onClick = onExitViewAs) {
+                                Text("Encerrar visualização", color = LabColors.primary)
+                            }
+                        } else {
+                            Text(
+                                "Visualize o app com os dados de outro colaborador da sua equipe.",
+                                color = LabColors.onSurfaceMuted,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            TextButton(onClick = onOpenViewAsPicker) {
+                                Text("Visualizar como colaborador", color = LabColors.primary)
+                            }
+                        }
                     }
                 }
             }

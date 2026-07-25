@@ -63,6 +63,7 @@ import br.com.leorvergani.escalaici.identity.OrganizationIdentityResolver
 import br.com.leorvergani.escalaici.identity.OrganizationResolutionResult
 import br.com.leorvergani.escalaici.model.ImportedWorkbook
 import br.com.leorvergani.escalaici.model.LabWorkbookParser
+import br.com.leorvergani.escalaici.model.Member
 import br.com.leorvergani.escalaici.model.OnCallGroup
 import br.com.leorvergani.escalaici.model.ScheduleChangeRequest
 import br.com.leorvergani.escalaici.model.ScheduleImportPreview
@@ -129,7 +130,8 @@ private enum class LabTab(
 /** Telas fora do bottom nav, empilhadas sobre a aba ativa (igual ao app real). */
 private enum class StackedScreen(val title: String) {
     PLANTAO("Plantão"),
-    SWAP("Trocas de escala")
+    SWAP("Trocas de escala"),
+    ADMIN_VIEW_AS("Visualizar como colaborador")
 }
 
 internal enum class EntryContext {
@@ -221,7 +223,11 @@ fun EscalaIciLabApp(
     isDemoAuthorized: (suspend (CorporateIdentity) -> Boolean)? = null,
     loadDemoWorkspaceOverview: (suspend () -> DemoWorkspaceOverview)? = null,
     loadPublishedScheduleSummary: (suspend (String, String) -> ScheduleSummary?)? = null,
-    loadScheduleChangeRequests: (suspend (String, String) -> List<ScheduleChangeRequest>)? = null
+    loadScheduleChangeRequests: (suspend (String, String) -> List<ScheduleChangeRequest>)? = null,
+    // FASE 14J.1 (spec 68): roster da equipe atual para "Visualizar como colaborador" -
+    // reaproveita o mesmo MemberRepository.getMembersByTeam() ja usado pelo resolver de
+    // identidade, nunca uma segunda fonte de dados paralela.
+    loadTeamRoster: (suspend (workspaceId: String, teamId: String) -> List<Member>)? = null
 ) {
     MaterialTheme(colorScheme = LabColorScheme, typography = LabTypography) {
         val authRepository = remember { InMemoryAuthSessionRepository() }
@@ -238,6 +244,14 @@ fun EscalaIciLabApp(
         var gateErrorMessage by remember { mutableStateOf<String?>(null) }
         var demoAccessGranted by remember { mutableStateOf(false) }
         var savedRealSession by remember { mutableStateOf<RealSessionSnapshot?>(null) }
+        // FASE 14J.1 (spec 68): "Visualizar como colaborador" - viewedMemberId NUNCA substitui
+        // sessionMemberId (a identidade autenticada real); e so um contexto de apresentacao.
+        // Ver ViewAsIdentityContext/AdminViewAsMember.kt para o modelo completo.
+        var viewedMemberId by remember { mutableStateOf<String?>(null) }
+        var viewedSummary by remember { mutableStateOf<ScheduleSummary?>(null) }
+        var viewAsPublicationContextAtSelection by remember { mutableStateOf<ViewAsPublicationContext?>(null) }
+        var viewAsCollaboratorOptions by remember { mutableStateOf<List<ViewableCollaborator>>(emptyList()) }
+        var viewAsSearchQuery by remember { mutableStateOf("") }
         val sessionBootstrapPhase = computeSessionBootstrapPhase(
             hasConfiguredCorporateAuth = corporateAuthRepository?.configurationState == CorporateAuthConfigurationState.CONFIGURED,
             corporateAuthState = corporateAuthState,
@@ -283,6 +297,16 @@ fun EscalaIciLabApp(
         }
         var stackedScreen by remember { mutableStateOf<StackedScreen?>(null) }
         var summary by remember { mutableStateOf(mockScheduleSummary()) }
+        // FASE 14J.1 (spec 68): fonte de apresentacao unica para todas as abas - nunca "summary"
+        // direto quando existir uma persona sendo visualizada. `summary` continua sendo sempre o
+        // resumo REAL do usuario autenticado (nunca sobrescrito pela visualizacao).
+        val effectiveSummary = viewedSummary ?: summary
+        // FASE 14J.1 (spec 68): nunca oferecida dentro do Ambiente Demo - a autorizacao/roster
+        // usam organizationResolutionResult (identidade REAL), que fica obsoleto assim que uma
+        // persona Demo é selecionada; expor o seletor ali misturaria Demo e Oficial.
+        val viewAsMemberAuthorized = isViewAsMemberAuthorized(demoAccessGranted) &&
+            selectedDemoPersona == null &&
+            requestedEntryContext != EntryContext.DEMO
         var scheduleChangeRequests by remember { mutableStateOf<List<ScheduleChangeRequest>>(emptyList()) }
         var cacheWarning by remember { mutableStateOf<String?>(null) }
         var firebaseMetadata by remember { mutableStateOf<SourceMetadata?>(null) }
@@ -413,6 +437,76 @@ fun EscalaIciLabApp(
             // apagar a persona escolhida - so uma acao explicita do usuario faria
             // isso (nao implementada nesta fase; hoje a selecao so muda quando o
             // usuario toca em outro personagem).
+        }
+
+        // FASE 14J.1 (spec 68): busca o ScheduleSummary do colaborador visualizado sempre que a
+        // selecao muda OU o contexto de publicacao muda (revisao/workspace/equipe) - um unico
+        // efeito cobre selecao inicial, troca de contexto (checagem rapida local via
+        // shouldClearViewAsOnPublicationChange) e "membro deixou de existir na publicacao"
+        // (fetch retorna null -> encerra a visualizacao). Nunca toca em sessionMemberId/summary
+        // reais - so em viewedMemberId/viewedSummary.
+        LaunchedEffect(viewedMemberId, corporateDataSourceState?.publicationRevision, organizationResolutionResult) {
+            val memberId = viewedMemberId
+            if (memberId == null) {
+                viewedSummary = null
+                viewAsPublicationContextAtSelection = null
+                return@LaunchedEffect
+            }
+            val result = organizationResolutionResult
+            if (result !is OrganizationResolutionResult.Resolved) {
+                // Identidade real deixou de resolver (ex.: logout) - encerra a visualizacao tambem.
+                viewedMemberId = null
+                viewedSummary = null
+                viewAsPublicationContextAtSelection = null
+                return@LaunchedEffect
+            }
+            val currentContext = ViewAsPublicationContext(
+                workspaceId = result.context.workspaceId,
+                teamId = result.context.primaryTeamId,
+                publicationRevision = corporateDataSourceState?.publicationRevision
+            )
+            val recordedContext = viewAsPublicationContextAtSelection
+            if (recordedContext != null && shouldClearViewAsOnPublicationChange(memberId, recordedContext, currentContext)) {
+                viewedMemberId = null
+                viewedSummary = null
+                viewAsPublicationContextAtSelection = null
+                return@LaunchedEffect
+            }
+            val fetched = runCatchingCancellable {
+                loadPublishedScheduleSummary?.invoke(result.context.workspaceId, memberId)
+            }.getOrNull()
+            if (fetched == null) {
+                viewedMemberId = null
+                viewedSummary = null
+                viewAsPublicationContextAtSelection = null
+            } else {
+                viewedSummary = fetched
+                if (recordedContext == null) viewAsPublicationContextAtSelection = currentContext
+            }
+        }
+
+        // FASE 14J.1 (spec 68): roster da equipe atual para o seletor "Visualizar como
+        // colaborador" - busca só quando a tela do seletor está aberta (StackedScreen.ADMIN_VIEW_AS),
+        // sempre da equipe/workspace do PRÓPRIO administrador (summary, não effectiveSummary -
+        // nunca aninha visualização dentro de visualização) e nunca inclui o próprio administrador.
+        LaunchedEffect(stackedScreen, organizationResolutionResult) {
+            if (stackedScreen != StackedScreen.ADMIN_VIEW_AS) return@LaunchedEffect
+            val result = organizationResolutionResult
+            val authenticatedId = sessionMemberId
+            if (result !is OrganizationResolutionResult.Resolved || authenticatedId == null) {
+                viewAsCollaboratorOptions = emptyList()
+                return@LaunchedEffect
+            }
+            val teamId = result.context.primaryTeamId ?: summary.team.teamId
+            val members = runCatchingCancellable {
+                loadTeamRoster?.invoke(result.context.workspaceId, teamId)
+            }.getOrNull().orEmpty()
+            viewAsCollaboratorOptions = collaboratorOptionsForViewAs(
+                members = members,
+                teamId = teamId,
+                teamName = summary.team.name,
+                excludeMemberId = authenticatedId
+            )
         }
 
         LaunchedEffect(selectedDemoPersona) {
@@ -607,8 +701,25 @@ fun EscalaIciLabApp(
                 firebaseOnCallGroups = emptyList()
                 importPreview = null
                 importedWorkbook = null
+                // FASE 14J.1 (spec 68): logout encerra a conta autenticada - nunca deve restaurar
+                // a persona visualizada num próximo login (nem persistida, nem em memória).
+                viewedMemberId = null
+                viewedSummary = null
+                viewAsPublicationContextAtSelection = null
+                viewAsCollaboratorOptions = emptyList()
+                viewAsSearchQuery = ""
                 logResolutionTrace("logout done")
             }
+        }
+
+        // FASE 14J.1 (spec 68): encerra a visualização administrativa e volta ao membro
+        // autenticado real - nunca mexe em sessionMemberId/summary (a conta autenticada nunca
+        // sai do ar por causa disso).
+        fun exitViewAsMember() {
+            viewedMemberId = null
+            viewedSummary = null
+            viewAsPublicationContextAtSelection = null
+            viewAsSearchQuery = ""
         }
 
         fun resetMock() {
@@ -733,28 +844,80 @@ fun EscalaIciLabApp(
                                 .fillMaxWidth()
                         ) {
                             when (stackedScreen) {
-                                StackedScreen.PLANTAO -> PlantaoScreen(
-                                    onBack = { stackedScreen = null },
-                                    today = today,
-                                    now = now,
-                                    localDataCache = localDataCache,
-                                    firebaseData = firebaseOnCall,
-                                    onCallGroups = firebaseOnCallGroups,
-                                    teamId = summary.team.teamId,
-                                    onRetryFirebase = ::refreshFirebase,
-                                    onGroupSelected = { group -> refreshFirebaseOnCall(group.id) }
-                                )
-                                StackedScreen.SWAP -> ShiftSwapScreen(
-                                    currentMemberId = summary.member.id,
-                                    changeRequests = scheduleChangeRequests,
+                                StackedScreen.PLANTAO -> Column(modifier = Modifier.fillMaxSize()) {
+                                    if (viewedMemberId != null) {
+                                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                            ViewAsBanner(
+                                                authenticatedDisplayName = summary.member.displayName,
+                                                viewedDisplayName = effectiveSummary.member.displayName,
+                                                onExit = ::exitViewAsMember
+                                            )
+                                        }
+                                    }
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        PlantaoScreen(
+                                            onBack = { stackedScreen = null },
+                                            today = today,
+                                            now = now,
+                                            localDataCache = localDataCache,
+                                            firebaseData = firebaseOnCall,
+                                            onCallGroups = firebaseOnCallGroups,
+                                            teamId = effectiveSummary.team.teamId,
+                                            onRetryFirebase = ::refreshFirebase,
+                                            onGroupSelected = { group -> refreshFirebaseOnCall(group.id) }
+                                        )
+                                    }
+                                }
+                                StackedScreen.SWAP -> Column(modifier = Modifier.fillMaxSize()) {
+                                    if (viewedMemberId != null) {
+                                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                            ViewAsBanner(
+                                                authenticatedDisplayName = summary.member.displayName,
+                                                viewedDisplayName = effectiveSummary.member.displayName,
+                                                onExit = ::exitViewAsMember
+                                            )
+                                        }
+                                    }
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        ShiftSwapScreen(
+                                            currentMemberId = effectiveSummary.member.id,
+                                            changeRequests = scheduleChangeRequests,
+                                            onBack = { stackedScreen = null }
+                                        )
+                                    }
+                                }
+                                StackedScreen.ADMIN_VIEW_AS -> AdminViewAsMemberScreen(
+                                    collaborators = filterViewAsCollaborators(viewAsCollaboratorOptions, viewAsSearchQuery),
+                                    searchQuery = viewAsSearchQuery,
+                                    onSearchQueryChange = { viewAsSearchQuery = it },
+                                    teamName = summary.team.name,
+                                    periodLabel = summary.periodLabel,
+                                    onSelect = { collaborator ->
+                                        viewedMemberId = collaborator.memberId
+                                        viewAsSearchQuery = ""
+                                        stackedScreen = null
+                                    },
                                     onBack = { stackedScreen = null }
                                 )
                                 null -> {
                                 Column(modifier = Modifier.fillMaxSize()) {
+                                // FASE 14J.1 (spec 68): banner obrigatório em Hoje/Escala/Alertas/
+                                // Perfil (Plantão e Trocas ganham o banner no branch delas acima,
+                                // já que ficam fora deste Column). Nunca aparece em Importar -
+                                // ação sensível, sempre usa a escala real do usuário autenticado.
+                                if (viewedMemberId != null && activeTab != LabTab.Importar) {
+                                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                        ViewAsBanner(
+                                            authenticatedDisplayName = summary.member.displayName,
+                                            viewedDisplayName = effectiveSummary.member.displayName,
+                                            onExit = ::exitViewAsMember
+                                        )
+                                    }
+                                }
                                 Box(modifier = Modifier.weight(1f)) {
                                 when (activeTab) {
                                     LabTab.Hoje -> TodayTab(
-                                        summary = summary,
+                                        summary = effectiveSummary,
                                         today = today,
                                         now = now,
                                         notificationSettings = appNotificationSettings,
@@ -764,7 +927,7 @@ fun EscalaIciLabApp(
                                         onOpenSwap = { stackedScreen = StackedScreen.SWAP }
                                     )
                                     LabTab.Escala -> ScheduleTab(
-                                        summary = summary,
+                                        summary = effectiveSummary,
                                         today = today,
                                         initialSelectedDate = initialNotificationDate,
                                         onOpenPlantao = onOpenPlantao
@@ -816,9 +979,9 @@ fun EscalaIciLabApp(
                                         onResetMock = ::resetMock,
                                         onOpenPlantao = onOpenPlantao
                                     )
-                                    LabTab.Alertas -> AlertsTab(summary = summary, onOpenPlantao = onOpenPlantao)
+                                    LabTab.Alertas -> AlertsTab(summary = effectiveSummary, onOpenPlantao = onOpenPlantao)
                                     LabTab.Perfil -> ProfileTab(
-                                        summary = summary,
+                                        summary = effectiveSummary,
                                         now = now,
                                         supportsAppUpdate = platformCapabilities.supportsAppUpdate,
                                         supportsWebNotifications = platformCapabilities.supportsWebNotifications,
@@ -859,8 +1022,17 @@ fun EscalaIciLabApp(
                                                 sessionMemberId = null
                                                 scheduleChangeRequests = emptyList()
                                                 requestedEntryContext = EntryContext.DEMO
+                                                // FASE 14J.1 (spec 68): Demo e Oficial nunca se
+                                                // misturam - uma persona visualizada do workspace
+                                                // oficial nao pode sobreviver a entrada no Demo.
+                                                exitViewAsMember()
                                             }
-                                        }
+                                        },
+                                        notificationSourceSummary = summary,
+                                        viewAsAuthorized = viewAsMemberAuthorized,
+                                        isViewingOtherMember = viewedMemberId != null,
+                                        onOpenViewAsPicker = { stackedScreen = StackedScreen.ADMIN_VIEW_AS },
+                                        onExitViewAs = ::exitViewAsMember
                                     )
                                 }
                                 }
