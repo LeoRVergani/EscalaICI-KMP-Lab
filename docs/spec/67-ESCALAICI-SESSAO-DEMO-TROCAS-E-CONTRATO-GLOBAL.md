@@ -548,6 +548,57 @@ Wasm/Chromium (era 276/269 antes deste achado), 0 falhas.
 - Nenhuma publicação real, nenhuma escrita no Firestore, nenhuma notificação real enviada,
   nenhuma aprovação/recusa persistida nesta fase.
 
+## 8c. Checkpoint I — bugfix: card Hoje desatualizado e login preso após logout
+
+Dois bugs reais reportados após teste manual em produção (2026-07-24), depois dos Checkpoints H
+concluídos: (A) o card Hoje às vezes não atualizava com os dados corretos; (B) login funcionava
+uma vez, mas depois de sair do app ou fazer logout, não era possível autenticar de novo — a mesma
+mensagem de erro reaparecia.
+
+Antes de investigar, `DemoPublicationResolver.loadOneAttempt()` já tinha ganhado diagnóstico
+seguro (Checkpoint H). Faltava instrumentar o resto da máquina de estados (sessão/identidade/
+publicação) para reproduzir a sequência real sem depender só de leitura de código. Novo
+`logResolutionTrace()` (mesmo módulo `diagnostics`, expect/actual Android/Web) registra transições
+de `corporateAuthState`/`requestedEntryContext`, origem/revisão da publicação, contagem de dias/
+`scheduleChangeRequests` e resultado de cada `restoreSession()`/`signInInteractive()`/`signOut()` —
+nunca token, header `Authorization`, e-mail completo ou ID completo.
+
+Causa raiz comum do bug A: `App.kt` usava `runCatching { ... }` em dois pontos dentro do
+`LaunchedEffect(corporateAuthState, requestedEntryContext)` (leitura de
+`corporateDataSourceStateProvider` e de `loadOnCallGroups`). `runCatching` comum captura QUALQUER
+`Throwable`, inclusive `CancellationException` — quando esse `LaunchedEffect` era cancelado no meio
+de uma dessas chamadas (ex.: `corporateAuthState` mudando de novo por causa do refresh silencioso
+de token do MSAL, seção 2.3), a corrotina "logicamente morta" continuava executando e podia
+sobrescrever `sessionMemberId`/`summary` com dados de uma tentativa já obsoleta — o mesmo padrão de
+bug já corrigido no Checkpoint H, só que num ponto diferente do código. Corrigido com uma função
+genérica nova, `runCatchingCancellable()` (`ui/App.kt`): idêntica a `runCatching`, mas sempre
+relança `CancellationException` em vez de convertê-la num resultado de negócio.
+
+Causa raiz do bug B: `performLogout()` zerava `sessionMemberId`/`requestedEntryContext` de forma
+SÍNCRONA enquanto `corporateAuthRepository?.signOut()` ainda rodava assíncrono dentro do mesmo
+`scope.launch`. Isso abria uma janela onde a `LoginGateScreen` já mostrava "Entrar com a conta
+corporativa" mas `corporateAuthState` ainda estava `Authenticated` (stale, porque o `signOut()`
+real ainda não tinha terminado) — se o usuário tocasse o botão nessa janela,
+`signInCorporate()` (`LoginGateScreen.kt`) via o estado como já autenticado e pulava a chamada real
+a `signInInteractive()`: o popup do MSAL nunca abria, e o app ficava parado, preservando qualquer
+`gateErrorMessage` de uma tentativa anterior — exatamente o "login funciona uma vez, depois trava
+com o mesmo erro" relatado. Corrigido movendo todo o reset de estado local para DENTRO do
+`scope.launch`, depois do `signOut()` completar de verdade — elimina a janela de corrida.
+
+Teste de regressão novo (`RunCatchingCancellableTest.kt`):
+`neverSwallowsCancellationException` prova que `runCatchingCancellable` sempre relança
+`CancellationException`, nunca a converte em `Result.failure`.
+
+Validação manual ao vivo no emulador (com o diagnóstico ativo, logs conferidos a cada passo):
+sessão restaurada → Hoje com dado real (revisão 2, 26 dias, 1 `scheduleChangeRequest`) → Perfil →
+logout (log confirma `signOut` completo antes do reset) → login interativo via SSO do MSAL (popup
+real `login.microsoftonline.com`, sem senha por já haver sessão de navegador) → Hoje atualizado
+com os MESMOS dados corretos → logout de novo → terceiro login → Hoje atualizado de novo → fechar o
+app por completo → reabrir → sessão restaurada corretamente. Nenhum erro vermelho indevido em
+nenhum dos três logins; nenhuma linha de diagnóstico apontando cancelamento engolido depois do fix.
+
+285 testes JVM / 278 Wasm/Chromium (era 282/275), 0 falhas.
+
 ## 10. Critérios de aceite desta spec
 
 1. Sessão MSAL restaurada (Android e Web) leva direto a Hoje, sem toque manual, sem tela de login

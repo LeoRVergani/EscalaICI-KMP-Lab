@@ -36,6 +36,23 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   emulador: identidade resolve, usuário entra direto em Hoje. 2 testes de regressão novos. Detalhes
   em spec 67, seção "Checkpoint H".
 - 274 → 282 testes JVM, 267 → 275 Wasm/Chromium, 0 falhas.
+- **Checkpoint I — bugfix real relatado após teste manual (2026-07-24)**: (A) card Hoje às vezes
+  desatualizado; (B) login funcionava uma vez, mas travava com o mesmo erro após logout. Causa
+  raiz comum do bug A: `runCatching` em dois pontos do `LaunchedEffect` de resolução (`App.kt`)
+  engolia `CancellationException` (mesmo padrão do achado do Checkpoint H, em local diferente) —
+  uma corrotina cancelada continuava executando e podia sobrescrever o estado com dados obsoletos.
+  Corrigido com `runCatchingCancellable()`, função genérica que sempre relança cancelamento. Causa
+  raiz do bug B: `performLogout()` zerava `sessionMemberId`/`requestedEntryContext` de forma
+  síncrona ANTES de `corporateAuthRepository?.signOut()` terminar — se o usuário tocasse "Entrar"
+  nessa janela, `corporateAuthState` ainda estava `Authenticated` (stale) e o app pulava a chamada
+  real ao MSAL, ficando preso. Corrigido movendo o reset de estado para dentro do `scope.launch`,
+  após o `signOut()` real completar. Instrumentação segura nova (`logResolutionTrace()`) permitiu
+  confirmar a causa ao vivo em vez de só ler código. Validado manualmente: 3 ciclos completos de
+  login/logout + fechar e reabrir o app, todos com Hoje atualizado corretamente, via SSO real do
+  MSAL (`login.microsoftonline.com`). 1 teste de regressão novo. Detalhes em spec 67, "Checkpoint
+  I".
+- 282 → 285 testes JVM, 275 → 278 Wasm/Chromium, 0 falhas. `versionCode`/`versionName`: `31/0.7.17`
+  → `32/0.7.18`.
 
 ## FASE 14I — Consistência dos cards (pausa efetiva, colegas por turno) + padronização visual SOC
 
