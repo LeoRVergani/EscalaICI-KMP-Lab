@@ -8,3 +8,9 @@ actual fun logResolutionFailure(diagnostic: ResolutionFailureDiagnostic) {
 }
 
 private fun consoleWarnResolutionFailure(line: String): Unit = js("console.warn(line)")
+
+actual fun logResolutionTrace(message: String) {
+    consoleInfoResolutionTrace("[Web] $message")
+}
+
+private fun consoleInfoResolutionTrace(line: String): Unit = js("console.info(line)")

@@ -3,6 +3,7 @@ package br.com.leorvergani.escalaici.auth
 import android.content.Context
 import android.util.Log
 import br.com.leorvergani.escalaici.BuildConfig
+import br.com.leorvergani.escalaici.diagnostics.logResolutionTrace
 import com.microsoft.identity.client.AuthenticationCallback
 import com.microsoft.identity.client.IAccount
 import com.microsoft.identity.client.IAuthenticationResult
@@ -46,9 +47,16 @@ class MsalCorporateAuthRepository(context: Context) : CorporateAuthRepository {
     override val state: StateFlow<CorporateAuthState> = mutableState
 
     override suspend fun restoreSession() {
-        if (configurationState == CorporateAuthConfigurationState.NOT_CONFIGURED) return
+        logResolutionTrace("restoreSession start")
+        if (configurationState == CorporateAuthConfigurationState.NOT_CONFIGURED) {
+            logResolutionTrace("restoreSession done result=NotConfigured")
+            return
+        }
 
-        val app = getOrCreateMsalApplication() ?: return
+        val app = getOrCreateMsalApplication() ?: run {
+            logResolutionTrace("restoreSession done result=AppCreationFailed")
+            return
+        }
         val result = suspendCancellableCoroutine<CorporateAuthState> { continuation ->
             app.getCurrentAccountAsync(
                 object : ISingleAccountPublicClientApplication.CurrentAccountCallback {
@@ -76,18 +84,27 @@ class MsalCorporateAuthRepository(context: Context) : CorporateAuthRepository {
         }
 
         mutableState.value = result
+        logResolutionTrace("restoreSession done result=${result::class.simpleName}")
     }
 
     override suspend fun signInInteractive(host: CorporateAuthHost?) {
-        if (configurationState == CorporateAuthConfigurationState.NOT_CONFIGURED) return
+        logResolutionTrace("signInInteractive start")
+        if (configurationState == CorporateAuthConfigurationState.NOT_CONFIGURED) {
+            logResolutionTrace("signInInteractive done result=NotConfigured")
+            return
+        }
 
         if (host !is AndroidCorporateAuthHost) {
             mutableState.value = CorporateAuthState.Failed(CorporateAuthError.InvalidConfiguration)
+            logResolutionTrace("signInInteractive done result=InvalidHost")
             return
         }
 
         mutableState.value = CorporateAuthState.Authenticating
-        val app = getOrCreateMsalApplication() ?: return
+        val app = getOrCreateMsalApplication() ?: run {
+            logResolutionTrace("signInInteractive done result=AppCreationFailed")
+            return
+        }
 
         val result = suspendCancellableCoroutine<CorporateAuthState> { continuation ->
             val callback = object : AuthenticationCallback {
@@ -116,13 +133,19 @@ class MsalCorporateAuthRepository(context: Context) : CorporateAuthRepository {
         }
 
         mutableState.value = result
+        logResolutionTrace("signInInteractive done result=${result::class.simpleName}")
     }
 
     override suspend fun signOut() {
-        if (configurationState == CorporateAuthConfigurationState.NOT_CONFIGURED) return
+        logResolutionTrace("signOut start")
+        if (configurationState == CorporateAuthConfigurationState.NOT_CONFIGURED) {
+            logResolutionTrace("signOut done result=NotConfigured")
+            return
+        }
 
         val app = getOrCreateMsalApplication() ?: run {
             mutableState.value = CorporateAuthState.SignedOut
+            logResolutionTrace("signOut done result=AppCreationFailed")
             return
         }
 
@@ -141,6 +164,7 @@ class MsalCorporateAuthRepository(context: Context) : CorporateAuthRepository {
         }
 
         mutableState.value = CorporateAuthState.SignedOut
+        logResolutionTrace("signOut done result=SignedOut")
     }
 
     override fun enterDemoMode() {

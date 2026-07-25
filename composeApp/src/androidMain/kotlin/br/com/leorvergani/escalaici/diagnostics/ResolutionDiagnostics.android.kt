@@ -12,3 +12,7 @@ actual fun logResolutionFailure(diagnostic: ResolutionFailureDiagnostic) {
             "http=${diagnostic.httpStatus ?: "-"} msg=${diagnostic.sanitizedMessage}"
     )
 }
+
+actual fun logResolutionTrace(message: String) {
+    Log.i(TAG, "[Android] $message")
+}

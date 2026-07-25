@@ -21,6 +21,15 @@ data class ResolutionFailureDiagnostic(
 
 expect fun logResolutionFailure(diagnostic: ResolutionFailureDiagnostic)
 
+/**
+ * Trace seguro (nivel info, nao-erro) de uma transicao da maquina de estados de
+ * sessao/identidade/publicacao (spec 67, Checkpoint I). Chamador e responsavel por nunca passar
+ * token, header `Authorization`, API key, chave privada, e-mail completo, object ID completo ou
+ * tenant ID completo - so nomes de classe/estado, contagens e booleans. Usado para reconstruir a
+ * sequencia real (login -> Hoje -> logout -> login) sem depender so de leitura de codigo.
+ */
+expect fun logResolutionTrace(message: String)
+
 /** Extrai um status HTTP de uma mensagem de erro tipo "... (404) ...", sem expor mais nada dela. */
 internal fun extractHttpStatus(message: String?): Int? {
     if (message.isNullOrBlank()) return null

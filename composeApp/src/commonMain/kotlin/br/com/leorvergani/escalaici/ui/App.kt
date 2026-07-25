@@ -100,7 +100,9 @@ import br.com.leorvergani.escalaici.ui.theme.LabShapes
 import br.com.leorvergani.escalaici.ui.theme.LabTypography
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import br.com.leorvergani.escalaici.source.DataLoadResult
+import br.com.leorvergani.escalaici.diagnostics.logResolutionTrace
 import br.com.leorvergani.escalaici.source.ScheduleSyncCause
 import br.com.leorvergani.escalaici.source.isEmptyState
 import br.com.leorvergani.escalaici.source.FirebaseOnCallSource
@@ -158,6 +160,24 @@ private data class RealSessionSnapshot(
  * nem uma entrada explícita no Demo).
  */
 internal enum class SessionBootstrapPhase { INITIALIZING, RESTORING, READY }
+
+/**
+ * Como [runCatching], mas nunca engole [CancellationException] - sempre relança (spec 67,
+ * Checkpoint I). [runCatching] comum captura QUALQUER `Throwable`, inclusive cancelamento; usado
+ * dentro de um `LaunchedEffect` cancelável (ex.: `corporateAuthState`/`requestedEntryContext`
+ * mudando no meio de uma resolução em andamento), isso deixa a corrotina "logicamente morta"
+ * continuar executando e sobrescrever estado compartilhado (`sessionMemberId`, `summary`,
+ * `gateErrorMessage`) com dados de uma tentativa já obsoleta - causa raiz real de dois bugs
+ * reportados (card Hoje desatualizado; segundo login após logout preso no mesmo erro).
+ */
+internal suspend fun <T> runCatchingCancellable(block: suspend () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (c: CancellationException) {
+        throw c
+    } catch (t: Throwable) {
+        Result.failure(t)
+    }
 
 internal fun computeSessionBootstrapPhase(
     hasConfiguredCorporateAuth: Boolean,
@@ -287,14 +307,24 @@ fun EscalaIciLabApp(
         LaunchedEffect(corporateAuthState, requestedEntryContext) {
             val resolver = organizationIdentityResolver
             val state = corporateAuthState
+            logResolutionTrace(
+                "resolutionEffect start corporateAuthState=${state?.let { it::class.simpleName }} " +
+                    "requestedEntryContext=$requestedEntryContext"
+            )
             if (state is CorporateAuthState.Authenticated && resolver != null) {
                 organizationResolutionResult = null
                 corporateDataSourceState = null
                 val resolvedIdentity = resolver.resolveCorporateIdentity(state.identity)
+                logResolutionTrace("organizationResolution done result=${resolvedIdentity::class.simpleName}")
                 organizationResolutionResult = resolvedIdentity
                 corporateDataSourceState = corporateDataSourceStateProvider?.let { provider ->
-                    runCatching { provider() }.getOrNull()
+                    runCatchingCancellable { provider() }.getOrNull()
                 }
+                logResolutionTrace(
+                    "corporateDataSourceState done origin=${corporateDataSourceState?.origin} " +
+                        "revision=${corporateDataSourceState?.publicationRevision} " +
+                        "fallbackCause=${corporateDataSourceState?.fallbackCause}"
+                )
                 when (requestedEntryContext) {
                     EntryContext.LOGIN -> {
                         gateErrorMessage = null
@@ -327,9 +357,19 @@ fun EscalaIciLabApp(
                                 } else {
                                     emptyList()
                                 }
+                                logResolutionTrace(
+                                    "loginEntry granted sessionMemberIdPresent=true " +
+                                        "publishedSummaryPresent=${publishedSummary != null} " +
+                                        "days=${entry.summary.days.size} " +
+                                        "changeRequests=${scheduleChangeRequests.size}"
+                                )
                             }
                             else -> {
                                 gateErrorMessage = loginGateErrorMessage(result, corporateDataSourceState)
+                                logResolutionTrace(
+                                    "loginEntry denied result=${result::class.simpleName} " +
+                                        "sessionMemberIdPresent=false"
+                                )
                             }
                         }
                     }
@@ -456,7 +496,7 @@ fun EscalaIciLabApp(
             if (teamId.isBlank()) return
             scope.launch {
                 val source = FirebaseOnCallSource(gateway, cache) { now.firebaseTimestamp() }
-                val groups = runCatching { source.loadOnCallGroups(teamId) }.getOrElse {
+                val groups = runCatchingCancellable { source.loadOnCallGroups(teamId) }.getOrElse {
                     firebaseError = "Não foi possível carregar grupos de plantão."
                     emptyList()
                 }
@@ -532,8 +572,19 @@ fun EscalaIciLabApp(
         // limpar tudo no logout é o que impede o próximo login de herdar dado do
         // usuário anterior. Cancela também os alarmes locais já agendados.
         fun performLogout() {
+            logResolutionTrace("logout start")
             scope.launch {
                 authRepository.signOut()
+                // corporateAuthRepository?.signOut() precisa terminar ANTES de zerar o estado
+                // local (sessionMemberId/requestedEntryContext) - fazer os dois em paralelo (um
+                // corrotina assincrona + reset sincrono logo abaixo, como era antes) abria uma
+                // janela onde corporateAuthState ainda estava Authenticated (stale) no momento em
+                // que a LoginGateScreen ja mostrava o botao de login de novo. Se o usuario tocasse
+                // "Entrar" nessa janela, signInCorporate() via corporateAuthState como Authenticated
+                // e pulava a chamada real a signInInteractive() - o popup do MSAL nunca abria, e o
+                // app ficava parado sem erro novo, so preservando o que houvesse antes em
+                // gateErrorMessage. Causa raiz real do "login funciona so uma vez" (spec 67,
+                // Checkpoint I).
                 corporateAuthRepository?.signOut()
                 localDataCache.clearSchedule()
                 localDataCache.clearOnCall()
@@ -541,22 +592,23 @@ fun EscalaIciLabApp(
                 firebaseCache?.clearOnCall()
                 notificationSettingsStore.save(NotificationSettings())
                 localNotificationRuntime.reconcile(emptyList())
+                sessionMemberId = null
+                organizationResolutionResult = null
+                corporateDataSourceState = null
+                demoWorkspaceSession = null
+                selectedDemoPersona = null
+                demoPersonaResolutionResult = null
+                requestedEntryContext = null
+                gateErrorMessage = null
+                appNotificationSettings = NotificationSettings()
+                summary = mockScheduleSummary()
+                scheduleChangeRequests = emptyList()
+                firebaseOnCall = null
+                firebaseOnCallGroups = emptyList()
+                importPreview = null
+                importedWorkbook = null
+                logResolutionTrace("logout done")
             }
-            sessionMemberId = null
-            organizationResolutionResult = null
-            corporateDataSourceState = null
-            demoWorkspaceSession = null
-            selectedDemoPersona = null
-            demoPersonaResolutionResult = null
-            requestedEntryContext = null
-            gateErrorMessage = null
-            appNotificationSettings = NotificationSettings()
-            summary = mockScheduleSummary()
-            scheduleChangeRequests = emptyList()
-            firebaseOnCall = null
-            firebaseOnCallGroups = emptyList()
-            importPreview = null
-            importedWorkbook = null
         }
 
         fun resetMock() {
