@@ -348,6 +348,15 @@ extensions.configure<ApplicationExtension>("android") {
         buildConfig = true
     }
 
+    // Sem isso, testDebugUnitTest quebra em qualquer caminho que chame android.util.Log
+    // (introduzido pelo diagnostico seguro de ResolutionDiagnostics.android.kt) - o stub
+    // do android.jar usado no unit test puro (sem Robolectric) lanca RuntimeException em
+    // qualquer chamada nao trivial por padrao; isReturnDefaultValues faz Log.w() virar
+    // no-op (retorna 0) em vez de lancar.
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     // Sem isso, compileDebugJavaWithJavac (agora com fonte real, o BuildConfig.java
     // gerado pelo bloco acima) roda em Java 11 por padrao do AGP, inconsistente com
     // o alvo JVM 21 do Kotlin — so aparecia agora porque antes nao havia fonte Java.

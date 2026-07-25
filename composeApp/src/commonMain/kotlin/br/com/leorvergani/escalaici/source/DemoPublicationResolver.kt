@@ -1,5 +1,7 @@
 package br.com.leorvergani.escalaici.source
 
+import br.com.leorvergani.escalaici.diagnostics.buildResolutionFailureDiagnostic
+import br.com.leorvergani.escalaici.diagnostics.logResolutionFailure
 import br.com.leorvergani.escalaici.identity.OrganizationWorkspace
 import br.com.leorvergani.escalaici.model.WorkspacePublicationPointer
 import kotlinx.serialization.json.JsonObject
@@ -57,7 +59,17 @@ class DemoPublicationResolver(
         val finalPointer = gateway.loadDocumentFields(pointerPath).toWorkspacePointer(workspaceId).validatedPointer(pointerPath)
         if (finalPointer.activeRevision != revision) AttemptResult.PointerChanged else AttemptResult.Success(snapshot)
     } catch (t: Throwable) {
-        AttemptResult.Failure(classifySyncFailure(t), safeMessage(classifySyncFailure(t)))
+        val cause = classifySyncFailure(t)
+        val message = safeMessage(cause)
+        logResolutionFailure(
+            buildResolutionFailureDiagnostic(
+                step = "DemoPublicationResolver.loadOneAttempt",
+                workspaceId = workspaceId,
+                throwable = t,
+                sanitizedMessage = message
+            )
+        )
+        AttemptResult.Failure(cause, message)
     }
 
     private fun WorkspacePublicationPointer.validatedPointer(path: String): WorkspacePublicationPointer {
