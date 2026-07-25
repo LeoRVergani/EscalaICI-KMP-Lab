@@ -4,6 +4,7 @@ import br.com.leorvergani.escalaici.diagnostics.buildResolutionFailureDiagnostic
 import br.com.leorvergani.escalaici.diagnostics.logResolutionFailure
 import br.com.leorvergani.escalaici.identity.OrganizationWorkspace
 import br.com.leorvergani.escalaici.model.WorkspacePublicationPointer
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
 
 sealed interface DemoPublicationLoadResult {
@@ -58,6 +59,17 @@ class DemoPublicationResolver(
         val snapshot = buildSnapshot(pointer, collections)
         val finalPointer = gateway.loadDocumentFields(pointerPath).toWorkspacePointer(workspaceId).validatedPointer(pointerPath)
         if (finalPointer.activeRevision != revision) AttemptResult.PointerChanged else AttemptResult.Success(snapshot)
+    } catch (c: CancellationException) {
+        // NUNCA engolir cancelamento aqui - fazer isso quebra a concorrencia estruturada:
+        // quando o LaunchedEffect que chamou esta corrotina e cancelado (ex.: corporateAuthState
+        // muda de novo por causa do refresh silencioso de token, FASE 14J Checkpoint B), a
+        // CancellationException precisa se propagar e encerrar a corrotina de verdade. Antes
+        // desta guarda, o catch(Throwable) abaixo capturava a cancellation, convertia num
+        // AttemptResult.Failure "normal" e deixava a corrotina (ja logicamente morta) continuar
+        // executando ate `cached = loaded` em DemoPublicationRepository.data() - cacheando uma
+        // falha falsa pra sempre, mesmo que a proxima tentativa real fosse funcionar. Causa raiz
+        // exata do bug relatado 2026-07-24 (spec 67, Checkpoint H addendum).
+        throw c
     } catch (t: Throwable) {
         val cause = classifySyncFailure(t)
         val message = safeMessage(cause)

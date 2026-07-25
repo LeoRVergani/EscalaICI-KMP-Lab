@@ -29,9 +29,11 @@ import br.com.leorvergani.escalaici.model.ShiftType
 import br.com.leorvergani.escalaici.platform.TodayProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -294,6 +296,41 @@ class DemoPublicationResolverTest {
         assertEquals(ScheduleSyncCause.UNKNOWN, state.fallbackCause)
     }
 
+    @Test
+    fun cancellationDuringLoadPropagatesInsteadOfBecomingAFailure() = runTest {
+        // Guarda de regressao da causa raiz real (spec 67, Checkpoint H addendum): uma
+        // CancellationException (ex.: LaunchedEffect cancelado por corporateAuthState mudar de
+        // novo por causa do refresh silencioso de token) NUNCA pode virar um
+        // DemoPublicationLoadResult.Failure "normal" - isso quebraria a concorrencia estruturada
+        // e, pior, deixaria uma falha falsa cacheada pra sempre em DemoPublicationRepository.
+        val gateway = FakeDemoGateway(failDocument = true, throwCancellation = true)
+
+        assertFailsWith<CancellationException> {
+            DemoPublicationResolver(gateway).loadActiveSnapshot()
+        }
+    }
+
+    @Test
+    fun genuineRemoteFailureWithoutFixtureIsNeverCachedForever() = runTest {
+        // Guarda de regressao: sem fixtureProvider (caso real do workspace corporativo em
+        // MainActivity), uma falha genuina de rede/permissao NAO pode grudar pra sempre no
+        // repositorio - a proxima chamada a data() precisa poder tentar de novo, senao o app
+        // fica preso mostrando "escala nao publicada" pelo resto da sessao mesmo depois da
+        // causa real (rede, permissao, etc.) se resolver sozinha.
+        val gateway = FakeDemoGateway(failDocumentCallsRemaining = 1, revisions = mapOf(7 to revisionCollections(7)))
+        val repository = DemoPublicationRepository(
+            resolver = DemoPublicationResolver(gateway),
+            fixtureProvider = null
+        )
+
+        val firstAttempt = repository.data()
+        assertEquals(DemoDataOrigin.REMOTE_UNAVAILABLE, firstAttempt.state.origin)
+
+        val secondAttempt = repository.data()
+        assertEquals(DemoDataOrigin.REMOTE_PUBLICATION, secondAttempt.state.origin)
+        assertEquals("member-demo-1", secondAttempt.members.single().id)
+    }
+
     private fun revisionCollections(
         revision: Int,
         teamId: String = "team-demo-soc",
@@ -406,15 +443,22 @@ private class FakeDemoGateway(
     private val pointerStatus: String = "ACTIVE",
     private val revisions: Map<Int, Map<String, List<JsonObject>>> = mapOf(7 to emptyMap()),
     private val failDocument: Boolean = false,
+    private val failDocumentCallsRemaining: Int = 0,
+    private val throwCancellation: Boolean = false,
     private val failCollection: String? = null,
     private val failMessage: String = "network"
 ) : DemoPublicationGateway {
     val documentPaths = mutableListOf<String>()
     val collectionPaths = mutableListOf<String>()
+    private var remainingFailures = failDocumentCallsRemaining
 
     override suspend fun loadDocumentFields(path: String): JsonObject {
         documentPaths += path
-        if (failDocument) error(failMessage)
+        if (failDocument || remainingFailures > 0) {
+            remainingFailures -= 1
+            if (throwCancellation) throw CancellationException("cancelled")
+            error(failMessage)
+        }
         val revision = if (pointerRevisions.size > 1) pointerRevisions.removeAt(0) else pointerRevisions.first()
         return workspacePointer(revision, pointerStatus, pointerWorkspaceId)
     }

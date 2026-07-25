@@ -205,7 +205,15 @@ class DemoPublicationRepository(
                     )
                 )
         }
-        cached = loaded
+        // So cacheia sucesso real ou fallback de fixture local - nunca REMOTE_UNAVAILABLE puro
+        // (sem fixture, caso do workspace corporativo). Cachear uma falha genuina pra sempre
+        // travaria a resolucao de identidade/escala pelo resto da sessao do app mesmo apos a
+        // rede voltar, ja que nao existe hoje nenhum retry manual na LoginGateScreen - a proxima
+        // chamada a data() (nova tentativa de login, restauracao de sessao, etc.) precisa poder
+        // tentar de novo.
+        if (loaded.state.origin != DemoDataOrigin.REMOTE_UNAVAILABLE) {
+            cached = loaded
+        }
         loaded
     }
 
