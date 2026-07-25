@@ -1,4 +1,4 @@
-const CACHE_NAME = "escala-ici-web-v7";
+const CACHE_NAME = "escala-ici-web-v8";
 const APP_SHELL = [
   "./",
   "index.html",
