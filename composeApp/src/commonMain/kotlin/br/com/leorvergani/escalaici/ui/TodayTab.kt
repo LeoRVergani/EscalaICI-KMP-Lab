@@ -54,6 +54,7 @@ import br.com.leorvergani.escalaici.model.LabDateTime
 import br.com.leorvergani.escalaici.model.NotificationSettings
 import br.com.leorvergani.escalaici.model.TemporalState
 import br.com.leorvergani.escalaici.model.relevantShift
+import br.com.leorvergani.escalaici.model.plusDays
 import br.com.leorvergani.escalaici.model.ScheduleChangeRequest
 import br.com.leorvergani.escalaici.model.ScheduleSummary
 import br.com.leorvergani.escalaici.model.ShiftDay
@@ -121,19 +122,15 @@ internal fun TodayTab(
 private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportClick: () -> Unit) {
     val occurrence = summary.relevantShift(now)
     val day = occurrence?.day
+    // relevantShift só considera turnos de TRABALHO (mapNotNull descarta dias sem startMinute/
+    // endMinute, ou seja, folgas) - quando não há nenhum, o motivo real quase sempre é
+    // simplesmente "hoje/amanhã é folga", nunca "sem dado nenhum". Nesse caso o card usa o MESMO
+    // layout do turno normal (rótulo + tipo + cor + data), só que para o dia de folga relevante -
+    // nunca o bloco vazio de "importar escala", que é so para quando genuinamente não há
+    // publicação/importação nenhuma.
+    val restDay = if (day == null) summary.nextRest(now.date) else null
     HeroCard {
-        if (day == null) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("NENHUM PRÓXIMO TURNO", color = Color(0xFF93C5FD), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
-                Text(if (hasPublishedOrImportedSchedule(summary)) "Sem turnos futuros neste período" else "Importe uma escala", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-                Text(
-                    "A análise local mantém os dados salvos no dispositivo.",
-                    color = Color.White.copy(alpha = 0.76f),
-                    style = MaterialTheme.typography.bodySmall
-                )
-                ImportVisualButton(onClick = onImportClick)
-            }
-        } else {
+        if (day != null) {
             val colleagues = colleaguesForShift(day)
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -163,6 +160,29 @@ private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportCli
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+        } else if (restDay != null) {
+            val label = when (restDay.date) {
+                now.date -> "HOJE"
+                now.date.plusDays(1) -> "PRÓXIMO DIA"
+                else -> "PRÓXIMA FOLGA"
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(label, color = Color(0xFF93C5FD), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
+                Text(restDay.type.label, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(restDay.type.timeRange, color = restDay.type.shiftColor(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Text(restDay.fullDateLabel, color = Color.White.copy(alpha = 0.76f), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("NENHUM PRÓXIMO TURNO", color = Color(0xFF93C5FD), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
+                Text(if (hasPublishedOrImportedSchedule(summary)) "Sem turnos futuros neste período" else "Importe uma escala", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                Text(
+                    "A análise local mantém os dados salvos no dispositivo.",
+                    color = Color.White.copy(alpha = 0.76f),
+                    style = MaterialTheme.typography.bodySmall
+                )
+                ImportVisualButton(onClick = onImportClick)
+            }
         }
     }
 }
@@ -193,7 +213,10 @@ private fun ImportVisualButton(onClick: () -> Unit) {
 
 @Composable
 private fun WeekSummaryCard(summary: ScheduleSummary, today: LabDate) {
-    val selectedDate = summary.nextShift(today)?.date
+    // O dia destacado tem que ser SEMPRE "hoje" (o status global do app, o mesmo `today` usado
+    // em todo o resto da aba) - nunca derivado de nextShift(), que retorna null em dias de folga
+    // e fazia esse card cair num fallback errado (destacava o PRIMEIRO dia da janela exibida, não
+    // o dia atual real).
     val week = currentWeekWindow(summary.days, today)
     LabCard(
         title = "Resumo da semana",
@@ -207,8 +230,8 @@ private fun WeekSummaryCard(summary: ScheduleSummary, today: LabDate) {
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            week.forEachIndexed { index, day ->
-                val selected = if (selectedDate != null) day.date == selectedDate else index == 0
+            week.forEach { day ->
+                val selected = day.date == today
                 WeekDayPill(day = day, selected = selected, modifier = Modifier.weight(if (selected) 1.35f else 1f))
             }
         }
