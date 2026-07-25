@@ -7,6 +7,23 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14M — Marca "órbita" única do projeto (Android + PWA + dentro do app)
+
+- **Status:** DONE — spec 73, branch `feature/fase-14m-icon-orbita-unico`. Substitui por completo
+  o calendário+relógio (FASE 14L) pela marca "órbita" já usada no dashboard (mesma arte-fonte,
+  confirmada via diff de pixel — não byte-idêntica por recompressão WebP, mas o mesmo desenho).
+  Fonte versionada em `design/source/escala-ici-orbit-mark.webp`. Escala 55% do canvas
+  (testada via preview automatizado com anel de safe zone) para caber com folga na safe zone
+  circular do adaptive icon — a marca é mais larga/diagonal que o calendário e seria cortada em
+  escala 1:1. Substituídos: `ic_launcher_foreground`/`ic_splash_icon`, os 10 `mipmap/ic_launcher*`,
+  `icon-{192,512}`/`favicon-32`/`icon-maskable-{192,512}` da PWA, `service-worker.js` (cache
+  v8→v9). **Achado durante a validação**: o cabeçalho interno do app (5 abas) usava um `Canvas`
+  próprio (`LabShieldLogo`) desenhando o calendário proceduralmente, código independente dos
+  ícones de launcher/PWA — corrigido para renderizar a mesma arte via um novo recurso Compose
+  Multiplatform (`composeResources/drawable/`). Nenhuma cor/paleta alterada (`#070B12` inalterado
+  desde a FASE 14L). 298 testes JVM / 291 Wasm mantidos. `versionCode`/`versionName`: `34/0.7.20`
+  → `35/0.7.21`.
+
 ## FASE 14L — Nova identidade visual: ícone e splash azul-marinho
 
 - **Status:** DONE — spec 71, branch `feature/fase-14l-icon-splash-dark-blue`. Fundo roxo
