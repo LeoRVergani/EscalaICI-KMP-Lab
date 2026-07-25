@@ -499,12 +499,42 @@ nulo quando a identidade resolve, mesmo com `decision.summary == null`;
 `decideLoginEntryUsesPublishedSummaryWhenAvailable` confirma que a publicação real continua sendo
 usada quando existe. 276 testes JVM / 269 Wasm/Chromium (era 274/267), 0 falhas.
 
-Achado relacionado, não corrigido neste checkpoint: reproduzindo em emulador, a MESMA tela
-apareceu mesmo com o fix ativo (confirmado por bytecode do APK instalado) — porque, ali,
-`result` nunca chegou a `Resolved` (a identidade em si não resolveu, um problema diferente).
-`DemoPublicationResolver.loadOneAttempt()` engole qualquer `Throwable` silenciosamente, sem
-log — investigação de causa raiz desse segundo problema é item separado, não coberto por este
-checkpoint.
+Achado relacionado, investigado e corrigido na sequência deste mesmo checkpoint: reproduzindo em
+emulador, a MESMA tela apareceu mesmo com o fix acima ativo (confirmado por bytecode do APK
+instalado) — porque, ali, `result` nunca chegou a `Resolved` (a identidade em si não resolvia, um
+problema diferente). `DemoPublicationResolver.loadOneAttempt()` engolia qualquer `Throwable`
+silenciosamente, sem log nenhum.
+
+Diagnóstico seguro adicionado (`diagnostics/ResolutionDiagnostics.kt`, expect/actual Android/Web):
+`logResolutionFailure()` registra passo, workspace, tipo da exceção, status HTTP quando extraível
+e a mesma mensagem já sanitizada (`safeMessage`) que a UI usa — nunca token, header
+`Authorization`, API key ou dado pessoal. Reproduzido ao vivo em emulador com esse diagnóstico
+ativo, o log revelou `exception=CancellationException` na leitura da publicação corporativa
+(`ici-dev`).
+
+Causa raiz confirmada: `loadOneAttempt()` capturava **qualquer** `Throwable`, incluindo
+`CancellationException` — quebra de concorrência estruturada. Quando o
+`LaunchedEffect(corporateAuthState, requestedEntryContext)` é cancelado (ex.: `corporateAuthState`
+muda de novo porque o refresh silencioso de token do MSAL termina — seção 2.3 acima — antes da
+primeira leitura da publicação terminar), a corrotina antiga deveria simplesmente morrer; em vez
+disso, o `catch(Throwable)` convertia o cancelamento num `AttemptResult.Failure` "normal" e deixava
+a corrotina (já logicamente cancelada) continuar executando até `cached = loaded` em
+`DemoPublicationRepository.data()` — cacheando uma falha **falsa** para sempre, mesmo que a
+próxima tentativa real fosse resolver sem nenhum problema. Como não existe retry manual na
+`LoginGateScreen`, o usuário ficava preso até reiniciar o app — explica o padrão "corrige, volta
+a acontecer" relatado a cada versão nova.
+
+Duas correções: (1) `catch (c: CancellationException) { throw c }` dedicado antes do
+`catch(Throwable)` genérico em `loadOneAttempt()` — nunca mais vira resultado de negócio; (2)
+`DemoPublicationRepository.data()` só cacheia sucesso real ou fallback de fixture local —
+`REMOTE_UNAVAILABLE` puro (sem fixture, caso do workspace corporativo) nunca fica preso no cache,
+então a próxima chamada tenta de novo de verdade. 2 testes de regressão novos:
+`cancellationDuringLoadPropagatesInsteadOfBecomingAFailure`,
+`genuineRemoteFailureWithoutFixtureIsNeverCachedForever`.
+
+Confirmado ao vivo no emulador após as duas correções: identidade resolve, usuário entra direto na
+aba Hoje (sem gate de login), zero linha nova no log de diagnóstico. 282 testes JVM / 275
+Wasm/Chromium (era 276/269 antes deste achado), 0 falhas.
 
 ## 9. Compatibilidade e não-regressão
 

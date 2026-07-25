@@ -288,8 +288,8 @@ tasks.matching { it.name.contains("compileKotlinWasmJs", ignoreCase = true) }.co
 // destes dois valores. Antes desta fase, AppVersion.kt era um arquivo mantido a
 // mao, independente do Gradle - ja ficou desatualizado uma vez (FASE 14I), porque
 // nada impedia as duas fontes de divergirem silenciosamente.
-val appVersionCode = 30
-val appVersionName = "0.7.16"
+val appVersionCode = 31
+val appVersionName = "0.7.17"
 
 val generatedAppVersionDir = layout.buildDirectory.dir("generated/source/appVersion/commonMain")
 val generateAppVersion by tasks.registering {

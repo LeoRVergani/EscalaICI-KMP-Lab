@@ -24,13 +24,18 @@ Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
   publicação nunca mais zera `sessionMemberId` nem aparece como erro bloqueante — só deixa a
   escala em si desatualizada. 2 testes de regressão novos. Detalhes completos em spec 67, seção
   "Checkpoint H".
-- Achado relacionado ainda **não corrigido**: em emulador, a mesma tela reapareceu mesmo com o
-  fix ativo — porque ali a identidade em si não resolveu (`OrganizationResolutionResult` não
-  chegou a `Resolved`), um problema diferente, mascarado por
-  `DemoPublicationResolver.loadOneAttempt()` engolindo exceções sem log. Investigação em
-  andamento.
-- 274 → 276 testes JVM, 267 → 269 Wasm/Chromium, 0 falhas. `versionCode`/`versionName`: mantidos
-  em `30`/`0.7.16` até a investigação do achado relacionado ser concluída.
+- **Achado relacionado, investigado e corrigido**: em emulador, a mesma tela reapareceu mesmo com
+  o fix acima ativo — a identidade em si não resolvia (`OrganizationResolutionResult` não chegava
+  a `Resolved`). Diagnóstico seguro novo (`diagnostics/ResolutionDiagnostics.kt`) revelou a causa:
+  `DemoPublicationResolver.loadOneAttempt()` engolia `CancellationException` junto com qualquer
+  outro `Throwable` — quando o `LaunchedEffect` de resolução era cancelado (ex.: refresh silencioso
+  de token do MSAL mudando `corporateAuthState` de novo antes da leitura terminar), a corrotina já
+  cancelada continuava executando e cacheava uma falha **falsa** para sempre em
+  `DemoPublicationRepository`. Corrigido: `CancellationException` sempre relançada; falha genuína
+  sem fixture nunca mais fica presa no cache (próxima chamada tenta de novo). Confirmado ao vivo no
+  emulador: identidade resolve, usuário entra direto em Hoje. 2 testes de regressão novos. Detalhes
+  em spec 67, seção "Checkpoint H".
+- 274 → 282 testes JVM, 267 → 275 Wasm/Chromium, 0 falhas.
 
 ## FASE 14I — Consistência dos cards (pausa efetiva, colegas por turno) + padronização visual SOC
 
