@@ -7,6 +7,27 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14J.1 — Visualizar como colaborador (contexto administrativo de apresentação)
+
+- **Status:** DONE (local) — spec 68, branch `feature/fase-14j1-admin-view-as-member`. Novo
+  `viewedMemberId`/`viewedSummary` (`App.kt`) e `effectiveMemberId`/`effectiveSummary` -
+  administrador autorizado (mesma autorização de Ambiente Demo, `demoAccessGranted`) visualiza
+  qualquer colaborador ativo da própria equipe com os dados reais dele (Hoje/Escala/Alertas/
+  Perfil/Plantão/Trocas), sem trocar conta Microsoft, sem segunda autenticação, sem escrita em
+  nome do colaborador. Identidade autenticada sempre preservada e visível (banner + card
+  "Identidade da escala" nunca substituído). Roster vem de `loadTeamRoster` (novo hook,
+  reaproveita `RemoteFirstDemoMemberRepository.getMembersByTeam` já existente). Nunca oferecida
+  dentro do Ambiente Demo (evita misturar Demo/Oficial). Notificações protegidas
+  (`notificationSourceSummary` sempre real, nunca da persona).
+- **Achado relacionado corrigido no mesmo checkpoint**: card "Hoje" mostrava "Sem turnos futuros
+  neste período" mesmo quando o motivo real era simplesmente hoje/amanhã ser folga
+  (`relevantShift()` só considera turnos de trabalho); e `WeekSummaryCard` destacava o dia errado
+  na tira semanal (fallback para o primeiro dia da janela em vez de "hoje" real). Ambos corrigidos
+  em `TodayTab.kt` - o card de folga agora usa o mesmo layout visual do turno normal.
+- 285 → 298 testes JVM, 275 → 291 Wasm/Chromium, 0 falhas. Validado manualmente no emulador (SSO
+  MSAL real): busca, troca entre 3 colaboradores diferentes, retorno, logout/login sem persistir
+  persona. `versionCode`/`versionName`: `32/0.7.18` → `33/0.7.19`.
+
 ## FASE 14J — Sessão persistente, Demo autorizado, trocas, contrato global + bugfix do gate de entrada
 
 - **Status:** IN_PROGRESS — spec 67. Checkpoints B a G (sessão sem flash, Demo oculto até
