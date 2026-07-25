@@ -7,6 +7,31 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14J — Sessão persistente, Demo autorizado, trocas, contrato global + bugfix do gate de entrada
+
+- **Status:** IN_PROGRESS — spec 67. Checkpoints B a G (sessão sem flash, Demo oculto até
+  autorização + logout real, `scheduleChangeRequests` no estado global, card "Solicitações de
+  troca" em Hoje, golden contract, fonte única de versão) implementados e commitados; ver spec 67
+  para detalhes de cada checkpoint.
+- **Checkpoint H — bugfix real relatado em produção (2026-07-24)**: usuário reportou que, a cada
+  versão nova, o mesmo problema recorrente voltava — MSAL autenticava mas o app ficava preso na
+  tela de login mostrando "A escala oficial ainda não foi publicada neste ambiente" em vermelho,
+  mesmo com a escala já publicada segundo o relato. Causa raiz: `App.kt` nunca separava
+  "identidade corporativa resolvida" de "existência de escala publicada" — ambas dependiam do
+  mesmo resultado para decidir se `sessionMemberId` era setado, então a ausência de publicação
+  zerava a sessão e travava o gate. Corrigido com `decideLoginEntry()`
+  (`ResolvedScheduleSummaryDecision.kt`): identidade resolvida sempre concede entrada; ausência de
+  publicação nunca mais zera `sessionMemberId` nem aparece como erro bloqueante — só deixa a
+  escala em si desatualizada. 2 testes de regressão novos. Detalhes completos em spec 67, seção
+  "Checkpoint H".
+- Achado relacionado ainda **não corrigido**: em emulador, a mesma tela reapareceu mesmo com o
+  fix ativo — porque ali a identidade em si não resolveu (`OrganizationResolutionResult` não
+  chegou a `Resolved`), um problema diferente, mascarado por
+  `DemoPublicationResolver.loadOneAttempt()` engolindo exceções sem log. Investigação em
+  andamento.
+- 274 → 276 testes JVM, 267 → 269 Wasm/Chromium, 0 falhas. `versionCode`/`versionName`: mantidos
+  em `30`/`0.7.16` até a investigação do achado relacionado ser concluída.
+
 ## FASE 14I — Consistência dos cards (pausa efetiva, colegas por turno) + padronização visual SOC
 
 - **Status:** DONE (local) — spec 66. Achado real do usuário no APK

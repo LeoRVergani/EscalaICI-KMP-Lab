@@ -469,6 +469,43 @@ geração não rodar antes da compilação o build **falha por referência não 
 silenciosa deixa de ser possível (documentado como o "gate automatizado" pedido pelo prompt: é
 mais forte que um teste de runtime, é um erro de compilação).
 
+## 8b. Checkpoint H — bugfix: identidade resolvida sempre concede entrada
+
+Bug relatado pelo usuário em produção (2026-07-24), recorrente a cada versão nova: MSAL
+autenticava (`corporateAuthState` virava `Authenticated`), a identidade corporativa resolvia
+(membro/equipe reais encontrados via `OrganizationIdentityResolver`), mas o usuário ficava preso
+na `LoginGateScreen` vendo "A escala oficial ainda não foi publicada neste ambiente" em vermelho
+— mesmo quando, segundo o relato, a escala já tinha sido publicada. Nunca entrava no app; a única
+coisa que deveria acontecer era a escala ficar desatualizada.
+
+Causa raiz exata (`App.kt`, branch `EntryContext.LOGIN`, caso `OrganizationResolutionResult.Resolved`):
+identidade resolvida e existência de escala publicada nunca foram separadas — ambas dependiam do
+mesmo resultado (`decideResolvedScheduleSummary(...).summary != null`) para decidir se
+`sessionMemberId` era setado. Quando não havia publicação carregável (`ActiveScheduleMissingMessage`),
+o código zerava `sessionMemberId` E mostrava esse erro como `gateErrorMessage` — travando o gate
+por um motivo que deveria ser, no máximo, um estado vazio dentro do app (mesmo espírito de
+`ScheduleSyncCause.isEmptyState()`, seção "Estados tipados de erro" do spec 48).
+
+Regra permanente fixada em código (`ResolvedScheduleSummaryDecision.kt`, `decideLoginEntry()`):
+identidade corporativa resolvida **sempre** concede `sessionMemberId`; ausência de publicação
+oficial **nunca** zera a sessão nem aparece como erro bloqueante no gate — só deixa a escala em si
+desatualizada (identidade real sobreposta via `withResolvedIdentity()`, extraído do fallback que já
+existia para o caso "sem carregador configurado"). `gateErrorMessage` deixa de ser setado neste
+branch.
+
+Testes de regressão (`ResolvedScheduleSummaryDecisionTest.kt`):
+`decideLoginEntryGrantsSessionEvenWithoutPublishedSummary` prova que `sessionMemberId` nunca fica
+nulo quando a identidade resolve, mesmo com `decision.summary == null`;
+`decideLoginEntryUsesPublishedSummaryWhenAvailable` confirma que a publicação real continua sendo
+usada quando existe. 276 testes JVM / 269 Wasm/Chromium (era 274/267), 0 falhas.
+
+Achado relacionado, não corrigido neste checkpoint: reproduzindo em emulador, a MESMA tela
+apareceu mesmo com o fix ativo (confirmado por bytecode do APK instalado) — porque, ali,
+`result` nunca chegou a `Resolved` (a identidade em si não resolveu, um problema diferente).
+`DemoPublicationResolver.loadOneAttempt()` engole qualquer `Throwable` silenciosamente, sem
+log — investigação de causa raiz desse segundo problema é item separado, não coberto por este
+checkpoint.
+
 ## 9. Compatibilidade e não-regressão
 
 - Nenhuma mudança de schema de cache serializado (Android `SharedPreferences`/Web `localStorage`)
