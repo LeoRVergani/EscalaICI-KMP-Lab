@@ -7,6 +7,28 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 14L — Nova identidade visual: ícone e splash azul-marinho
+
+- **Status:** DONE — spec 71, branch `feature/fase-14l-icon-splash-dark-blue`. Fundo roxo
+  (`#2F145C` no Android, `#2E1065` no ícone maskable da PWA) trocado por azul-marinho quase preto
+  (`#070B12`) — a mesma cor já usada por `LabColors.background` em todo o app, sem invenção de
+  paleta nova. Símbolo de calendário+relógio (violeta/lilás/branco) preservado pixel a pixel em
+  todos os assets já transparentes; só os fundos foram recompostos: `mipmap-*/ic_launcher.png` e
+  `ic_launcher_round.png` (5 densidades) recortados/redimensionados com a mesma matemática de bake
+  do adaptive icon (crop central 288×288 de 432×432, depois escala), `icons/icon-maskable-*.png`
+  da PWA recompostos colando o ícone "any" transparente sobre o novo fundo. `manifest.json`,
+  `index.html` (`theme-color`, `background`) e `statusBarColor`/`navigationBarColor` alinhados ao
+  mesmo `#070B12`. `service-worker.js` com `CACHE_NAME` incrementado (v7 → v8) para não servir
+  ícones antigos do cache offline.
+- Nenhuma mudança em autenticação/MSAL/Firestore/estado global — só assets visuais e cores de
+  inicialização. Specs 69 (contrato `teamId`) e 70 (cache de identidade) preservadas como estavam,
+  nenhuma implementada nesta fase.
+- 298 testes JVM / 291 Wasm mantidos (nenhuma lógica de domínio mudou), 0 falhas. Validado no
+  emulador (launcher circular/quadrado sem franjas, splash cold/warm start sem flash roxo/branco,
+  login/logout/login sem regressão) e em Chromium headless real via CDP (manifest, ícones sem
+  404, theme-color, service worker ativado). `versionCode`/`versionName`: `33/0.7.19` →
+  `34/0.7.20`.
+
 ## FASE 14J.1 — Visualizar como colaborador (contexto administrativo de apresentação)
 
 - **Status:** DONE (local) — spec 68, branch `feature/fase-14j1-admin-view-as-member`. Novo
