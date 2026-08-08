@@ -162,15 +162,19 @@ equipe, só `PUBLICADA` para quem não é gestor).
   `AuthErrorMapperTest` (mensagens distintas por código), `RemoteDtoMappersTest`
   (decodificação do formato Firestore, login pelo ID do documento).
 - **Firestore Rules no Emulator** (`firebase/test/firestore.rules.test.mjs`,
-  `npm run test:rules` em `firebase/`): usuários fictícios
+  `npm run test:rules` em `firebase/`) — **executado nesta sessão, 10/10
+  passando** contra um Firestore Emulator real (`cloud-firestore-emulator-v1.22.0`)
+  rodando as Rules copiadas de `origin/main`: usuários fictícios
   (`ana.silva`, `marina.lima` gestora, `carlos.souza` de outra equipe) —
   leitura do próprio perfil/colega de equipe, negação entre equipes,
   `turnosMes` PUBLICADA legível mas `rascunhosTurnosMes` nunca visível
-  para colaborador comum, consulta por igualdades sem índice novo,
-  leitura anônima sempre negada.
+  para colaborador comum, consulta por igualdades (`login`+`equipeId`+
+  `status`) **confirmada sem precisar de índice composto novo**, leitura
+  anônima sempre negada.
 - **Pendente** (ver relatório final): teste de integração Kotlin-JVM
-  completo contra o Emulator rodando (login → usuário → escala → cache) e
-  teste manual em dispositivo/navegador real.
+  completo contra o Emulator rodando (login → usuário → escala → cache,
+  exercitando `IdentityToolkitAuthClient`/`FirestoreRestClient` de
+  verdade) e teste manual em dispositivo/navegador real.
 
 ## 10. Plantão (COSI)
 
