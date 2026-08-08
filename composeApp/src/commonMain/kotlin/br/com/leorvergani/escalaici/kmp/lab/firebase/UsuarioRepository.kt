@@ -26,4 +26,25 @@ class UsuarioRepository(private val firestore: FirestoreRestClient) {
         }
         return usuario
     }
+
+    /** Usuarios ativos da equipe (`equipeId==X AND ativo==true`) - usado por Trocas para escolher o colega e por "quem trabalha nesse dia" (FASE 16). */
+    suspend fun listarAtivosPorEquipe(idToken: String, equipeId: String): List<UsuarioRemoteDto> {
+        val documentos = try {
+            firestore.runQuery(
+                idToken,
+                "usuarios",
+                listOf(
+                    FieldEquals.Text("equipeId", equipeId),
+                    FieldEquals.Bool("ativo", true),
+                ),
+            )
+        } catch (e: FirestoreUnauthorizedException) {
+            throw EscalaIciException(EscalaIciError.AUTH_REQUIRED, e.message ?: "Sessao expirada.")
+        } catch (e: FirestorePermissionDeniedException) {
+            throw EscalaIciException(EscalaIciError.PERMISSION_DENIED, e.message ?: "Sem permissao para listar a equipe.")
+        } catch (e: FirestoreNetworkException) {
+            throw EscalaIciException(EscalaIciError.NETWORK_ERROR, e.message ?: "Falha de rede ao listar a equipe.")
+        }
+        return documentos.mapNotNull(RemoteDtoMappers::usuario)
+    }
 }

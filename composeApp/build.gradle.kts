@@ -39,6 +39,7 @@ kotlin {
 
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.12.0")
+            implementation("androidx.lifecycle:lifecycle-process:2.8.7")
             implementation("org.apache.poi:poi:5.2.5")
             implementation("org.apache.poi:poi-ooxml:5.2.5")
         }
@@ -46,6 +47,7 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
         }
     }
 }
@@ -122,8 +124,8 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = "br.com.leorvergani.escalaici.kmp.lab"
         minSdk = 28
         targetSdk = 36
-        versionCode = 14
-        versionName = "0.7.0"
+        versionCode = 15
+        versionName = "0.7.1"
     }
 
     signingConfigs {

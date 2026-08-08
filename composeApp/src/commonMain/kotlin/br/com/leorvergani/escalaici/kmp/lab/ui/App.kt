@@ -17,12 +17,16 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +34,8 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,7 +56,10 @@ import androidx.compose.ui.unit.dp
 import br.com.leorvergani.escalaici.kmp.lab.firebase.EscalaIciError
 import br.com.leorvergani.escalaici.kmp.lab.firebase.LoggedScheduleSyncCoordinator
 import br.com.leorvergani.escalaici.kmp.lab.firebase.ScheduleSyncState
-import br.com.leorvergani.escalaici.kmp.lab.firebase.createLoggedScheduleSyncCoordinator
+import br.com.leorvergani.escalaici.kmp.lab.firebase.TeamScheduleSnapshot
+import br.com.leorvergani.escalaici.kmp.lab.firebase.TrocasBadge
+import br.com.leorvergani.escalaici.kmp.lab.firebase.createEscalaIciSession
+import br.com.leorvergani.escalaici.kmp.lab.platform.ObserveAppForeground
 import br.com.leorvergani.escalaici.kmp.lab.model.ImportedWorkbook
 import br.com.leorvergani.escalaici.kmp.lab.model.LabWorkbookParser
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleImportPreview
@@ -85,7 +94,10 @@ private enum class LabTab(
 ) {
     Hoje("Hoje", Icons.Outlined.Home, Icons.Filled.Home),
     Escala("Escala", Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
+    /** Só na bottom nav em Modo Demo (spec FASE 16 seção 7) - modo Firebase usa [Trocas] nessa posição. */
     Importar("Importar", Icons.Outlined.CloudUpload, Icons.Filled.CloudUpload),
+    /** Só na bottom nav em modo Firebase - substitui [Importar] (spec FASE 16 seção 6). */
+    Trocas("Trocas", Icons.Outlined.SwapHoriz, Icons.Filled.SwapHoriz),
     Alertas("Alertas", Icons.Outlined.Warning, Icons.Filled.Warning),
     Perfil("Perfil", Icons.Outlined.Person, Icons.Filled.Person)
 }
@@ -93,7 +105,6 @@ private enum class LabTab(
 /** Telas fora do bottom nav, empilhadas sobre a aba ativa (igual ao app real). */
 private enum class StackedScreen(val title: String) {
     PLANTAO("Plantão"),
-    SWAP("Trocas de escala")
 }
 
 @Composable
@@ -109,8 +120,11 @@ fun EscalaIciLabApp(
         val today = remember(todayProvider) { todayProvider.today() }
         fun todayIso(): String = "${today.year.toString().padStart(4, '0')}-${today.month.toString().padStart(2, '0')}-${today.day.toString().padStart(2, '0')}"
 
-        val syncCoordinator = remember { createLoggedScheduleSyncCoordinator(::todayIso) }
+        val session = remember { createEscalaIciSession(::todayIso) }
+        val syncCoordinator = session.syncCoordinator
+        val trocasSession = session.trocasSession
         val syncState by syncCoordinator.state.collectAsState()
+        val snackbarHostState = remember { SnackbarHostState() }
 
         var demoModeActive by remember { mutableStateOf(false) }
         var activeTab by remember { mutableStateOf(LabTab.Hoje) }
@@ -118,15 +132,48 @@ fun EscalaIciLabApp(
         var importPreview by remember { mutableStateOf<ScheduleImportPreview?>(null) }
         var importedWorkbook by remember { mutableStateOf<ImportedWorkbook?>(null) }
         var isFetchingFromCloud by remember { mutableStateOf(false) }
+        var isRefreshing by remember { mutableStateOf(false) }
+        var trocasBadge by remember { mutableStateOf(TrocasBadge(0, 0)) }
+        var teamSnapshot by remember { mutableStateOf<TeamScheduleSnapshot?>(null) }
         var now by remember(currentTimeProvider) { mutableStateOf(currentTimeProvider.now()) }
 
-        LaunchedEffect(Unit) { syncCoordinator.start() }
+        suspend fun refreshTrocasBadgeQuietly() {
+            if (demoModeActive) return
+            runCatching { trocasBadge = trocasSession.badge() }
+        }
+
+        suspend fun refreshTeamSnapshotQuietly(forceRefresh: Boolean = false) {
+            if (demoModeActive) return
+            runCatching { teamSnapshot = trocasSession.teamSnapshot(forceRefresh) }
+        }
+
+        suspend fun performRefresh() {
+            if (isRefreshing) return
+            isRefreshing = true
+            syncCoordinator.refresh()
+            trocasSession.invalidateTeamSnapshot()
+            refreshTrocasBadgeQuietly()
+            refreshTeamSnapshotQuietly(forceRefresh = true)
+            isRefreshing = false
+            when (val state = syncCoordinator.state.value) {
+                is ScheduleSyncState.Ready -> snackbarHostState.showSnackbar("Escala atualizada")
+                is ScheduleSyncState.Error -> snackbarHostState.showSnackbar(errorMessageFor(state.error, state.message))
+                else -> Unit
+            }
+        }
+
+        LaunchedEffect(Unit) {
+            syncCoordinator.start()
+            refreshTrocasBadgeQuietly()
+            refreshTeamSnapshotQuietly()
+        }
         LaunchedEffect(currentTimeProvider) {
             while (true) {
                 delay(30_000)
                 now = currentTimeProvider.now()
             }
         }
+        ObserveAppForeground { scope.launch { refreshTrocasBadgeQuietly() } }
 
         val remoteSummary: ScheduleSummary? = when (val state = syncState) {
             is ScheduleSyncState.Cached -> state.summary
@@ -189,6 +236,15 @@ fun EscalaIciLabApp(
         }
 
         val onOpenPlantao: () -> Unit = { stackedScreen = StackedScreen.PLANTAO }
+        val onImportClick: () -> Unit = { if (demoModeActive) activeTab = LabTab.Importar }
+        val onRefresh: (() -> Unit)? = if (demoModeActive) null else { { scope.launch { performRefresh() } } }
+        val visibleTabs = if (demoModeActive) {
+            listOf(LabTab.Hoje, LabTab.Escala, LabTab.Importar, LabTab.Alertas, LabTab.Perfil)
+        } else {
+            listOf(LabTab.Hoje, LabTab.Escala, LabTab.Trocas, LabTab.Alertas, LabTab.Perfil)
+        }
+        val syncedAtLabel = (syncState as? ScheduleSyncState.Ready)?.syncedAtLabel ?: (syncState as? ScheduleSyncState.Cached)?.syncedAtLabel
+        val offlineAvailable = syncState is ScheduleSyncState.Ready || syncState is ScheduleSyncState.Cached
 
         when {
             needsLogin -> LoginGateScreen(
@@ -205,9 +261,10 @@ fun EscalaIciLabApp(
                 LabPremiumBackground {
                     Scaffold(
                         containerColor = Color.Transparent,
+                        snackbarHost = { SnackbarHost(snackbarHostState) },
                         bottomBar = {
                             if (stackedScreen == null) {
-                                BottomNav(activeTab = activeTab, onSelect = { activeTab = it })
+                                BottomNav(tabs = visibleTabs, activeTab = activeTab, onSelect = { activeTab = it }, trocasBadgeCount = trocasBadge.total)
                             }
                         }
                     ) { padding ->
@@ -230,25 +287,30 @@ fun EscalaIciLabApp(
                                         now = now,
                                         localDataCache = localDataCache
                                     )
-                                    StackedScreen.SWAP -> ShiftSwapScreen(
-                                        currentMemberId = effectiveSummary.member.id,
-                                        onBack = { stackedScreen = null }
-                                    )
                                     null -> {
-                                    Column(modifier = Modifier.fillMaxSize()) {
-                                    if (!demoModeActive) {
-                                        SyncStatusBar(syncState, onRetry = { scope.launch { syncCoordinator.refresh() } })
-                                    }
-                                    Box(modifier = Modifier.weight(1f)) {
+                                    Box(modifier = Modifier.fillMaxSize()) {
                                     when (activeTab) {
                                         LabTab.Hoje -> TodayTab(
                                             summary = effectiveSummary,
                                             today = today,
                                             now = now,
                                             onOpenPlantao = onOpenPlantao,
-                                            onImportClick = { activeTab = LabTab.Importar }
+                                            onImportClick = onImportClick,
+                                            onRefresh = onRefresh,
+                                            isRefreshing = isRefreshing,
+                                            teamSnapshot = teamSnapshot
                                         )
-                                        LabTab.Escala -> ScheduleTab(summary = effectiveSummary, today = today, onOpenPlantao = onOpenPlantao)
+                                        LabTab.Escala -> ScheduleTab(summary = effectiveSummary, today = today, onOpenPlantao = onOpenPlantao, onRefresh = onRefresh, isRefreshing = isRefreshing, teamSnapshot = teamSnapshot)
+                                        LabTab.Trocas -> TrocasScreen(
+                                            trocasSession = trocasSession,
+                                            selectedCollaborator = effectiveSummary.member.scaleName,
+                                            loginAtual = effectiveSummary.member.id,
+                                            today = today,
+                                            onOpenPlantao = onOpenPlantao,
+                                            onRefresh = onRefresh,
+                                            isRefreshing = isRefreshing,
+                                            onBadgeChanged = { trocasBadge = it }
+                                        )
                                         LabTab.Importar -> ImportTab(
                                             preview = importPreview,
                                             activeFileName = effectiveSummary.sourceFileName,
@@ -312,9 +374,11 @@ fun EscalaIciLabApp(
                                                 }
                                             },
                                             onOpenPlantao = onOpenPlantao,
-                                            onOpenSwap = { stackedScreen = StackedScreen.SWAP }
+                                            onRefresh = onRefresh,
+                                            isRefreshing = isRefreshing,
+                                            syncedAtLabel = syncedAtLabel,
+                                            offlineAvailable = offlineAvailable
                                         )
-                                    }
                                     }
                                     }
                                     }
@@ -372,29 +436,6 @@ private fun errorMessageFor(error: EscalaIciError, message: String): String = wh
     else -> message
 }
 
-@Composable
-private fun SyncStatusBar(state: ScheduleSyncState, onRetry: () -> Unit) {
-    val (text, isError) = when (state) {
-        is ScheduleSyncState.Error -> errorMessageFor(state.error, state.message) to true
-        is ScheduleSyncState.Cached -> "Dados salvos localmente · última atualização: ${state.syncedAtLabel.orEmpty()}" to false
-        is ScheduleSyncState.Ready -> "Sincronizado em ${state.syncedAtLabel.orEmpty()}" to false
-        ScheduleSyncState.RestoringSession, ScheduleSyncState.Authenticating,
-        ScheduleSyncState.ResolvingUser, ScheduleSyncState.LoadingSchedule -> "Atualizando escala..." to false
-        else -> return
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth().background(LabColors.surfaceElevated.copy(alpha = 0.92f)).padding(horizontal = 14.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = if (isError) LabColors.red else LabColors.onSurfaceMuted)
-        if (state !is ScheduleSyncState.RestoringSession && state !is ScheduleSyncState.Authenticating &&
-            state !is ScheduleSyncState.ResolvingUser && state !is ScheduleSyncState.LoadingSchedule
-        ) {
-            TextButton(onClick = onRetry) { Text("Atualizar") }
-        }
-    }
-}
-
 private fun WorkbookImportResult.toImportPreview(): ScheduleImportPreview {
     return when (this) {
         is WorkbookImportResult.Success -> LabWorkbookParser.parse(workbook)
@@ -412,7 +453,7 @@ private fun WorkbookImportResult.toImportPreview(): ScheduleImportPreview {
 }
 
 @Composable
-private fun BottomNav(activeTab: LabTab, onSelect: (LabTab) -> Unit) {
+private fun BottomNav(tabs: List<LabTab>, activeTab: LabTab, onSelect: (LabTab) -> Unit, trocasBadgeCount: Int) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = LabColors.surface.copy(alpha = 0.94f),
@@ -427,8 +468,9 @@ private fun BottomNav(activeTab: LabTab, onSelect: (LabTab) -> Unit) {
                 containerColor = LabColors.surface.copy(alpha = 0.94f),
                 tonalElevation = 0.dp
             ) {
-                LabTab.entries.forEach { tab ->
+                tabs.forEach { tab ->
                     val active = tab == activeTab
+                    val badgeCount = if (tab == LabTab.Trocas) trocasBadgeCount else 0
                     NavigationBarItem(
                         selected = active,
                         onClick = { onSelect(tab) },
@@ -440,11 +482,21 @@ private fun BottomNav(activeTab: LabTab, onSelect: (LabTab) -> Unit) {
                                     .background(if (active) LabColors.primary.copy(alpha = 0.14f) else Color.Transparent),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = if (active) tab.selectedIcon else tab.icon,
-                                    contentDescription = tab.label,
-                                    modifier = Modifier.size(22.dp)
-                                )
+                                if (badgeCount > 0) {
+                                    BadgedBox(badge = { Badge { Text("$badgeCount") } }) {
+                                        Icon(
+                                            imageVector = if (active) tab.selectedIcon else tab.icon,
+                                            contentDescription = tab.label,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                } else {
+                                    Icon(
+                                        imageVector = if (active) tab.selectedIcon else tab.icon,
+                                        contentDescription = tab.label,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                             }
                         },
                         label = {

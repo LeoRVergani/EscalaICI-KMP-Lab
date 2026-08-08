@@ -61,6 +61,13 @@ data class EscalaIciFirebaseConfig(
 
     /** Chave de API exigida nos endpoints REST do Identity Toolkit/Secure Token, mesmo contra o emulador (aceita qualquer valor). */
     val effectiveApiKey: String get() = apiKey.ifBlank { "demo-api-key" }
+
+    /**
+     * Nome de recurso completo de um documento (`projects/{p}/databases/(default)/documents/{collection}/{id}`),
+     * exigido pelo corpo de `:commit` - e sempre este formato logico, mesmo contra o Emulator (nunca inclui host/porta/`v1`).
+     */
+    fun documentName(collection: String, documentId: String): String =
+        "projects/$effectiveProjectId/databases/(default)/documents/$collection/$documentId"
 }
 
 fun currentFirebaseConfig(): EscalaIciFirebaseConfig = generatedFirebaseConfig

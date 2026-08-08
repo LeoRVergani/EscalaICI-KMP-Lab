@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +48,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.leorvergani.escalaici.kmp.lab.firebase.EscalaIciScheduleMapper
+import br.com.leorvergani.escalaici.kmp.lab.firebase.TeamScheduleSnapshot
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDateTime
 import br.com.leorvergani.escalaici.kmp.lab.model.TemporalState
@@ -61,7 +64,16 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.shiftColor
 
 @Composable
-internal fun TodayTab(summary: ScheduleSummary, today: LabDate, now: LabDateTime, onOpenPlantao: () -> Unit, onImportClick: () -> Unit) {
+internal fun TodayTab(
+    summary: ScheduleSummary,
+    today: LabDate,
+    now: LabDateTime,
+    onOpenPlantao: () -> Unit,
+    onImportClick: () -> Unit,
+    onRefresh: (() -> Unit)? = null,
+    isRefreshing: Boolean = false,
+    teamSnapshot: TeamScheduleSnapshot? = null,
+) {
     val next = summary.nextShift(today)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -69,10 +81,10 @@ internal fun TodayTab(summary: ScheduleSummary, today: LabDate, now: LabDateTime
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
+            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao, onRefresh = onRefresh, isRefreshing = isRefreshing)
         }
         item {
-            NextTurnHero(summary = summary, now = now, onImportClick = onImportClick)
+            NextTurnHero(summary = summary, now = now, onImportClick = onImportClick, teamSnapshot = teamSnapshot)
         }
         item {
             WeekSummaryCard(summary = summary, today = today)
@@ -97,9 +109,13 @@ internal fun TodayTab(summary: ScheduleSummary, today: LabDate, now: LabDateTime
 }
 
 @Composable
-private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportClick: () -> Unit) {
+private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportClick: () -> Unit, teamSnapshot: TeamScheduleSnapshot? = null) {
     val occurrence = summary.relevantShift(now)
     val day = occurrence?.day
+    val colegasNoTurno = remember(teamSnapshot, day?.date, day?.type) {
+        val dataIso = day?.date?.toIso() ?: return@remember null
+        teamSnapshot?.let { EscalaIciScheduleMapper.quemTrabalhaPorTurno(it, dataIso)[day.type]?.filterNot { nome -> nome == summary.member.scaleName } }
+    }
     HeroCard {
         if (day == null) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -135,7 +151,12 @@ private fun NextTurnHero(summary: ScheduleSummary, now: LabDateTime, onImportCli
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
             Text(
-                text = if (day.teamMembers.isNotEmpty()) heroMetaText("Com:", day.teamMembers.joinToString(", ")) else buildAnnotatedString { append("Equipe não localizada na escala") },
+                text = when {
+                    colegasNoTurno != null && colegasNoTurno.isNotEmpty() -> heroMetaText("Com:", colegasNoTurno.joinToString(", "))
+                    colegasNoTurno != null -> buildAnnotatedString { append("Ninguém mais da equipe nesse turno") }
+                    day.teamMembers.isNotEmpty() -> heroMetaText("Com:", day.teamMembers.joinToString(", "))
+                    else -> buildAnnotatedString { append("Equipe não localizada na escala") }
+                },
                 color = Color.White.copy(alpha = 0.72f),
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2,

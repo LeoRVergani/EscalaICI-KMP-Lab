@@ -13,7 +13,9 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
@@ -35,9 +37,47 @@ class FirestoreNetworkException(message: String, cause: Throwable? = null) : Exc
 class FirestoreUnauthorizedException(message: String) : Exception(message)
 
 /**
- * Cliente REST puro (Ktor) para leitura no Firestore, autenticado via ID
- * token (`Authorization: Bearer`). So le - esta fase e read-only em relacao
- * a escala (prompt FASE 15 secao 29). Aponta para o host do Emulator
+ * Precondition falhou num `:commit` (409/412, ou 400 com status
+ * FAILED_PRECONDITION/ALREADY_EXISTS/ABORTED no corpo - convencao real da
+ * API do Firestore) - o documento mudou desde a leitura que originou esta
+ * escrita. Quem chama deve reler o documento e informar o usuario, nunca
+ * tentar reaplicar o `historico`/estado antigo por cima.
+ */
+class FirestoreConflictException(message: String) : Exception(message)
+
+/**
+ * Uma escrita dentro de um `:commit` em lote - sempre em `update`
+ * (create-only via `currentDocument.exists=false`, ou patch parcial via
+ * `updateMask`), espelhando exatamente os dois casos que `writeBatch` usa em
+ * `lib/firebase/trocasRepository.ts` (nunca delete/runTransaction aqui).
+ */
+sealed interface FirestoreWrite {
+    val collection: String
+    val documentId: String
+    val fields: Map<String, JsonElement>
+
+    /** Cria um documento novo - falha com [FirestoreConflictException] se o id ja existir. */
+    data class Create(
+        override val collection: String,
+        override val documentId: String,
+        override val fields: Map<String, JsonElement>,
+    ) : FirestoreWrite
+
+    /** Atualiza campos especificos de um documento existente - falha com [FirestoreConflictException] se ele nao existir mais. */
+    data class Patch(
+        override val collection: String,
+        override val documentId: String,
+        override val fields: Map<String, JsonElement>,
+        val updateMaskFieldPaths: List<String>,
+    ) : FirestoreWrite
+}
+
+/**
+ * Cliente REST puro (Ktor) para leitura/escrita no Firestore, autenticado
+ * via ID token (`Authorization: Bearer`). Leitura (`getDocument`/`runQuery`)
+ * e da FASE 15; escrita (`commit`) e nova na FASE 16, exclusiva de Trocas -
+ * nunca grava diretamente em `turnosMes` como colaborador comum (Rules sao
+ * quem decide isso, nao este cliente). Aponta para o host do Emulator
  * quando `config.usesEmulator`.
  */
 class FirestoreRestClient(
@@ -92,6 +132,62 @@ class FirestoreRestClient(
         return array.mapNotNull { row -> row.jsonObject["document"]?.jsonObject }
     }
 
+    /**
+     * Grava um lote de escritas atomicamente (`:commit`), equivalente ao
+     * `writeBatch(db)` do TS - todas as escritas sao aplicadas juntas ou
+     * nenhuma e. Nunca usa `runTransaction` (reservado para a aprovacao do
+     * gestor, fora do escopo desta fase no KMP).
+     */
+    suspend fun commit(idToken: String, writes: List<FirestoreWrite>): JsonObject {
+        require(writes.isNotEmpty()) { "commit requer ao menos uma escrita." }
+        val body = buildCommitBody(writes)
+        val response: HttpResponse = try {
+            httpClient.post("${config.firestoreBaseUrl}:commit") {
+                header("Authorization", "Bearer $idToken")
+                contentType(ContentType.Application.Json)
+                setBody(body.toString())
+            }
+        } catch (t: Throwable) {
+            throw FirestoreNetworkException("Falha de rede ao gravar.", t)
+        }
+        val rawBody = response.body<String>()
+        return when {
+            response.status == HttpStatusCode.Unauthorized -> throw FirestoreUnauthorizedException("Token expirado ao gravar.")
+            response.status == HttpStatusCode.Forbidden -> throw FirestorePermissionDeniedException("Sem permissao para gravar.")
+            isConflictResponse(response.status, rawBody) ->
+                throw FirestoreConflictException("A solicitacao foi alterada por outra operacao - recarregue antes de tentar novamente.")
+            !response.status.isSuccess() -> throw FirestoreNetworkException("Firestore respondeu ${response.status.value} para :commit.")
+            else -> json.parseToJsonElement(rawBody).jsonObject
+        }
+    }
+
+    private fun isConflictResponse(status: HttpStatusCode, rawBody: String): Boolean =
+        status == HttpStatusCode.Conflict ||
+            status == HttpStatusCode.PreconditionFailed ||
+            (status == HttpStatusCode.BadRequest && CONFLICT_STATUS_MARKERS.any { rawBody.contains(it) })
+
+    private fun buildCommitBody(writes: List<FirestoreWrite>): JsonObject = buildJsonObject {
+        putJsonArray("writes") {
+            writes.forEach { write ->
+                addJsonObject {
+                    putJsonObject("update") {
+                        put("name", config.documentName(write.collection, write.documentId))
+                        putJsonObject("fields") { write.fields.forEach { (name, value) -> put(name, value) } }
+                    }
+                    when (write) {
+                        is FirestoreWrite.Create -> putJsonObject("currentDocument") { put("exists", false) }
+                        is FirestoreWrite.Patch -> {
+                            putJsonObject("updateMask") {
+                                putJsonArray("fieldPaths") { write.updateMaskFieldPaths.forEach { add(it) } }
+                            }
+                            putJsonObject("currentDocument") { put("exists", true) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private fun buildStructuredQuery(collection: String, filters: List<FieldEquals>, limit: Int?): JsonObject = buildJsonObject {
         putJsonObject("structuredQuery") {
             putJsonArray("from") { addJsonObject { put("collectionId", collection) } }
@@ -124,6 +220,11 @@ class FirestoreRestClient(
                 }
             }
         }
+    }
+
+    companion object {
+        /** Substrings do `status` retornado pela API no corpo de um 400 - a API do Firestore mapeia FAILED_PRECONDITION/ALREADY_EXISTS/ABORTED para HTTP 400, nao 409/412. */
+        private val CONFLICT_STATUS_MARKERS = listOf("FAILED_PRECONDITION", "ALREADY_EXISTS", "ABORTED")
     }
 }
 

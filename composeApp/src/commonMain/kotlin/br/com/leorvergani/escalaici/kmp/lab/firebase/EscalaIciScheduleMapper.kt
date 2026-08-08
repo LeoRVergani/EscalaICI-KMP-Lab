@@ -54,6 +54,7 @@ object EscalaIciScheduleMapper {
             pauseLabel = "--:--",
             pauseOffsetLabel = "Sem sugestão disponível",
             sourceFileName = "Firebase",
+            competencia = turnosMes.competencia,
         )
     }
 
@@ -70,6 +71,25 @@ object EscalaIciScheduleMapper {
             label = tipo?.descricao ?: dia.c,
         )
     }
+
+    /**
+     * "Quem trabalha nesse dia" (FASE 16, seção 22) - mesmo mapeamento
+     * código/categoria -> [ShiftType] usado em [buildShiftDay], aplicado a
+     * toda a equipe (não só ao usuário atual) a partir do
+     * [TeamScheduleSnapshot] já carregado por Trocas. Corrige "Equipe não
+     * localizada na escala": antes essa seção só existia para escalas
+     * importadas de XLS (`ShiftDay.teamMembers`/`membersByShift`, sempre
+     * vazios para escalas do Firebase).
+     */
+    fun quemTrabalhaPorTurno(snapshot: TeamScheduleSnapshot, dataIso: String): Map<ShiftType, List<String>> =
+        snapshot.usuariosAtivos
+            .mapNotNull { usuario ->
+                val jornada = snapshot.jornadaDoDia(usuario.login, dataIso)
+                if (!jornada.trabalha) return@mapNotNull null
+                val categoria = snapshot.catalogo[jornada.codigo]?.categoria ?: CategoriaTurno.TRABALHO
+                shiftTypeFor(jornada.codigo, categoria) to usuario.nome
+            }
+            .groupBy({ it.first }, { it.second })
 
     private fun periodLabel(periodoInicio: String, periodoFim: String): String {
         val start = LabDate.parseIso(periodoInicio)

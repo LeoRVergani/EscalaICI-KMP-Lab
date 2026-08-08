@@ -52,14 +52,19 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 
 @Composable
-internal fun AlertsTab(summary: ScheduleSummary, onOpenPlantao: () -> Unit) {
+internal fun AlertsTab(
+    summary: ScheduleSummary,
+    onOpenPlantao: () -> Unit,
+    onRefresh: (() -> Unit)? = null,
+    isRefreshing: Boolean = false,
+) {
     val alerts = remember(summary) { GenerateLabAlerts(summary) }
     var filter by remember { mutableStateOf(AlertFilter.TODOS) }
     val filteredAlerts = alerts.filter { filter.matches(it) }
 
     PageList {
         item {
-            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
+            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao, onRefresh = onRefresh, isRefreshing = isRefreshing)
         }
         item {
             AlertsHero(summary = summary, alerts = alerts)

@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +38,9 @@ internal fun LabPremiumHeader(
     showNotificationIcon: Boolean = true,
     compact: Boolean = true,
     onNotificationClick: (() -> Unit)? = null,
-    onOpenPlantao: (() -> Unit)? = null
+    onOpenPlantao: (() -> Unit)? = null,
+    onRefresh: (() -> Unit)? = null,
+    isRefreshing: Boolean = false,
 ) {
     Row(
         modifier = modifier
@@ -61,7 +65,27 @@ internal fun LabPremiumHeader(
             if (onOpenPlantao != null) {
                 PlantaoHeaderButton(onClick = onOpenPlantao)
             }
+            if (onRefresh != null) {
+                RefreshHeaderButton(onClick = onRefresh, isRefreshing = isRefreshing)
+            }
             SelectedCollaboratorBadge(collaborator = selectedCollaborator)
+        }
+    }
+}
+
+/** Botão discreto de atualização manual (FASE 16, seção 4) - tamanho visual igual ao de notificações, nunca dispara um segundo refresh enquanto `isRefreshing` for verdadeiro. */
+@Composable
+private fun RefreshHeaderButton(onClick: () -> Unit, isRefreshing: Boolean) {
+    IconButton(onClick = onClick, enabled = !isRefreshing, modifier = Modifier.size(38.dp)) {
+        if (isRefreshing) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LabColors.primary)
+        } else {
+            Icon(
+                Icons.Default.Refresh,
+                contentDescription = "Atualizar escala",
+                tint = LabColors.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

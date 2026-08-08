@@ -52,6 +52,35 @@ class LoggedScheduleSyncCoordinator(
         sync(login)
     }
 
+    /**
+     * Executa `action` com o ID token atual; se falhar por sessao expirada
+     * (401), renova uma vez e tenta de novo - mesmo padrao de retry de
+     * [resolveOnce], generalizado para outros repositorios que nao sejam a
+     * escala em si (Trocas, FASE 16). Nunca esconde um segundo 401 - so
+     * tenta renovar uma vez.
+     */
+    suspend fun <T> withFreshToken(action: suspend (String) -> T): T {
+        val token = authRepository.currentIdToken() ?: authRepository.ensureFreshIdToken()
+        return try {
+            action(token)
+        } catch (e: EscalaIciException) {
+            if (e.error != EscalaIciError.AUTH_REQUIRED) throw e
+            action(authRepository.ensureFreshIdToken())
+        }
+    }
+
+    /** Identidade da sessao atual (login/nome/ativo/equipeId/competencia) a partir do estado ja carregado - usado por [TrocasSession], nunca abre uma segunda sessao. */
+    fun currentIdentityOrNull(): SessionIdentity? {
+        val summary = (state.value as? ScheduleSyncState.Ready)?.summary ?: (state.value as? ScheduleSyncState.Cached)?.summary ?: return null
+        return SessionIdentity(
+            login = summary.member.id,
+            nome = summary.member.displayName,
+            ativo = summary.member.active,
+            equipeId = summary.member.teamId,
+            competencia = summary.competencia,
+        )
+    }
+
     suspend fun logout() {
         val login = currentLoginOrNull()
         authRepository.logout()

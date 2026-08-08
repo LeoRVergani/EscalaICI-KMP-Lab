@@ -68,6 +68,8 @@ data class ScheduleSummary(
     val collaborators: List<String> = emptyList(),
     val warnings: List<String> = emptyList(),
     val errors: List<String> = emptyList(),
+    /** Competência (`AAAA-MM`) da escala publicada atual - vazio nos mocks/XLS, preenchido pelo `EscalaIciScheduleMapper` (Firebase). Usado por Trocas para consultar `trocasEscala`/`turnosMes` (FASE 16). */
+    val competencia: String = "",
     val periodStart: LabDate? = days.mapNotNull { it.date }.minOrNull(),
     val periodEnd: LabDate? = days.mapNotNull { it.date }.maxOrNull()
 ) {
@@ -152,6 +154,9 @@ data class LabDate(
     }
 
     fun dateLabel(): String = "${day.twoDigits()}/${month.twoDigits()}"
+
+    /** `yyyy-MM-dd`, mesmo formato usado pelo contrato remoto (`TurnosMes.dias`, `trocasEscala.data`). */
+    fun toIso(): String = "${year.toString().padStart(4, '0')}-${month.twoDigits()}-${day.twoDigits()}"
 
     fun fullDateLabel(): String = "${dayOfWeekLong()}, ${dateLabel()}/$year"
 

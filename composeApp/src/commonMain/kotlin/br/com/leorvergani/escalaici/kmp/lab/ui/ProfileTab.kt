@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -70,15 +69,20 @@ internal fun ProfileTab(
     notificationService: WebNotificationService,
     onLogout: () -> Unit,
     onOpenPlantao: () -> Unit,
-    onOpenSwap: () -> Unit
+    onRefresh: (() -> Unit)? = null,
+    isRefreshing: Boolean = false,
+    /** `null` fora do modo Firebase (mocks/Demo/XLS não sincronizam) - ver "Dados da escala" abaixo. */
+    syncedAtLabel: String? = null,
+    offlineAvailable: Boolean = false,
 ) {
     val criticalAlerts = remember(summary) { GenerateLabAlerts(summary).count { it.severity == LabAlert.Severity.CRITICO } }
     var notificationPermission by remember(notificationService) { mutableStateOf(notificationService.capability().permissionState) }
     var requestingNotification by remember { mutableStateOf(false) }
     var notificationFeedback by remember { mutableStateOf<String?>(null) }
+    val fonteFirebase = summary.sourceFileName == "Firebase"
     PageList {
         item {
-            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
+            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao, onRefresh = onRefresh, isRefreshing = isRefreshing)
         }
         item {
             Text("Perfil", color = LabColors.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -99,7 +103,11 @@ internal fun ProfileTab(
                 }
                 Text("Período: ${summary.periodLabel}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 Text(
-                    if (summary.isImported) "Arquivo importado: ${summary.sourceFileName}" else "Fonte: dados de demonstração",
+                    when {
+                        fonteFirebase -> "Fonte da escala: Firebase"
+                        summary.isImported -> "Arquivo importado: ${summary.sourceFileName}"
+                        else -> "Fonte: dados de demonstração"
+                    },
                     color = LabColors.onSurfaceMuted,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
@@ -126,14 +134,6 @@ internal fun ProfileTab(
                     ProfileMetric("Horas", "${summary.totalHours}h", Modifier.weight(1f))
                 }
                 Text("Alertas críticos: $criticalAlerts", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        item {
-            LabCard(title = "Trocas de escala", icon = Icons.Default.SwapHoriz, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
-                Text("Veja e responda pedidos de troca de turno.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = onOpenSwap) {
-                    Text("Ver minhas solicitações", color = LabColors.primary)
-                }
             }
         }
         if (supportsWebNotifications) item {
@@ -186,11 +186,29 @@ internal fun ProfileTab(
                 pause?.let { Text("Janela permitida: ${it.windowStart}–${it.windowEnd}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall) }
             }
         }
-        item {
-            LabCard(title = "Armazenamento local", icon = Icons.Default.Storage, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
-                Text("Arquivo salvo: ${summary.sourceFileName ?: "nenhuma escala importada"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Status: ${if (summary.isImported) "Escala lida na sessão Web/Android" else "Sem XLS aplicado"}", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
-                DisabledAction("Remover escala local")
+        if (fonteFirebase) {
+            item {
+                LabCard(title = "Dados da escala", icon = Icons.Default.Storage, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
+                    Text("Fonte: Firebase", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Última sincronização: ${syncedAtLabel ?: "ainda não sincronizado"}",
+                        color = LabColors.onSurfaceMuted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        "Disponível offline: ${if (offlineAvailable) "Sim" else "Não"}",
+                        color = LabColors.tertiary,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+        } else {
+            item {
+                LabCard(title = "Armazenamento local", icon = Icons.Default.Storage, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
+                    Text("Arquivo salvo: ${summary.sourceFileName ?: "nenhuma escala importada"}", color = LabColors.onSurfaceMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("Status: ${if (summary.isImported) "Escala lida na sessão Web/Android" else "Sem XLS aplicado"}", color = LabColors.tertiary, style = MaterialTheme.typography.labelMedium)
+                    DisabledAction("Remover escala local")
+                }
             }
         }
         if (supportsAppUpdate) item {

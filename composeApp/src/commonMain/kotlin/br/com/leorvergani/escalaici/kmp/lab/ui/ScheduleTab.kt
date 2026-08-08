@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.leorvergani.escalaici.kmp.lab.firebase.EscalaIciScheduleMapper
+import br.com.leorvergani.escalaici.kmp.lab.firebase.TeamScheduleSnapshot
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
 import br.com.leorvergani.escalaici.kmp.lab.model.LabYearMonth
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
@@ -58,7 +60,14 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.shiftColor
 
 @Composable
-internal fun ScheduleTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao: () -> Unit) {
+internal fun ScheduleTab(
+    summary: ScheduleSummary,
+    today: LabDate,
+    onOpenPlantao: () -> Unit,
+    onRefresh: (() -> Unit)? = null,
+    isRefreshing: Boolean = false,
+    teamSnapshot: TeamScheduleSnapshot? = null,
+) {
     val sortedDays = summary.days.sortedBy { it.date }
     val initialDate = remember(summary, today) { initialScheduleDate(summary, today) }
     var selectedDate by remember(summary, today) { mutableStateOf(initialDate) }
@@ -81,7 +90,7 @@ internal fun ScheduleTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao
 
     PageList {
         item {
-            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao)
+            LabPremiumHeader(selectedCollaborator = summary.member.scaleName, onOpenPlantao = onOpenPlantao, onRefresh = onRefresh, isRefreshing = isRefreshing)
         }
         if (!summary.isImported) {
             item {
@@ -131,10 +140,10 @@ internal fun ScheduleTab(summary: ScheduleSummary, today: LabDate, onOpenPlantao
         }
         selectedDay?.let { day ->
             item {
-                CalendarDayDetailCard(day = day)
+                CalendarDayDetailCard(day = day, selectedCollaborator = summary.member.scaleName, teamSnapshot = teamSnapshot)
             }
             item {
-                TeamOnDutyCard(day = day, selectedCollaborator = summary.member.scaleName)
+                TeamOnDutyCard(day = day, selectedCollaborator = summary.member.scaleName, teamSnapshot = teamSnapshot)
             }
         }
     }
@@ -369,8 +378,12 @@ private fun ShiftLegendItem(type: ShiftType, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun CalendarDayDetailCard(day: ShiftDay) {
+private fun CalendarDayDetailCard(day: ShiftDay, selectedCollaborator: String, teamSnapshot: TeamScheduleSnapshot?) {
     val color = day.type.shiftColor()
+    val colegasNoTurno = remember(teamSnapshot, day.date, day.type) {
+        val dataIso = day.date?.toIso() ?: return@remember null
+        teamSnapshot?.let { EscalaIciScheduleMapper.quemTrabalhaPorTurno(it, dataIso)[day.type]?.filterNot { nome -> nome == selectedCollaborator } }
+    }
     LabCard(
         title = "Detalhe do dia",
         icon = Icons.Default.CalendarMonth,
@@ -395,7 +408,12 @@ private fun CalendarDayDetailCard(day: ShiftDay) {
             Text(day.type.timeRange, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodyMedium)
         }
         Text(
-            if (day.teamMembers.isNotEmpty()) "Com: ${day.teamMembers.joinToString(", ")}" else "Equipe não localizada na escala",
+            when {
+                colegasNoTurno != null && colegasNoTurno.isNotEmpty() -> "Com: ${colegasNoTurno.joinToString(", ")}"
+                colegasNoTurno != null -> "Ninguém mais da equipe nesse turno"
+                day.teamMembers.isNotEmpty() -> "Com: ${day.teamMembers.joinToString(", ")}"
+                else -> "Equipe não localizada na escala"
+            },
             color = LabColors.onSurfaceMuted,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 2,
@@ -439,14 +457,17 @@ private fun WeatherMiniCard() {
 }
 
 @Composable
-private fun TeamOnDutyCard(day: ShiftDay, selectedCollaborator: String) {
+private fun TeamOnDutyCard(day: ShiftDay, selectedCollaborator: String, teamSnapshot: TeamScheduleSnapshot?) {
     val shifts = listOf(ShiftType.MADRUGADA, ShiftType.MANHA, ShiftType.TARDE, ShiftType.NOITE)
-    val membersByShift = if (day.membersByShift.isNotEmpty()) {
-        day.membersByShift
-    } else if (day.type.isWorkShift) {
-        mapOf(day.type to (listOf(selectedCollaborator) + day.teamMembers))
-    } else {
-        emptyMap()
+    val snapshotMembersByShift = remember(teamSnapshot, day.date) {
+        val dataIso = day.date?.toIso() ?: return@remember null
+        teamSnapshot?.let { EscalaIciScheduleMapper.quemTrabalhaPorTurno(it, dataIso) }
+    }
+    val membersByShift = when {
+        snapshotMembersByShift != null -> snapshotMembersByShift
+        day.membersByShift.isNotEmpty() -> day.membersByShift
+        day.type.isWorkShift -> mapOf(day.type to (listOf(selectedCollaborator) + day.teamMembers))
+        else -> emptyMap()
     }
 
     LabCard(title = "Quem trabalha nesse dia", icon = Icons.Default.Groups, borderColor = LabColors.outline.copy(alpha = 0.34f)) {

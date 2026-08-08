@@ -16,9 +16,21 @@ enum class EscalaIciError {
     INVALID_REMOTE_DATA,
     CACHE_CORRUPTED,
     UNKNOWN_ERROR,
+
+    // --- Trocas (FASE 16) ---
+    TROCA_NOT_FOUND,
+    TROCA_INVALID_TRANSITION,
+    /** Documento mudou desde a leitura que originou a escrita (`FirestoreConflictException`) - releia antes de tentar novamente. */
+    TROCA_CONFLICT,
+    TROCA_DUPLICATE,
+    /** `validarNovaSolicitacaoTroca` recusou a solicitação - mensagem já é a lista de motivos em texto amigável. */
+    TROCA_VALIDATION_FAILED,
 }
 
 data class EscalaIciException(val error: EscalaIciError, override val message: String) : Exception(message)
+
+/** Identidade minima da sessao logada, extraida do [ScheduleSummary] ja carregado - usada por Trocas (FASE 16) para nunca precisar de um segundo login. */
+data class SessionIdentity(val login: String, val nome: String, val ativo: Boolean, val equipeId: String, val competencia: String)
 
 /** Estado da sincronizacao logada. `Cached`/`Ready` carregam o mesmo `ScheduleSummary` que a UI ja consome. */
 sealed interface ScheduleSyncState {
