@@ -40,20 +40,26 @@ No Linux e no GitHub Actions:
 
 ## Situação funcional
 
+Desde a FASE 15 (`docs/spec/FASE-15-FIREBASE-UNIFICADO.md`), Hoje/Escala/Perfil
+são alimentados pelo Firebase real do `Escala-ICI` (staging) quando o usuário
+está logado — não mais por dados locais/mock por padrão.
+
 | Funcionalidade | Web | Android | Fonte atual | Situação |
 |---|---|---|---|---|
-| Hoje | Sim | Existente | Dados locais/importados | FUNCIONAL |
-| Escala | Sim | Existente | Dados locais/importados | FUNCIONAL |
-| Alertas | Sim | Existente | Regras e dados locais | FUNCIONAL |
-| Perfil | Sim | Existente | Estado local | FUNCIONAL |
-| Plantão | Sim | Existente | Dados locais/importados | FUNCIONAL |
-| Arquivo local XLS/XLSX | Sim | Existente | Seletor do dispositivo | FUNCIONAL |
+| Login (e-mail+senha real) | Sim | Existente | Identity Toolkit REST (Escala-ICI) | FUNCIONAL |
+| Hoje | Sim | Existente | Firestore (`turnosMes` PUBLICADA da equipe real) | FUNCIONAL |
+| Escala | Sim | Existente | Firestore (`turnosMes` PUBLICADA da equipe real) | FUNCIONAL |
+| Alertas | Sim | Existente | Regras locais sobre os dados do Firestore | FUNCIONAL |
+| Perfil | Sim | Existente | `usuarios/{login}` real | FUNCIONAL |
+| Plantão | Sim | Existente | Sem contrato no backend novo — mostra aviso explícito | PENDENTE (fora do Escala-ICI) |
+| Modo demonstração | Sim | Existente | Mock local, isolado, nunca fallback automático | FUNCIONAL |
+| Arquivo local XLS/XLSX | Sim | Existente | Seletor do dispositivo (não alimenta Hoje/Escala se logado) | FUNCIONAL |
 | Dropbox | Código experimental | Existente | Configuração já existente | PARCIAL |
-| Firebase | Não | Não validado | Nenhuma integração real | PENDENTE DE INTEGRAÇÃO |
+| Firebase (Escala-ICI, staging) | Sim | Sim | Identity Toolkit + Firestore REST, autenticado | FUNCIONAL |
 | OneDrive | Não | Não | Nenhuma integração | PENDENTE DE INTEGRAÇÃO |
 | Atualização do aplicativo | Não | Existente | Exclusiva do Android | NÃO DISPONÍVEL |
-| Login corporativo no aplicativo | Não | Não validado | Nenhum MSAL real | PENDENTE DE INTEGRAÇÃO |
-| Sincronização corporativa | Não | Não validado | Estado local | NÃO DISPONÍVEL |
+| Login corporativo Microsoft/Entra | Não | Não | Fora do escopo da FASE 15 (`AuthRepository` já preparado) | PENDENTE DE INTEGRAÇÃO |
+| Sincronização corporativa | Sim | Sim | Cache offline v2 por login + refresh automático | FUNCIONAL |
 
 Cloudflare Access protegerá externamente a entrada do site. Ele não autentica o usuário dentro do código do Escala ICI e não fornece automaticamente nome, e-mail ou token Microsoft ao aplicativo.
 

@@ -1,3 +1,9 @@
+> **SUPERSEDED BY FASE 15** (`docs/spec/FASE-15-FIREBASE-UNIFICADO.md`).
+> As coleções `teams`/`members`/`schedule_periods`/`schedule_assignments`/
+> `oncall_periods`/`oncall_assignments` descritas aqui não existem mais no
+> fluxo funcional — o KMP agora lê `usuarios`/`turnosMes`/`tiposTurno` do
+> Firebase real do Escala-ICI, autenticado. Mantido só como registro histórico.
+
 # KMP-MVP-1B-SIMPLES — leitura Firestore Web e Android
 
 ## Escopo entregue

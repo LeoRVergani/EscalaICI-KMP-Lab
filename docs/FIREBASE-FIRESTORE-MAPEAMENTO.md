@@ -1,3 +1,8 @@
+> **SUPERSEDED BY FASE 15** (`docs/spec/FASE-15-FIREBASE-UNIFICADO.md`).
+> Este documento descreve o projeto Firebase antigo do laboratório
+> (`escalaici`, leitura anônima) — substituído por completo pelo Firebase
+> real do Escala-ICI, autenticado. Mantido só como registro histórico.
+
 # Mapeamento Firebase/Firestore — KMP-MVP-1B
 
 ## Decisão da auditoria

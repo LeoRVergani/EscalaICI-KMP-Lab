@@ -50,6 +50,54 @@ kotlin {
     }
 }
 
+val firebaseConfigOutputDir = layout.buildDirectory.dir("generated/firebaseConfig")
+
+val generateFirebaseConfig = tasks.register("generateFirebaseConfig") {
+    val propertiesFile = rootProject.file("local.firebase.properties")
+    inputs.file(propertiesFile).withPropertyName("localFirebaseProperties").optional()
+    outputs.dir(firebaseConfigOutputDir)
+
+    doLast {
+        val properties = Properties()
+        if (propertiesFile.exists()) {
+            propertiesFile.inputStream().use { properties.load(it) }
+        }
+        fun prop(key: String, default: String = "") = properties.getProperty(key, default)
+
+        val packageDir = firebaseConfigOutputDir.get()
+            .dir("br/com/leorvergani/escalaici/kmp/lab/firebase").asFile
+        packageDir.mkdirs()
+        packageDir.resolve("GeneratedFirebaseConfig.kt").writeText(
+            """
+            |package br.com.leorvergani.escalaici.kmp.lab.firebase
+            |
+            |// GERADO AUTOMATICAMENTE pela task Gradle `generateFirebaseConfig` a partir de
+            |// local.firebase.properties (gitignored, config publica apenas - nunca
+            |// credenciais de teste, que vivem em local.firebase.test.properties e nunca
+            |// sao lidas por esta task). Nao editar a mao; nao versionado.
+            |internal val generatedFirebaseConfig = EscalaIciFirebaseConfig(
+            |    environment = FirebaseEnvironment.${prop("firebase.environment", "LOCAL_EMULATOR")},
+            |    projectId = "${prop("firebase.projectId")}",
+            |    apiKey = "${prop("firebase.apiKey")}",
+            |    authDomain = "${prop("firebase.authDomain")}",
+            |    appId = "${prop("firebase.appId")}",
+            |    storageBucket = "${prop("firebase.storageBucket")}",
+            |    messagingSenderId = "${prop("firebase.messagingSenderId")}",
+            |    emulatorProjectId = "${prop("firebase.emulator.projectId", "demo-escalaici-kmp")}",
+            |    emulatorAuthHost = "${prop("firebase.emulator.authHost", "127.0.0.1")}",
+            |    emulatorAuthPort = ${prop("firebase.emulator.authPort", "9099")},
+            |    emulatorFirestoreHost = "${prop("firebase.emulator.firestoreHost", "127.0.0.1")}",
+            |    emulatorFirestorePort = ${prop("firebase.emulator.firestorePort", "8080")},
+            |)
+            |""".trimMargin()
+        )
+    }
+}
+
+kotlin.sourceSets.getByName("commonMain").kotlin.srcDir(firebaseConfigOutputDir)
+
+tasks.matching { task -> task.name.contains("Kotlin") }.configureEach { dependsOn(generateFirebaseConfig) }
+
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
@@ -65,8 +113,8 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = "br.com.leorvergani.escalaici.kmp.lab"
         minSdk = 28
         targetSdk = 36
-        versionCode = 13
-        versionName = "0.6.3"
+        versionCode = 14
+        versionName = "0.7.0"
     }
 
     signingConfigs {

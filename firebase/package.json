@@ -3,12 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "emulator": "firebase emulators:start --config firebase.json --project demo-escalaici-kmp --only firestore",
-    "test:rules": "firebase emulators:exec --config firebase.json --project demo-escalaici-kmp --only firestore \"node --test test/firestore.rules.test.mjs\""
+    "emulator": "firebase emulators:start --config firebase.json --project demo-escalaici-kmp --only firestore,auth",
+    "test:rules": "firebase emulators:exec --config firebase.json --project demo-escalaici-kmp --only firestore,auth \"node --test test/firestore.rules.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",
     "firebase": "^12.6.0",
-    "firebase-tools": "^14.20.0"
+    "firebase-tools": "^15.26.0"
   }
 }

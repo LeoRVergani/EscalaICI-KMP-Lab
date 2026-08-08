@@ -1,0 +1,8 @@
+# Credenciais de teste (e-mail/senha ficticios de staging), usadas
+# EXCLUSIVAMENTE pelos testes de integracao contra o Firebase Emulator ou
+# staging real. Nunca lido pela task de geracao de EscalaIciFirebaseConfig
+# e nunca embutido em nenhum artefato (APK/Wasm). Nunca commitar o arquivo
+# real (local.firebase.test.properties, gitignored) - so este .example.
+test.staging.managerEmail=
+test.staging.employeeEmail=
+test.staging.password=

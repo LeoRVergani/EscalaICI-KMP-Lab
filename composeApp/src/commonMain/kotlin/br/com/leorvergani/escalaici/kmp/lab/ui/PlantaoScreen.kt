@@ -63,7 +63,6 @@ import br.com.leorvergani.escalaici.kmp.lab.model.YearResolutionSource
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
-import br.com.leorvergani.escalaici.kmp.lab.source.OnCallSourceData
 
 /**
  * Porte de `ui/plantao/PlantaoScreen.kt` (app real). Importação real do
@@ -74,14 +73,20 @@ import br.com.leorvergani.escalaici.kmp.lab.source.OnCallSourceData
  * relatório é importado, mostra `OnCallAssignment`/`OnCallStatus` mock
  * (FASE 9c) de `MockSchedule.kt`.
  */
+/**
+ * Plantao COSI ainda nao tem contrato/colecao propria no Firebase novo do
+ * Escala-ICI (auditoria FASE 15: `Categoria.PLANTAO`/`contaComoPlantao`/
+ * `pesoPlantao` existem no tipo, mas nenhum turno seedado os usa - reservado,
+ * nao implementado). Nao reintroduz `oncall_periods`/`oncall_assignments`
+ * (schema antigo) - a tela so mostra dados locais/importados/ilustrativos
+ * ate que o backend novo publique plantao de verdade.
+ */
 @Composable
 internal fun PlantaoScreen(
     onBack: () -> Unit,
     today: LabDate,
     now: LabDateTime,
     localDataCache: LocalDataCache,
-    firebaseData: OnCallSourceData? = null,
-    onRetryFirebase: () -> Unit = {}
 ) {
     var assignments by remember { mutableStateOf(mockOnCallAssignments()) }
     var isImported by remember { mutableStateOf(false) }
@@ -98,16 +103,6 @@ internal fun PlantaoScreen(
             }
             is CacheRead.Invalid -> importError = cached.safeMessage
             CacheRead.Missing -> Unit
-        }
-    }
-
-    LaunchedEffect(firebaseData) {
-        firebaseData?.let {
-            assignments = it.assignments
-            isImported = true
-            importedFileName = "Firebase"
-            importMessage = if (it.metadata.fromCache) "Dados disponíveis offline." else "Fonte: Firebase"
-            importError = null
         }
     }
 
@@ -190,8 +185,7 @@ internal fun PlantaoScreen(
                 onImportClick = {
                     importError = null
                     importLauncher.launch()
-                },
-                onRetryFirebase = onRetryFirebase
+                }
             )
         }
         item {
@@ -227,7 +221,6 @@ private fun PlantaoHeroCard(
     importMessage: String?,
     importError: String?,
     onImportClick: () -> Unit,
-    onRetryFirebase: () -> Unit
 ) {
     val accent = when {
         active -> LabColors.primary
@@ -274,7 +267,7 @@ private fun PlantaoHeroCard(
             }
         }
         Text(
-            if (isImported) "Relatório importado: ${importedFileName ?: "arquivo"}" else "Nenhum relatório de plantão publicado ainda — mostrando dados ilustrativos.",
+            if (isImported) "Relatório importado: ${importedFileName ?: "arquivo"}" else "Plantão ainda não publicado neste backend — mostrando dados ilustrativos.",
             style = MaterialTheme.typography.labelSmall,
             color = LabColors.onSurfaceMuted
         )
@@ -293,9 +286,6 @@ private fun PlantaoHeroCard(
             colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White)
         ) {
             Text(if (isImported) "Importar outro relatório" else "Importar relatório")
-        }
-        if (importedFileName == "Firebase") {
-            Button(onClick = onRetryFirebase, modifier = Modifier.fillMaxWidth()) { Text("Tentar novamente") }
         }
     }
 }

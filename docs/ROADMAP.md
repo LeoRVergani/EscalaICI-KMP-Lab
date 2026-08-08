@@ -7,6 +7,40 @@ Android principal, apenas como referência de spec — este laboratório vive em
 
 Status possíveis: `TODO`, `IN_PROGRESS`, `DONE`.
 
+## FASE 15 — Firebase unificado (Escala-ICI como fonte de verdade)
+
+- **Status:** DONE no código — Android/Web compilam, `testDebugUnitTest`
+  passa (40 testes novos), Firestore Rules testadas no Emulator com o
+  schema novo. **PENDENTE** teste de integração Kotlin-JVM contra o
+  Emulator rodando, teste manual em dispositivo/navegador real e build de
+  release assinado (keystore não existe neste ambiente de execução — ver
+  `docs/spec/FASE-15-FIREBASE-UNIFICADO.md` seção 13).
+- Substitui por completo o Firebase antigo (coleções `teams`, `members`,
+  `schedule_periods`, `schedule_assignments`, `oncall_periods`,
+  `oncall_assignments`, `FirestoreRestGateway` anônimo) pelo Firebase real
+  do `Escala-ICI` (staging): login por e-mail+senha real (Identity
+  Toolkit REST), `usuarios/{login}`, `turnosMes` PUBLICADA resolvida
+  automaticamente (corte de competência no dia 26, sem o usuário escolher
+  nada), `tiposTurno` por equipe. `teamId = "soc"` removido do fluxo real
+  de login/escala (segue existindo nos mocks/parsers de XLS, que sempre
+  representaram essa equipe especificamente — fora do escopo desta fase).
+- Auditoria encontrou e corrigiu, antes de escrever código, uma leitura
+  errada do contrato do Escala-ICI causada por um checkout local
+  defasado (identidade é por `login`, não por UID do Firebase Auth) —
+  detalhe completo na seção 2 da spec nova.
+- Pacote novo `firebase/` em `commonMain`: clientes REST próprios
+  (Ktor + `HttpClient(CIO)`, sem SDK Firebase) para Identity
+  Toolkit/Secure Token/Firestore; `SessionTokenStore` criptografado via
+  Android Keystore (nunca texto simples); cache offline v2 isolado por
+  login; estados/erros tipados; `LoggedScheduleSyncCoordinator`
+  orquestrando tudo.
+- Superadas pela FASE 15 (partes que dependiam do schema antigo — ver
+  `docs/SPECS-ESCALAICI.md`): specs 47 (`user_links` por UID) e as partes
+  de 48/50/51 sobre as coleções antigas. As partes de 46/49 sobre um
+  futuro MSAL/Entra continuam válidas — não implementadas ainda, fora do
+  escopo desta fase.
+- `versionCode`/`versionName`: `13`/`0.6.3` → `14`/`0.7.0`.
+
 ## FASE 14a.1 — Endurecimento emergencial das regras do Firestore
 
 - **Status:** DONE — regras e testes prontos e passando no Emulator; **não

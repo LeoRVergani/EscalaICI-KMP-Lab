@@ -107,14 +107,15 @@ internal fun ProfileTab(
                 )
                 Text(summary.member.email, color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = onLogout) {
-                    Text("Sair (login de teste)", color = LabColors.primary)
+                    Text("Sair", color = LabColors.primary)
                 }
             }
         }
         item {
             LabCard(title = "Identidade da escala", icon = Icons.Default.Security, borderColor = LabColors.primary.copy(alpha = 0.25f)) {
                 Text("Colaborador identificado: ${summary.member.scaleName}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Associação corporativa ainda não configurada.", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Login: ${summary.member.id}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Equipe: ${summary.team.name}", color = LabColors.onSurfaceMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
         item {

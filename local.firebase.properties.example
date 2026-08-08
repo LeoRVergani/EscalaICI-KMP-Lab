@@ -1,0 +1,24 @@
+# Config publica do Firebase usada em build-time para gerar
+# EscalaIciFirebaseConfig (commonMain). Nunca commitar o arquivo real
+# (local.firebase.properties, gitignored) - so este .example, sem valores
+# reais, e versionado.
+#
+# environment: LOCAL_EMULATOR | STAGING | PRODUCTION
+firebase.environment=LOCAL_EMULATOR
+
+# Preenchido para STAGING/PRODUCTION (config publica de Web App do Firebase
+# do Escala-ICI - apiKey/authDomain/appId nao sao segredo, mas ainda assim
+# nao versionamos por padrao do projeto).
+firebase.projectId=
+firebase.apiKey=
+firebase.authDomain=
+firebase.appId=
+firebase.storageBucket=
+firebase.messagingSenderId=
+
+# Preenchido para LOCAL_EMULATOR (Firebase Emulator Suite local).
+firebase.emulator.projectId=demo-escalaici-kmp
+firebase.emulator.authHost=127.0.0.1
+firebase.emulator.authPort=9099
+firebase.emulator.firestoreHost=127.0.0.1
+firebase.emulator.firestorePort=8080
