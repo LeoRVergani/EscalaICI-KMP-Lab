@@ -55,7 +55,14 @@ class FirestoreCurrentScheduleResolver(
         } catch (e: FirestoreUnauthorizedException) {
             throw EscalaIciException(EscalaIciError.AUTH_REQUIRED, e.message ?: "Sessao expirada.")
         } catch (e: FirestorePermissionDeniedException) {
-            throw EscalaIciException(EscalaIciError.PERMISSION_DENIED, e.message ?: "Sem permissao para ler a escala.")
+            // As Rules do Firestore devolvem 403 (nao 404) tanto para "documento
+            // nao existe" quanto para "existe mas e de outra equipe" quando a
+            // regra referencia `resource.data` - um ID adivinhado (competencia
+            // operacional) errado e o caso comum, entao aqui isso e tratado como
+            // "nao encontrado por este caminho", nunca abortando a resolucao -
+            // a query em `publicadasDoUsuario` e quem decide se e de fato
+            // PERMISSION_DENIED. Bug real encontrado testando contra staging.
+            return null
         } catch (e: FirestoreNetworkException) {
             throw EscalaIciException(EscalaIciError.NETWORK_ERROR, e.message ?: "Falha de rede ao ler a escala.")
         } ?: return null

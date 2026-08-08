@@ -59,7 +59,13 @@ private data class RefreshTokenResponse(
 class IdentityToolkitAuthClient(
     private val httpClient: HttpClient,
     private val config: EscalaIciFirebaseConfig,
-    private val json: Json = Json { ignoreUnknownKeys = true },
+    // encodeDefaults=true e obrigatorio aqui: sem ele, kotlinx.serialization
+    // omite `returnSecureToken` (fica igual ao valor padrao `true`) do corpo
+    // codificado, e o Identity Toolkit real entao devolve um token sem
+    // `refreshToken`/`expiresIn` - bug real encontrado testando contra
+    // staging (o Firebase Emulator aceitava o corpo sem o campo sem
+    // reclamar, por isso so apareceu contra a API real).
+    private val json: Json = Json { ignoreUnknownKeys = true; encodeDefaults = true },
 ) {
     suspend fun signInWithPassword(email: String, password: String): IdentityToolkitTokenResponse {
         val response: HttpResponse = httpClient.post("${config.identityToolkitBaseUrl}/accounts:signInWithPassword") {

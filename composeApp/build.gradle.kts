@@ -98,6 +98,15 @@ kotlin.sourceSets.getByName("commonMain").kotlin.srcDir(firebaseConfigOutputDir)
 
 tasks.matching { task -> task.name.contains("Kotlin") }.configureEach { dependsOn(generateFirebaseConfig) }
 
+// Repo root para os testes de integracao (androidUnitTest) localizarem
+// local.firebase.properties/local.firebase.test.properties - esses testes
+// so exercitam rede real quando ESCALAICI_FIREBASE_EMULATOR/_STAGING=true
+// (ver firebase/FirebaseIntegrationTest.kt); sem a env var, ficam ignorados
+// (Assume) e nao afetam o testDebugUnitTest padrao.
+tasks.withType<Test>().configureEach {
+    systemProperty("escalaici.repoRoot", rootProject.projectDir.absolutePath)
+}
+
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {

@@ -1,9 +1,12 @@
 # FASE 15 — Firebase unificado (Escala-ICI como fonte de verdade)
 
-**Status:** implementada (código, testes unitários e testes de Firestore
-Rules no Emulator); teste de integração ponta-a-ponta contra o Emulator
-via Kotlin e o build de release assinado ficam como pendência externa
-(ver seção 13).
+**Status:** implementada e validada automaticamente (código, testes
+unitários, Firestore Rules no Emulator, e integração Kotlin real contra
+Emulator **e** staging — ver seção 13). Dois bugs reais só apareceram
+testando contra a API real e foram corrigidos. Validação **manual**
+(dispositivo/navegador reais) e **release assinado** permanecem como
+pendência externa (seção 13) — a FASE 15 não está encerrada até esses
+itens serem fechados numa máquina/ambiente com os recursos necessários.
 
 **Escopo:** Escala ICI KMP (Android + Web/Wasm), leitura autenticada e
 read-only do mesmo Firebase/Firestore do `Escala-ICI`
@@ -171,10 +174,38 @@ equipe, só `PUBLICADA` para quem não é gestor).
   para colaborador comum, consulta por igualdades (`login`+`equipeId`+
   `status`) **confirmada sem precisar de índice composto novo**, leitura
   anônima sempre negada.
-- **Pendente** (ver relatório final): teste de integração Kotlin-JVM
-  completo contra o Emulator rodando (login → usuário → escala → cache,
-  exercitando `IdentityToolkitAuthClient`/`FirestoreRestClient` de
-  verdade) e teste manual em dispositivo/navegador real.
+- **Integração Kotlin-JVM real** (`androidUnitTest/.../firebase/FirebaseIntegrationTest.kt`,
+  exercitando o mesmo `HttpClient(CIO)`/`IdentityToolkitAuthClient`/
+  `FirestoreRestClient` que Android e Web usam — nenhum mock/fake). So
+  roda com `ESCALAICI_FIREBASE_EMULATOR=true`/`ESCALAICI_FIREBASE_STAGING=true`
+  explicitos (nunca no `testDebugUnitTest` padrão):
+  - **Emulator** (`scripts/run-emulator-integration-test.sh` semeia via
+    REST e roda o teste): **PASS** — login → `usuarios/ana.silva` →
+    `turnosMes` PUBLICADA → `tiposTurno` → `EscalaIciScheduleMapper`,
+    ponta a ponta, contra o Emulator real.
+  - **Staging** (`local.firebase.test.properties`): `marina.azevedo`
+    (gestora) **PASS** — identidade/equipe/Rules confirmadas contra o
+    Firebase real. `caio.monteiro` (colaborador) **FAIL, não mascarado**:
+    `usuarios/caio.monteiro` resolve (`equipeId=EQ_SOC`), mas não existe
+    nenhum `turnosMes` com `status=='PUBLICADA'` para
+    `login=caio.monteiro`+`equipeId=EQ_SOC` no staging — lacuna de **dado**
+    no ambiente, não de código (nenhum fallback foi criado para escondê-la).
+  - **Dois bugs reais encontrados e corrigidos só por testar contra a API
+    real** (o Emulator não os expunha):
+    1. `IdentityToolkitAuthClient`: `Json` sem `encodeDefaults = true`
+       omitia `returnSecureToken` (igual ao valor padrão `true`) do corpo
+       da requisição; o Identity Toolkit real então devolvia o token sem
+       `refreshToken`/`expiresIn`, quebrando o parse. O Emulator aceitava
+       o corpo incompleto sem reclamar, por isso só apareceu em staging.
+    2. `CurrentScheduleResolver.publicadaPorId`: um 403 do Firestore no
+       caminho rápido (GET pelo ID adivinhado) abortava a resolução
+       inteira em vez de cair para a consulta — mas o Firestore devolve
+       403 (não 404) tanto para "não existe" quanto para "é de outra
+       equipe" quando a regra referencia `resource.data`. Corrigido para
+       tratar 403 nesse caminho como "não encontrado", nunca abortando.
+- **Manual** (dispositivo Android real, navegador real, teste de
+  publicação via Dashboard): pendente — sem emulador Android nem
+  navegador interativo neste ambiente de execução.
 
 ## 10. Plantão (COSI)
 
@@ -197,10 +228,42 @@ plantão será modelado lá antes de qualquer implementação no KMP.
 - Sem `orderBy`/paginação nas queries — volume esperado por usuário é
   pequeno (poucas competências por vez).
 
-## 13. Pendências externas (ver relatório final da fase para detalhe)
+## 13. Registro de validação (FASE 15-FINAL)
 
-Teste de integração Kotlin-JVM contra o Emulator, teste manual em
-dispositivo Android/navegador real, teste de publicação via Dashboard, e
-o build de release **assinado** (keystore/`keystore.properties` e a
-pasta oficial de atualização não existem neste ambiente de execução —
-máquina diferente da usada nas fases anteriores).
+### AUTOMATIZADO
+
+| Caminho | Resultado |
+|---|---|
+| Kotlin/Ktor → Auth Emulator → Firestore Emulator (login→usuário→escala→catálogo→mapper) | **PASS** |
+| Kotlin/Ktor → Auth staging → Firestore staging, `marina.azevedo` (gestora, identidade/equipe) | **PASS** |
+| Kotlin/Ktor → Auth staging → Firestore staging, `caio.monteiro` (colaborador, ponta a ponta) | **FAIL — dado faltante, não bug**: `usuarios/caio.monteiro` existe (`equipeId=EQ_SOC`), mas não há nenhum `turnosMes` com `status=='PUBLICADA'` para esse login+equipe em staging. Nenhum fallback foi criado; a arquitetura não foi alterada para mascarar isso. |
+
+### MANUAL (pendente — sem dispositivo Android/navegador interativo neste ambiente)
+
+- [ ] Android: login → Hoje → Escala.
+- [ ] Android: fechar/reabrir → sessão restaurada.
+- [ ] Web/Wasm: login → Hoje → Escala.
+- [ ] Web/Wasm: reload → sessão restaurada.
+- [ ] Alteração publicada no Dashboard → Android atualizado.
+- [ ] Alteração publicada no Dashboard → Web atualizado.
+
+### RELEASE (pendente — keystore original não existe nesta máquina)
+
+- [ ] `assembleRelease` na máquina com a keystore original.
+- [ ] `apksigner verify` confirmando a **mesma assinatura** das versões anteriores.
+- [ ] `EscalaICI-latest.apk`, `versionCode=14`, `versionName=0.7.0`.
+- [ ] `version.json` atualizado.
+- [ ] Sem upload automático.
+
+**Correção registrada sobre o relatório anterior desta fase**: um APK com
+o mesmo `applicationId` mas assinatura diferente (ex.: o
+`composeApp-debug.apk` gerado nesta sessão, assinado com a chave de debug
+padrão do AGP) **não instala lado a lado nem atualiza** uma instalação já
+assinada com a keystore `escalaici-kmp-lab.jks` — o Android exige a mesma
+assinatura tanto para atualizar quanto, no caso de mesmo `applicationId`,
+para coexistir. Esse APK debug só é utilizável se (a) não houver instalação
+anterior com esse `applicationId`, ou (b) a instalação anterior já tiver
+sido assinada com a mesma chave de debug. Não é um substituto para o
+release assinado pendente acima.
+
+Nenhuma keystore nova foi gerada, nenhum `applicationId` foi alterado.
