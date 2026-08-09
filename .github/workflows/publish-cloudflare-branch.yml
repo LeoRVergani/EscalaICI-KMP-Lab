@@ -30,6 +30,21 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Configure Firebase
+        shell: bash
+        env:
+          FIREBASE_PROPERTIES: ${{ secrets.FIREBASE_PROPERTIES }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$FIREBASE_PROPERTIES" ]; then
+            echo "FIREBASE_PROPERTIES não configurado no GitHub Actions."
+            exit 1
+          fi
+
+          printf '%s\n' "$FIREBASE_PROPERTIES" > local.firebase.properties
+          echo "Firebase config preparado para o build."
+
       - name: Build and test Web
         run: ./scripts/build-web.sh
 
