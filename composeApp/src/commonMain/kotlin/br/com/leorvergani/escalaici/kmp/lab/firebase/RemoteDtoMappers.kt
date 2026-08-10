@@ -40,8 +40,13 @@ object RemoteDtoMappers {
         val f = codec.fieldsOf(document)
         val categoria = codec.string(f, "categoria")?.let { runCatching { CategoriaTurno.valueOf(it) }.getOrNull() }
             ?: CategoriaTurno.TRABALHO
+        // Documento legado sem `codigo` no payload: cai para o ultimo segmento
+        // do ID (`{equipeId}_{codigo}`, ex. "EQ_SOC_M" -> "M"), igual
+        // listarCatalogo() (lib/firebase/readRepository.ts:48) no app real -
+        // nao e um fallback inventado pelo KMP.
+        val codigoFallback = documentId(document)?.substringAfterLast('_')?.takeIf { it.isNotBlank() }
         return TipoTurnoRemoteDto(
-            codigo = codec.string(f, "codigo") ?: return null,
+            codigo = codec.string(f, "codigo") ?: codigoFallback ?: return null,
             descricao = codec.string(f, "descricao") ?: return null,
             categoria = categoria,
             horaInicio = codec.string(f, "horaInicio"),

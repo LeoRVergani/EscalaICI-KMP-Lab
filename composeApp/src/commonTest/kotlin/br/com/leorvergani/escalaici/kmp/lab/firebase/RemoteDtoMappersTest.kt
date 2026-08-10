@@ -77,6 +77,38 @@ class RemoteDtoMappersTest {
     }
 
     @Test
+    fun tipoTurno_fallsBackToDocumentIdSuffix_whenCodigoFieldMissing() {
+        // Documento legado sem `codigo` no payload - mesma compatibilidade de
+        // listarCatalogo() (lib/firebase/readRepository.ts:48) no Escala-ICI
+        // real: ID no formato `{equipeId}_{codigo}` (seed/seed.ts:65).
+        val document = buildJsonObject {
+            put("name", "projects/p/databases/(default)/documents/tiposTurno/EQ_SOC_M")
+            putJsonObject("fields") {
+                put("descricao", stringField("Manhã"))
+                put("categoria", stringField("TRABALHO"))
+                put("duracaoMinutos", intField(360))
+                put("viraDia", boolField(false))
+                put("contaComoPlantao", boolField(false))
+                put("pesoPlantao", intField(0))
+                put("corHex", stringField("#FFFF00"))
+            }
+        }
+        val tipo = RemoteDtoMappers.tipoTurno(document)
+        assertEquals("M", tipo?.codigo)
+    }
+
+    @Test
+    fun tipoTurno_returnsNull_whenCodigoAndDocumentIdBothMissing() {
+        val document = buildJsonObject {
+            putJsonObject("fields") {
+                put("descricao", stringField("Manhã"))
+                put("categoria", stringField("TRABALHO"))
+            }
+        }
+        assertNull(RemoteDtoMappers.tipoTurno(document))
+    }
+
+    @Test
     fun turnosMes_rejectsRascunho_asNeverPublicada() {
         val document = buildJsonObject {
             putJsonObject("fields") {
