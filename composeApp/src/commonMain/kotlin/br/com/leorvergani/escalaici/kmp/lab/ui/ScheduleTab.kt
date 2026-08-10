@@ -21,8 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Checklist
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material3.HorizontalDivider
@@ -47,10 +45,12 @@ import androidx.compose.ui.unit.sp
 import br.com.leorvergani.escalaici.kmp.lab.firebase.EscalaIciScheduleMapper
 import br.com.leorvergani.escalaici.kmp.lab.firebase.TeamScheduleSnapshot
 import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
-import br.com.leorvergani.escalaici.kmp.lab.model.LabYearMonth
+import br.com.leorvergani.escalaici.kmp.lab.model.PeriodCalendarCell
 import br.com.leorvergani.escalaici.kmp.lab.model.ScheduleSummary
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftDay
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftType
+import br.com.leorvergani.escalaici.kmp.lab.model.buildPeriodCalendarGrid
+import br.com.leorvergani.escalaici.kmp.lab.model.competenciaHeaderLabel
 import br.com.leorvergani.escalaici.kmp.lab.model.initialScheduleDate
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabCard
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
@@ -71,22 +71,16 @@ internal fun ScheduleTab(
     val sortedDays = summary.days.sortedBy { it.date }
     val initialDate = remember(summary, today) { initialScheduleDate(summary, today) }
     var selectedDate by remember(summary, today) { mutableStateOf(initialDate) }
-    var visibleMonth by remember(summary, today) { mutableStateOf((initialDate ?: today).yearMonth()) }
     var showLegend by remember { mutableStateOf(false) }
     val daysByDate = remember(summary) {
         sortedDays.mapNotNull { day -> day.date?.let { it to day } }.toMap()
     }
-    val firstMonth = sortedDays.firstNotNullOfOrNull { it.date }?.yearMonth() ?: visibleMonth
-    val lastMonth = sortedDays.mapNotNull { it.date }.lastOrNull()?.yearMonth() ?: visibleMonth
+    // Fonte da verdade da competência (FASE 17C): `periodStart`/`periodEnd`
+    // vêm do backend (`turnosMes.periodoInicio`/`periodoFim` via
+    // `EscalaIciScheduleMapper`), nunca recalculados por mês civil aqui.
+    val periodStart = summary.periodStart
+    val periodEnd = summary.periodEnd
     val selectedDay = selectedDate?.let { daysByDate[it] }
-
-    fun moveMonth(offset: Int) {
-        val target = visibleMonth.plusMonths(offset)
-        visibleMonth = target
-        selectedDate = sortedDays.firstOrNull { it.date?.yearMonth() == target && it.type.isWorkShift }?.date
-            ?: sortedDays.firstOrNull { it.date?.yearMonth() == target }?.date
-            ?: target.atDay(1)
-    }
 
     PageList {
         item {
@@ -97,38 +91,36 @@ internal fun ScheduleTab(
                 DemoCalendarCard()
             }
         }
-        item {
-            CalendarMonthHeader(
-                visibleMonth = visibleMonth,
-                period = summary.periodLabel,
-                canGoPrevious = visibleMonth.isAfter(firstMonth),
-                canGoNext = visibleMonth.isBefore(lastMonth),
-                onPrevious = { moveMonth(-1) },
-                onNext = { moveMonth(1) }
-            )
-        }
-        item {
-            val todayAvailable = summary.contains(today)
-            TextButton(
-                enabled = todayAvailable,
-                onClick = {
-                    selectedDate = today
-                    visibleMonth = today.yearMonth()
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (todayAvailable) "Ir para hoje" else "Hoje está fora do período carregado")
+        if (periodStart != null && periodEnd != null) {
+            item {
+                CompetenciaHeader(
+                    title = competenciaHeaderLabel(periodStart, periodEnd),
+                    period = summary.periodLabel
+                )
             }
-        }
-        item {
-            PeriodCalendarView(
-                yearMonth = visibleMonth,
-                daysByDate = daysByDate,
-                selectedDate = selectedDate,
-                onDateClick = { date ->
-                    selectedDate = date
+            item {
+                val todayAvailable = summary.contains(today)
+                TextButton(
+                    enabled = todayAvailable,
+                    onClick = { selectedDate = today },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (todayAvailable) "Ir para hoje" else "Hoje está fora do período carregado")
                 }
-            )
+            }
+            item {
+                PeriodCalendarView(
+                    periodStart = periodStart,
+                    periodEnd = periodEnd,
+                    daysByDate = daysByDate,
+                    selectedDate = selectedDate,
+                    onDateClick = { date -> selectedDate = date }
+                )
+            }
+        } else {
+            item {
+                EmptyPeriodCard()
+            }
         }
         item {
             LegendChip(expanded = showLegend, onClick = { showLegend = !showLegend })
@@ -150,72 +142,57 @@ internal fun ScheduleTab(
 }
 
 @Composable
-private fun CalendarMonthHeader(
-    visibleMonth: LabYearMonth,
-    period: String,
-    canGoPrevious: Boolean,
-    canGoNext: Boolean,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit
-) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        MonthNavButton(enabled = canGoPrevious, onClick = onPrevious, previous = true)
-        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                visibleMonth.monthTitle(),
-                color = LabColors.onSurface,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                period,
-                color = LabColors.onSurfaceMuted,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        MonthNavButton(enabled = canGoNext, onClick = onNext, previous = false)
+private fun CompetenciaHeader(title: String, period: String) {
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            title,
+            color = LabColors.onSurface,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            period,
+            color = LabColors.onSurfaceMuted,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
 @Composable
-private fun MonthNavButton(enabled: Boolean, onClick: () -> Unit, previous: Boolean) {
-    Surface(
-        onClick = onClick,
-        enabled = enabled,
-        shape = CircleShape,
-        color = LabColors.surface.copy(alpha = if (enabled) 0.70f else 0.24f),
-        border = BorderStroke(1.dp, LabColors.outline.copy(alpha = if (enabled) 0.42f else 0.18f)),
-        modifier = Modifier.size(42.dp)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = if (previous) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = LabColors.onSurface.copy(alpha = if (enabled) 0.88f else 0.34f),
-                modifier = Modifier.size(22.dp)
-            )
-        }
+private fun EmptyPeriodCard() {
+    LabCard(borderColor = LabColors.outline.copy(alpha = 0.30f)) {
+        Text(
+            "Nenhum período de escala disponível ainda.",
+            color = LabColors.onSurfaceMuted,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
+/**
+ * Grade única e contínua da competência operacional real (ex.
+ * 26/07→25/08) - nunca por mês civil, nunca com navegação entre meses
+ * dentro da mesma competência (FASE 17C). `periodStart`/`periodEnd` vêm do
+ * backend; este Composable só preenche/alinha, via [buildPeriodCalendarGrid].
+ */
 @Composable
 private fun PeriodCalendarView(
-    yearMonth: LabYearMonth,
+    periodStart: LabDate,
+    periodEnd: LabDate,
     daysByDate: Map<LabDate, ShiftDay>,
     selectedDate: LabDate?,
     onDateClick: (LabDate) -> Unit
 ) {
     val weekHeaders = listOf("DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB")
-    val startOffset = yearMonth.firstDayOffsetSunday()
-    val daysInMonth = yearMonth.lengthOfMonth()
-    val rows = (startOffset + daysInMonth + 6) / 7
+    val cells = remember(periodStart, periodEnd) { buildPeriodCalendarGrid(periodStart, periodEnd) }
+    val rows = cells.size / 7
 
-    LabCard(title = "Calendário", badge = yearMonth.periodMonthLabel(), icon = Icons.Default.CalendarMonth) {
+    LabCard(title = "Calendário", icon = Icons.Default.CalendarMonth) {
         Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
             weekHeaders.forEach { header ->
                 Text(
@@ -231,14 +208,13 @@ private fun PeriodCalendarView(
         repeat(rows) { row ->
             Row(modifier = Modifier.fillMaxWidth()) {
                 repeat(7) { column ->
-                    val dayNumber = row * 7 + column - startOffset + 1
-                    val date = if (dayNumber in 1..daysInMonth) yearMonth.atDay(dayNumber) else null
+                    val cell: PeriodCalendarCell = cells[row * 7 + column]
                     PeriodDayCell(
-                        date = date,
-                        day = date?.let { daysByDate[it] },
-                        selected = selectedDate == date,
+                        date = cell.date,
+                        day = cell.date?.let { daysByDate[it] },
+                        selected = cell.date != null && selectedDate == cell.date,
                         modifier = Modifier.weight(1f),
-                        onClick = { if (date != null) onDateClick(date) }
+                        onClick = { cell.date?.let(onDateClick) }
                     )
                 }
             }

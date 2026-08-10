@@ -7,6 +7,7 @@ import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.TotaisRemoteDto
 import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.TurnosMesRemoteDto
 import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.TurnosMesStatus
 import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.UsuarioRemoteDto
+import br.com.leorvergani.escalaici.kmp.lab.model.LabDate
 import br.com.leorvergani.escalaici.kmp.lab.model.ShiftType
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -70,6 +71,20 @@ class EscalaIciScheduleMapperTest {
         )
         val summary = EscalaIciScheduleMapper.map(turnosMes(dias), usuario, catalogo)
         assertEquals(listOf("01/08", "02/08", "03/08"), summary.days.map { it.dateLabel })
+    }
+
+    @Test
+    fun map_setsPeriodStartEnd_fromBackendFields_notFromDiasMinMax() {
+        // FASE 17C - regra 1: a fonte da verdade do período é
+        // `turnosMes.periodoInicio`/`periodoFim`, nunca um min/max
+        // recalculado a partir de `dias`. Aqui `dias` só tem um dia no
+        // meio do período (nem o primeiro nem o último) - se o mapper
+        // ainda derivasse periodStart/periodEnd de `days`, o teste falharia.
+        val dias = mapOf("2026-08-10" to DiaRemoteDto(c = "M"))
+        val summary = EscalaIciScheduleMapper.map(turnosMes(dias), usuario, catalogo)
+
+        assertEquals(LabDate(2026, 7, 26), summary.periodStart)
+        assertEquals(LabDate(2026, 8, 25), summary.periodEnd)
     }
 
     @Test

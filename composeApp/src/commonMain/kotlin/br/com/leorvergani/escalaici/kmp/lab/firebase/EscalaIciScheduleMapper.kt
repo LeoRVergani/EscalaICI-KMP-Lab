@@ -55,6 +55,12 @@ object EscalaIciScheduleMapper {
             pauseOffsetLabel = "Sem sugestão disponível",
             sourceFileName = "Firebase",
             competencia = turnosMes.competencia,
+            // FASE 17C - fonte da verdade do período é o backend
+            // (`turnosMes.periodoInicio`/`periodoFim`), nunca um min/max
+            // recalculado a partir de `days` (default do data class,
+            // correto só para XLS/mock sem esses campos).
+            periodStart = LabDate.parseIso(turnosMes.periodoInicio),
+            periodEnd = LabDate.parseIso(turnosMes.periodoFim),
         )
     }
 
