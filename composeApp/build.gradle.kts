@@ -170,8 +170,8 @@ extensions.configure<ApplicationExtension>("android") {
         applicationId = "br.com.leorvergani.escalaici.kmp.lab"
         minSdk = 28
         targetSdk = 36
-        versionCode = 15
-        versionName = "0.7.1"
+        versionCode = 16
+        versionName = "0.7.2"
     }
 
     signingConfigs {
