@@ -33,7 +33,6 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.cio)
             implementation(libs.kotlinx.serialization.json)
         }
 
@@ -42,6 +41,16 @@ kotlin {
             implementation("androidx.lifecycle:lifecycle-process:2.8.7")
             implementation("org.apache.poi:poi:5.2.5")
             implementation("org.apache.poi:poi-ooxml:5.2.5")
+            // Engine HTTP Android/JVM - sockets reais, sem equivalente em navegador (FASE 17B.1).
+            implementation(libs.ktor.client.cio)
+        }
+
+        wasmJsMain.dependencies {
+            // Engine HTTP para navegador - usa fetch() nativo por baixo dos panos.
+            // CIO (sockets) nao funciona em browser real: lanca
+            // "Node.js net module is not available" ao tentar enviar qualquer
+            // requisicao (achado da FASE 17B, corrigido na FASE 17B.1).
+            implementation(libs.ktor.client.js)
         }
 
         commonTest.dependencies {
@@ -56,7 +65,13 @@ val firebaseConfigOutputDir = layout.buildDirectory.dir("generated/firebaseConfi
 
 val generateFirebaseConfig = tasks.register("generateFirebaseConfig") {
     val propertiesFile = rootProject.file("local.firebase.properties")
-    inputs.file(propertiesFile).withPropertyName("localFirebaseProperties").optional()
+    // `inputs.file(...).optional()` ainda falha a validacao do Gradle quando
+    // o arquivo esta totalmente ausente ("Property specifies file which
+    // doesn't exist") - achado da FASE 17B, corrigido na FASE 17B.1.
+    // `inputs.files(...)` (uma FileCollection, nao um unico InputFile) nao
+    // exige que os arquivos existam - o `doLast` abaixo ja trata a ausencia
+    // via `propertiesFile.exists()`.
+    inputs.files(propertiesFile).withPropertyName("localFirebaseProperties")
     outputs.dir(firebaseConfigOutputDir)
 
     doLast {
@@ -65,6 +80,37 @@ val generateFirebaseConfig = tasks.register("generateFirebaseConfig") {
             propertiesFile.inputStream().use { properties.load(it) }
         }
         fun prop(key: String, default: String = "") = properties.getProperty(key, default)
+
+        // FASE 17B - fail-fast: uma build com `firebase.environment=STAGING`
+        // (Android ou Web, local ou CI) nunca pode compilar silenciosamente
+        // com configuracao vazia/errada - risco identificado na auditoria
+        // 17B (build Web anterior compilava, mas nao permitia logar de
+        // verdade). So valida presenca/projectId, nunca imprime apiKey.
+        val environmentValue = prop("firebase.environment", "LOCAL_EMULATOR")
+        if (environmentValue == "STAGING") {
+            val requiredKeys = listOf(
+                "firebase.projectId", "firebase.apiKey", "firebase.authDomain",
+                "firebase.appId", "firebase.messagingSenderId",
+            )
+            val missing = requiredKeys.filter { prop(it).isBlank() }
+            if (missing.isNotEmpty()) {
+                throw GradleException(
+                    "generateFirebaseConfig: firebase.environment=STAGING mas os seguintes campos " +
+                        "estao vazios em local.firebase.properties (ou no segredo FIREBASE_PROPERTIES do CI): " +
+                        "${missing.joinToString(", ")}. Uma build destinada a staging nao pode compilar " +
+                        "silenciosamente com configuracao vazia.",
+                )
+            }
+            val projectId = prop("firebase.projectId")
+            val expectedStagingProjectId = "escala-ici-staging"
+            if (projectId != expectedStagingProjectId) {
+                throw GradleException(
+                    "generateFirebaseConfig: firebase.environment=STAGING mas firebase.projectId='$projectId' " +
+                        "difere do projeto staging esperado ('$expectedStagingProjectId'). Corrija " +
+                        "local.firebase.properties ou o segredo FIREBASE_PROPERTIES do CI.",
+                )
+            }
+        }
 
         val packageDir = firebaseConfigOutputDir.get()
             .dir("br/com/leorvergani/escalaici/kmp/lab/firebase").asFile

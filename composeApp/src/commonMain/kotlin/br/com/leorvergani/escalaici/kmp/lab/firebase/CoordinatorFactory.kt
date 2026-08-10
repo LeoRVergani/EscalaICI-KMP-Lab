@@ -1,8 +1,5 @@
 package br.com.leorvergani.escalaici.kmp.lab.firebase
 
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-
 /** `LoggedScheduleSyncCoordinator` (Hoje/Escala/Perfil) + `TrocasSession` (FASE 16) - montados juntos porque compartilham o mesmo `HttpClient`/`FirestoreRestClient`/repositorios de usuario e catalogo. */
 data class EscalaIciSession(
     val syncCoordinator: LoggedScheduleSyncCoordinator,
@@ -10,15 +7,15 @@ data class EscalaIciSession(
 )
 
 /**
- * Monta a sessao completa (mesmo `HttpClient(CIO)` ja usado pelo resto do
- * app - engine unico, sem expect/actual, valido em Android e Wasm) -
- * chamado uma vez por `App.kt`. So o `SessionTokenStore`/`RawKeyValueStore`
- * (via `createSessionTokenStore()`/`createRawKeyValueStore()`) sao
- * expect/actual; tudo o resto e comum.
+ * Monta a sessao completa - chamado uma vez por `App.kt`. `SessionTokenStore`/
+ * `RawKeyValueStore` (via `createSessionTokenStore()`/`createRawKeyValueStore()`)
+ * e o engine HTTP (via `createPlatformHttpClient()`, FASE 17B.1 - CIO no
+ * Android, `Js`/fetch no Wasm) sao expect/actual; tudo o resto
+ * (`IdentityToolkitAuthClient`, `FirestoreRestClient`, repositorios) e comum.
  */
 fun createEscalaIciSession(todayIsoProvider: () -> String): EscalaIciSession {
     val config = currentFirebaseConfig()
-    val httpClient = HttpClient(CIO)
+    val httpClient = createPlatformHttpClient()
     val authClient = IdentityToolkitAuthClient(httpClient, config)
     val firestoreClient = FirestoreRestClient(httpClient, config)
     val authRepository = FirebaseAuthRepository(authClient, createSessionTokenStore())
