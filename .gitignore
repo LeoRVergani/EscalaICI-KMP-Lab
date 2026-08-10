@@ -17,3 +17,6 @@ web-dist/
 web-config.local.json
 /local.firebase.properties
 /local.firebase.test.properties
+.vscode/
+/auth-config.json
+/composeApp/google-services.json
