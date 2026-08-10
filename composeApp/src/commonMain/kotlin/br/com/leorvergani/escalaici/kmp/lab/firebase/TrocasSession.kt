@@ -2,12 +2,6 @@ package br.com.leorvergani.escalaici.kmp.lab.firebase
 
 import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.NotificacaoTrocaDto
 import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.SolicitacaoTrocaRealDto
-import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.StatusTroca
-
-/** Contagem discreta para o badge da aba Trocas (FASE 16, seção 21) - solicitações recebidas pendentes + notificações não lidas. */
-data class TrocasBadge(val paraResponder: Int, val naoLidas: Int) {
-    val total: Int get() = paraResponder + naoLidas
-}
 
 /**
  * Fachada de Trocas para a UI - resolve login/equipeId/competencia a partir
@@ -86,9 +80,7 @@ class TrocasSession(
         val identidade = identidadeOuFalhar()
         val trocas = comToken { token -> trocasRepository.buscarMinhasTrocas(token, identidade.equipeId, identidade.competencia, identidade.login) }
         val notificacoes = comToken { token -> trocasRepository.buscarNotificacoes(token, identidade.login) }
-        val paraResponder = trocas.count { it.destinatarioLogin == identidade.login && it.status == StatusTroca.PENDENTE_USUARIO }
-        val naoLidas = notificacoes.count { it.lidaEm == null }
-        return TrocasBadge(paraResponder, naoLidas)
+        return calcularTrocasBadge(identidade.login, trocas, notificacoes)
     }
 
     private fun identidadeOuFalhar(): SessionIdentity =

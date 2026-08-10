@@ -1,6 +1,8 @@
 package br.com.leorvergani.escalaici.kmp.lab.firebase
 
 import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.DiaRemoteDto
+import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.NotificacaoTrocaDto
+import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.SolicitacaoTrocaRealDto
 import br.com.leorvergani.escalaici.kmp.lab.firebase.dto.StatusTroca
 
 /**
@@ -95,3 +97,46 @@ fun validarNovaSolicitacaoTroca(contexto: ContextoValidacaoNovaTroca): List<Stri
 
     return erros
 }
+
+/**
+ * Badge de Trocas (FASE 16, seção 21) - `total` conta **itens de atenção
+ * únicos**, não a soma bruta de troca+notificação. `paraResponder` é a
+ * contagem de trocas acionáveis (fonte primária); `notificacoesDistintas`
+ * é só o que sobra de não lidas que não corresponde a nenhuma delas (ex.:
+ * "sua troca foi aceita" para o solicitante, quando a troca já avançou para
+ * `PENDENTE_GESTOR` e por isso não é mais "acionável" para esse login).
+ */
+data class TrocasBadge(val paraResponder: Int, val notificacoesDistintas: Int) {
+    val total: Int get() = paraResponder + notificacoesDistintas
+}
+
+/**
+ * Deduplica por `trocaId`: uma troca `PENDENTE_USUARIO` destinada a
+ * `loginAtual` e a notificação `TROCA_SOLICITADA` (não lida) da mesma troca
+ * representam **um único** item de atenção, não dois. Notificações não
+ * lidas cujo `trocaId` não corresponde a nenhuma troca acionável (ex.:
+ * "troca aceita, aguardando gestor" para quem solicitou) contam como um
+ * item distinto - comportamento documentado, não é bug: ainda é algo que o
+ * usuário não viu.
+ */
+fun calcularTrocasBadge(
+    loginAtual: String,
+    trocas: List<SolicitacaoTrocaRealDto>,
+    notificacoes: List<NotificacaoTrocaDto>,
+): TrocasBadge {
+    val trocaIdsAcionaveis = trocas.asSequence()
+        .filter { it.destinatarioLogin == loginAtual && it.status == StatusTroca.PENDENTE_USUARIO }
+        .map { it.trocaId }
+        .toSet()
+    val notificacoesDistintas = notificacoes.count { it.lidaEm == null && it.trocaId !in trocaIdsAcionaveis }
+    return TrocasBadge(paraResponder = trocaIdsAcionaveis.size, notificacoesDistintas = notificacoesDistintas)
+}
+
+/**
+ * Notificações NÃO lidas de uma troca específica - usado ao abrir uma troca
+ * para marcar como lida só o que é relevante àquela troca, nunca todas as
+ * notificações ao simplesmente entrar na aba Trocas (FASE 16, hardening
+ * item 1).
+ */
+fun notificacoesNaoLidasDaTroca(notificacoes: List<NotificacaoTrocaDto>, trocaId: String): List<NotificacaoTrocaDto> =
+    notificacoes.filter { it.trocaId == trocaId && it.lidaEm == null }

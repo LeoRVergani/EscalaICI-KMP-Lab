@@ -46,10 +46,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import br.com.leorvergani.escalaici.kmp.lab.firebase.EscalaIciError
 import br.com.leorvergani.escalaici.kmp.lab.firebase.EscalaIciException
 import br.com.leorvergani.escalaici.kmp.lab.firebase.JornadaDia
 import br.com.leorvergani.escalaici.kmp.lab.firebase.LIMITE_MENSAGEM_TROCA
 import br.com.leorvergani.escalaici.kmp.lab.firebase.ROTULO_STATUS_TROCA
+import br.com.leorvergani.escalaici.kmp.lab.firebase.calcularTrocasBadge
+import br.com.leorvergani.escalaici.kmp.lab.firebase.notificacoesNaoLidasDaTroca
 import br.com.leorvergani.escalaici.kmp.lab.firebase.SEVERIDADE_STATUS_TROCA
 import br.com.leorvergani.escalaici.kmp.lab.firebase.SeveridadeStatusTroca
 import br.com.leorvergani.escalaici.kmp.lab.firebase.TeamScheduleSnapshot
@@ -65,6 +68,7 @@ import br.com.leorvergani.escalaici.kmp.lab.ui.components.LabPremiumHeader
 import br.com.leorvergani.escalaici.kmp.lab.ui.components.PageList
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabColors
 import br.com.leorvergani.escalaici.kmp.lab.ui.theme.LabShapes
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 private enum class TrocasAba(val label: String) {
@@ -108,24 +112,28 @@ internal fun TrocasScreen(
     var novaSolicitacaoAberta by remember { mutableStateOf(false) }
     var trocaSelecionada by remember { mutableStateOf<SolicitacaoTrocaRealDto?>(null) }
 
+    /** Busca trocas+notificações de novo e recalcula o badge (deduplicado) - nunca toca `loading`/`errorMessage`, para poder ser chamada em segundo plano (após ação, ao marcar notificação como lida) sem perturbar o que já está na tela. */
+    suspend fun recarregarSilenciosamente(): Result<Unit> = runCatching {
+        trocas = trocasSession.minhasTrocas()
+        notificacoes = trocasSession.notificacoes()
+        onBadgeChanged(calcularTrocasBadge(loginAtual, trocas, notificacoes))
+    }
+
     suspend fun carregar() {
         loading = true
         errorMessage = null
-        try {
-            trocas = trocasSession.minhasTrocas()
-            notificacoes = trocasSession.notificacoes()
-            onBadgeChanged(
-                TrocasBadge(
-                    paraResponder = trocas.count { it.destinatarioLogin == loginAtual && it.status == StatusTroca.PENDENTE_USUARIO },
-                    naoLidas = notificacoes.count { it.lidaEm == null },
-                ),
-            )
-        } catch (e: EscalaIciException) {
-            errorMessage = e.message
-        } catch (e: Exception) {
-            errorMessage = "Não foi possível carregar as trocas agora."
-        }
+        recarregarSilenciosamente().onFailure { errorMessage = it.mensagemAmigavel() }
         loading = false
+    }
+
+    /** Marca como lidas só as notificações NÃO lidas da troca aberta (nunca todas ao entrar na aba) - spec FASE 16, hardening item 1. Falha aqui nunca impede a troca de já estar aberta (ver call site: `trocaSelecionada` já foi setado antes). */
+    suspend fun marcarNotificacoesDaTrocaComoLidas(trocaId: String) {
+        val pendentes = notificacoesNaoLidasDaTroca(notificacoes, trocaId)
+        if (pendentes.isEmpty()) return
+        pendentes.forEach { notificacao ->
+            runCatching { trocasSession.marcarNotificacaoComoLida(notificacao.id) }
+        }
+        recarregarSilenciosamente()
     }
 
     LaunchedEffect(Unit) { carregar() }
@@ -140,6 +148,7 @@ internal fun TrocasScreen(
                 feedback = "Solicitação enviada."
                 scope.launch { carregar() }
             },
+            onReloadBestEffort = { recarregarSilenciosamente().isSuccess },
         )
         return
     }
@@ -189,7 +198,45 @@ internal fun TrocasScreen(
                 }
             } else {
                 items(filtradas, key = { it.trocaId }) { troca ->
-                    TrocaCard(troca = troca, loginAtual = loginAtual, onClick = { trocaSelecionada = troca })
+                    TrocaCard(
+                        troca = troca,
+                        loginAtual = loginAtual,
+                        onClick = {
+                            trocaSelecionada = troca
+                            scope.launch { marcarNotificacoesDaTrocaComoLidas(troca.trocaId) }
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Executa uma ação de escrita (aceitar/recusar/cancelar); em sucesso,
+     * fecha a folha e recarrega a lista. Em falha (inclusive conflito
+     * 409/412/FAILED_PRECONDITION, já mapeado como [EscalaIciError.TROCA_CONFLICT]
+     * por [br.com.leorvergani.escalaici.kmp.lab.firebase.TrocasEscalaRepository]),
+     * NUNCA sobrescreve nada - só recarrega a lista em segundo plano
+     * (best-effort) para mostrar o estado real do Firestore, preservando a
+     * mensagem de erro original se o próprio reload também falhar (spec
+     * FASE 16, hardening item 2).
+     */
+    fun executarAcaoTroca(mensagemSucesso: String, acao: suspend () -> Unit) {
+        scope.launch {
+            try {
+                acao()
+                trocaSelecionada = null
+                feedback = mensagemSucesso
+                carregar()
+            } catch (falha: CancellationException) {
+                throw falha
+            } catch (falha: Throwable) {
+                val reloadOk = recarregarSilenciosamente().isSuccess
+                val conflito = (falha as? EscalaIciException)?.error == EscalaIciError.TROCA_CONFLICT
+                errorMessage = if (conflito && reloadOk) {
+                    "Esta solicitação foi atualizada. Recarregamos o estado mais recente."
+                } else {
+                    falha.mensagemAmigavel()
                 }
             }
         }
@@ -201,24 +248,18 @@ internal fun TrocasScreen(
             loginAtual = loginAtual,
             onDismiss = { trocaSelecionada = null },
             onAceitar = {
-                scope.launch {
-                    runCatching { trocasSession.responder(troca.trocaId, aceitar = true) }
-                        .onSuccess { trocaSelecionada = null; feedback = "Troca aceita — aguardando o gestor."; carregar() }
-                        .onFailure { errorMessage = it.mensagemAmigavel() }
+                executarAcaoTroca("Troca aceita — aguardando o gestor.") {
+                    trocasSession.responder(troca.trocaId, aceitar = true)
                 }
             },
             onRecusar = { motivo ->
-                scope.launch {
-                    runCatching { trocasSession.responder(troca.trocaId, aceitar = false, motivoRecusa = motivo) }
-                        .onSuccess { trocaSelecionada = null; feedback = "Troca recusada."; carregar() }
-                        .onFailure { errorMessage = it.mensagemAmigavel() }
+                executarAcaoTroca("Troca recusada.") {
+                    trocasSession.responder(troca.trocaId, aceitar = false, motivoRecusa = motivo)
                 }
             },
             onCancelar = {
-                scope.launch {
-                    runCatching { trocasSession.cancelar(troca.trocaId) }
-                        .onSuccess { trocaSelecionada = null; feedback = "Solicitação cancelada."; carregar() }
-                        .onFailure { errorMessage = it.mensagemAmigavel() }
+                executarAcaoTroca("Solicitação cancelada.") {
+                    trocasSession.cancelar(troca.trocaId)
                 }
             },
         )
@@ -386,6 +427,7 @@ private fun NovaSolicitacaoTrocaWizard(
     loginAtual: String,
     onCancel: () -> Unit,
     onSubmitted: () -> Unit,
+    onReloadBestEffort: suspend () -> Boolean,
 ) {
     var passo by remember { mutableStateOf(1) }
     var snapshot by remember { mutableStateOf<TeamScheduleSnapshot?>(null) }
@@ -450,7 +492,7 @@ private fun NovaSolicitacaoTrocaWizard(
                     enviando = true
                     submitError = null
                     scope.launch {
-                        runCatching {
+                        try {
                             trocasSession.criarSolicitacao(
                                 snapshot = currentSnapshot,
                                 data = data,
@@ -459,12 +501,23 @@ private fun NovaSolicitacaoTrocaWizard(
                                 destinatarioAtivo = colega.ativo,
                                 mensagem = mensagem,
                             )
-                        }.onSuccess {
                             enviando = false
                             onSubmitted()
-                        }.onFailure {
+                        } catch (falha: CancellationException) {
+                            throw falha
+                        } catch (falha: Throwable) {
                             enviando = false
-                            submitError = it.mensagemAmigavel()
+                            // Reload best-effort da lista externa (não desta tela) - se for conflito de
+                            // verdade (ex.: duplicidade detectada só no servidor), o usuário já verá a
+                            // lista atualizada ao voltar; nunca sobrescrevemos nada aqui, só criamos ou não.
+                            val reloadOk = runCatching { onReloadBestEffort() }.getOrDefault(false)
+                            val conflito = (falha as? EscalaIciException)?.error == EscalaIciError.TROCA_CONFLICT ||
+                                (falha as? EscalaIciException)?.error == EscalaIciError.TROCA_DUPLICATE
+                            submitError = if (conflito && reloadOk) {
+                                "Esta solicitação foi atualizada. Recarregamos o estado mais recente."
+                            } else {
+                                falha.mensagemAmigavel()
+                            }
                         }
                     }
                 },
